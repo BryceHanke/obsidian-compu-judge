@@ -1,8 +1,11 @@
+
 <!DOCTYPE html>
 <html>
 <head>
     <style>
 /* PASTE STYLES.CSS HERE */
+/* COMPU-JUDGE 98 GLOBAL STYLES (v8.0.0 - REFINED) */
+
 :root {
   /* Default Win95 (Light) Values */
   --cj-accent: #000080;
@@ -58,8 +61,8 @@
 }
 
 .bevel-down {
-    border-top: 1px solid #000;
-    border-left: 1px solid #000;
+    border-top: 1px solid #404040;
+    border-left: 1px solid #404040;
     border-right: 1px solid #fff;
     border-bottom: 1px solid #fff;
     box-shadow: inset 1px 1px 0 #808080;
@@ -74,7 +77,7 @@
 }
 
 /* --- BUTTONS (Win95 Authentic) --- */
-.win95-btn {
+.win95-btn, .action-btn {
     /* TRUE WIN95 BUTTON OUTLINE */
     border-top: 1px solid #fff;
     border-left: 1px solid #fff;
@@ -91,9 +94,10 @@
     text-transform: uppercase;
     font-size: 11px;
     transition: none;
+    border-radius: 0; /* NO ROUNDED CORNERS */
 }
 
-.win95-btn:active {
+.win95-btn:active, .action-btn:active {
     border-top: 1px solid #000;
     border-left: 1px solid #000;
     border-right: 1px solid #fff;
@@ -102,13 +106,13 @@
     padding: 5px 9px 3px 11px; /* The physical text shift */
 }
 
-.win95-btn:disabled {
+.win95-btn:disabled, .action-btn:disabled {
     color: #808080;
     text-shadow: 1px 1px 0 #fff;
     cursor: default;
 }
 
-.win95-btn.primary {
+.win95-btn.primary, .action-btn.primary {
     font-weight: bold;
     padding: 6px 12px;
 }
@@ -126,7 +130,7 @@
 }
 
 /* --- GLOBAL INPUT OVERRIDES --- */
-.retro-input {
+.retro-input, select, .retro-select {
     width: 100%;
     background-color: #fff !important;
     color: #000 !important;
@@ -134,8 +138,8 @@
     /* Input Areas need to be Courier New/Consolas */
     font-family: 'Courier New', 'Consolas', monospace;
 
-    border-top: 1px solid #000 !important;
-    border-left: 1px solid #000 !important;
+    border-top: 1px solid #404040 !important;
+    border-left: 1px solid #404040 !important;
     border-right: 1px solid #fff !important;
     border-bottom: 1px solid #fff !important;
     box-shadow: inset 1px 1px 0 #808080 !important;
@@ -146,9 +150,18 @@
     border-radius: 0 !important;
     resize: none;
     line-height: 1.4;
+    -webkit-appearance: none; /* Remove native OS rounded styling */
+    appearance: none;
 }
 
-.retro-input:focus {
+/* Dropdown Arrow Hack for non-native appearance */
+.retro-select {
+    background-image: url('data:image/svg+xml;utf8,<svg width="10" height="10" viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><path d="M0 0 L10 0 L5 5 Z" fill="black" /></svg>');
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+}
+
+.retro-input:focus, .retro-select:focus {
     outline: 1px dotted #000;
     background-color: #fff !important;
 }
@@ -355,6 +368,10 @@ body {
 .log-label { color: #000080; font-weight: 900; }
 .log-text-blue { color: #0000AA; font-weight: bold; font-style: italic; }
 
+/* MISC */
+.section-header { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 12px; color: #000; text-transform: uppercase; margin-top: 10px; margin-bottom: 5px; }
+.section-header::after { content: ""; flex: 1; height: 2px; background: #808080; }
+
     </style>
 </head>
 <body>
@@ -370,48 +387,28 @@ body {
         </div>
 
         <div style="padding: 10px;">
-            <!-- BUTTON TEST -->
-            <div style="margin-bottom: 20px;">
-                <button class="win95-btn">Standard Button</button>
-                <button class="win95-btn" style="border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #fff; border-bottom: 1px solid #fff; box-shadow: inset 1px 1px 0 #808080; padding: 5px 9px 3px 11px;">Pressed Button</button>
+
+            <div class="section-header">
+                <span>NARRATIVE TENSION ARC</span>
+                <select class="retro-select">
+                    <option>Ideal (7-Act Structure)</option>
+                    <option>Hero's Journey</option>
+                </select>
             </div>
 
-            <!-- SCORE CARD -->
-            <div class="critic-display">
-                <div class="score-container bevel-down" style="background: #d4d4d4;">
-                    <div class="main-score-row">
-                        <div class="score-block main">
-                            <div class="score-title" style="color: #555">OVERALL SCORE</div>
-                            <div class="score-main" style="color: #008000">+50</div>
-                            <div class="score-verdict" style="color: #008000">GOD TIER</div>
-                        </div>
-                    </div>
-
-                    <div class="score-divider-horizontal"></div>
-
-                    <div class="sub-score-row">
-                        <div class="sub-score-block">
-                            <div class="sub-title">COMMERCIAL</div>
-                            <div class="sub-val">+50</div>
-                        </div>
-                        <div class="sub-divider"></div>
-                        <div class="sub-score-block">
-                            <div class="sub-title">LITERARY</div>
-                            <div class="sub-val">+50</div>
-                        </div>
-                        <div class="sub-divider"></div>
-                        <div class="sub-score-block">
-                            <div class="sub-title">COHESION</div>
-                            <div class="sub-val">+50</div>
-                        </div>
-                    </div>
-                </div>
+            <!-- CHART AREA (Diverging) -->
+            <div class="chart-box bevel-down" style="height: 100px; background: #d4d4d4; position: relative;">
+                <!-- Mock Chart Content -->
+                <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #555;"></div>
             </div>
 
             <br/>
 
-            <!-- INPUT TEST -->
-            <textarea class="retro-input" rows="2">Input Text (Consolas/Courier New)</textarea>
+            <!-- BUTTON TEST -->
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="action-btn secondary">RUN DEEP META-ANALYSIS</button>
+                <button class="action-btn tertiary">📄 EXPORT FORENSIC REPORT</button>
+            </div>
 
         </div>
     </div>
