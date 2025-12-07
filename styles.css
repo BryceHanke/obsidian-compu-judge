@@ -441,3 +441,70 @@
        but standard CSS gradients are smooth.
        A pattern overlay could work, but a simple radial gradient is requested. */
 }
+
+/* --- WIN95 UNIVERSAL PROGRESS BAR --- */
+.win95-progress-container {
+    background: #fff;
+    border-top: 1px solid #808080;
+    border-left: 1px solid #808080;
+    border-right: 1px solid #fff;
+    border-bottom: 1px solid #fff;
+    box-shadow: inset 1px 1px 0 #000;
+    height: 18px; /* Standard Win95 height */
+    position: relative;
+    padding: 1px;
+}
+
+.win95-progress-fill {
+    height: 100%;
+    /* Rainbow Gradient as requested, mimicking the masterpiece text but as a fill */
+    background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+    background-size: 200% auto;
+    animation: rainbow-bar-scroll 3s linear infinite;
+    /* Optional: Win95 bars were blocks. We can add a repeating-linear-gradient overlay to simulate blocks if desired,
+       but "Rainbow effect" implies smooth. I'll stick to smooth for now as it matches the "Masterpiece" text style. */
+}
+
+@keyframes rainbow-bar-scroll { to { background-position: 200% center; } }
+
+/* --- WIN95 DROPDOWN (SELECT) --- */
+.retro-select {
+    /* Reset */
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 0;
+
+    /* Box */
+    background-color: #fff;
+    color: #000;
+    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
+    font-size: 11px;
+    padding: 2px 20px 2px 4px; /* Room for arrow */
+
+    /* Bevel Inset (Input field look) */
+    border-top: 1px solid #808080;
+    border-left: 1px solid #808080;
+    border-right: 1px solid #fff;
+    border-bottom: 1px solid #fff;
+    box-shadow: inset 1px 1px 0 #000;
+
+    /* Arrow Button Mockup - requires wrapper or background image hack.
+       Since we can't easily add elements inside select, we use background image. */
+    background-image: url('data:image/svg+xml;utf8,<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="16" height="16" fill="%23c0c0c0"/><path d="M0 0 H16 V16 H0 Z" fill="none" stroke="%23dfdfdf" stroke-width="1" stroke-dasharray="16 16"/><path d="M1 1 H15 V15 H1 Z" fill="none" stroke="%23fff" stroke-width="1"/><path d="M15 1 V15 H1" fill="none" stroke="%23000" stroke-width="1"/><path d="M14 2 V14 H2" fill="none" stroke="%23808080" stroke-width="1"/><path d="M5 6 L11 6 L8 9 Z" fill="black"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 0px center;
+    background-size: 16px 100%;
+}
+
+.retro-select:focus {
+    outline: none;
+    background-color: #000080;
+    color: #fff;
+}
+
+/* --- TRUBY LOGIC WRAPPING --- */
+.raw-box pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'Courier New', monospace;
+}
