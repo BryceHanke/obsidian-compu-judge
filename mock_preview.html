@@ -201,83 +201,111 @@
     margin-bottom: 15px;
 }
 
-.agent-card {
-    border-top: 1px solid #fff;
-    border-left: 1px solid #fff;
-    border-right: 1px solid #000;
-    border-bottom: 1px solid #000;
-    box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
+/* --- WIN95 POPUP WINDOW --- */
+.win95-popup-window {
     background: #c0c0c0;
-
-    padding: 0;
+    border-top: 2px solid #dfdfdf;
+    border-left: 2px solid #dfdfdf;
+    border-right: 2px solid #000;
+    border-bottom: 2px solid #000;
+    box-shadow: 1px 1px 0 #000;
+    padding: 2px;
     display: flex;
     flex-direction: column;
-    font-size: 11px;
+    margin-bottom: 15px;
+    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
 }
 
-.agent-header {
-    color: white;
-    padding: 4px;
-    font-weight: 900;
-    text-transform: uppercase;
-    font-size: 11px;
-    text-align: center;
-    border-bottom: 1px solid #808080;
-    letter-spacing: 1px;
-}
-
-/* Specific Agent Colors */
-.agent-market { background: linear-gradient(180deg, #008000, #006400); }
-.agent-logic { background: linear-gradient(180deg, #000080, #000060); }
-.agent-lit { background: linear-gradient(180deg, #800080, #600060); }
-
-.agent-verdict {
-    font-weight: 900;
-    background: #000;
-    color: #0f0;
-    padding: 4px;
-    text-align: center;
-    font-family: 'Consolas', monospace;
-    border-bottom: 1px solid #999;
-}
-
-.agent-list {
-    padding: 8px;
-    font-size: 11px;
-    line-height: 1.3;
+.win95-titlebar {
+    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+    color: #fff;
+    padding: 2px 4px;
     font-weight: bold;
-    color: #333;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 18px;
+    margin-bottom: 1px;
 }
 
-/* --- DRIVES (Physical Cartridge Look) --- */
-.drive-block {
-    margin-bottom: 8px;
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+.win95-titlebar.inactive {
+    background: #808080;
+    color: #c0c0c0;
 }
 
-.drive-header {
-    background: linear-gradient(90deg, #000080, #1084d0);
-    padding: 6px;
-    border-bottom: 1px solid rgba(255,255,255,0.3);
+.win95-titlebar-text {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
-.drive-id-badge {
-    background: #000;
-    color: #0f0;
-    padding: 1px 4px;
-    font-family: 'Consolas', monospace;
+/* Menu Bar Area - Where dropdowns live */
+.win95-menubar {
+    display: flex;
+    gap: 10px;
+    padding: 2px 6px;
+    font-size: 11px;
+    color: #000;
+    border-bottom: 1px solid #808080; /* Slight separator */
+}
+
+.win95-menu-item {
+    cursor: pointer;
+    text-decoration: underline; /* Standard alt-key hint style */
+    position: relative;
+}
+
+.win95-menu-item:hover {
+    background-color: #000080;
+    color: #fff;
+}
+
+.win95-info-area {
+    padding: 6px 8px;
+    font-size: 11px;
+    color: #000;
+}
+
+/* The Sunken Content Box */
+.win95-content-inset {
+    background: #fff;
+    border-top: 2px solid #404040;
+    border-left: 2px solid #404040;
+    border-right: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    padding: 8px;
+    margin: 4px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace; /* As per image content */
+    color: #000;
+}
+
+/* Status Bar */
+.win95-statusbar {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    margin-top: 2px;
+}
+
+.win95-status-field {
+    flex: 1;
+    border-top: 1px solid #808080;
+    border-left: 1px solid #808080;
+    border-right: 1px solid #fff;
+    border-bottom: 1px solid #fff;
+    padding: 2px 4px;
     font-size: 10px;
-    border: 1px solid #555;
-    margin-right: 5px;
+    color: #000;
+    background: #c0c0c0;
 }
 
-.lib-item {
-    padding: 6px;
-    border-bottom: 1px solid #ccc;
-    background: #f8f8f8;
-    transition: background 0.1s;
+/* --- DITHER GRADIENT --- */
+/* Using a radial gradient to simulate a glowing center without soft shadow blur */
+.dither-radial {
+    background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 20%, rgba(255,255,255,0) 70%);
 }
-.lib-item:hover { background: #e8e8ff; }
 
 /* --- MASTERPIECE & CRITICAL (Retained) --- */
 .masterpiece-text {
@@ -388,27 +416,74 @@ body {
 
         <div style="padding: 10px;">
 
-            <div class="section-header">
-                <span>NARRATIVE TENSION ARC</span>
-                <select class="retro-select">
-                    <option>Ideal (7-Act Structure)</option>
-                    <option>Hero's Journey</option>
-                </select>
-            </div>
-
-            <!-- CHART AREA (Diverging) -->
-            <div class="chart-box bevel-down" style="height: 100px; background: #d4d4d4; position: relative;">
-                <!-- Mock Chart Content -->
-                <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #555;"></div>
+            <!-- QUICK SCAN WINPOPUP MOCK -->
+             <div class="win95-popup-window">
+                <div class="win95-titlebar">
+                    <div class="win95-titlebar-text">
+                        <span>📨</span> <span>WinPopup - Quick Scan</span>
+                    </div>
+                    <div class="win95-controls"></div>
+                </div>
+                <div class="win95-menubar">
+                    <span class="win95-menu-item">Messages</span>
+                    <span class="win95-menu-item">Help</span>
+                </div>
+                <div class="win95-info-area">
+                    Message from <b>CRITIC_SYS</b> to <b>USER</b><br/>
+                    on 12:00:00 PM
+                </div>
+                <div class="win95-content-inset">
+                    <b>GRADE: B+ (85)</b><br/><br/>
+                    LOG: This is a logline.<br/><br/>
+                    Summary of the story goes here.<br/><br/>
+                    ----------------------------------------<br/>
+                    FIX: Fix the pacing.
+                </div>
+                <div class="win95-statusbar">
+                    <div class="win95-status-field">Current message: 1</div>
+                    <div class="win95-status-field">Total number of messages: 1</div>
+                </div>
             </div>
 
             <br/>
 
-            <!-- BUTTON TEST -->
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button class="action-btn secondary">RUN DEEP META-ANALYSIS</button>
-                <button class="action-btn tertiary">📄 EXPORT FORENSIC REPORT</button>
-            </div>
+            <!-- TRIBUNAL CARD MOCK -->
+             <div class="tribunal-grid">
+                <div class="win95-popup-window">
+                    <div class="win95-titlebar">
+                        <div class="win95-titlebar-text">
+                            <span>📈</span> <span>MARKET ANALYST</span>
+                        </div>
+                    </div>
+                    <div class="win95-menubar">
+                        <span class="win95-menu-item">Actions</span>
+                    </div>
+                    <div class="win95-info-area">
+                        <b>SCORE: +15</b>
+                    </div>
+                    <div class="win95-content-inset">
+                        Logline here...<br/><br/>
+                        <i>"Good market potential."</i>
+                    </div>
+                </div>
+                 <div class="win95-popup-window">
+                    <div class="win95-titlebar inactive">
+                        <div class="win95-titlebar-text">
+                            <span>🧠</span> <span>LOGIC ENGINE</span>
+                        </div>
+                    </div>
+                    <div class="win95-menubar">
+                        <span class="win95-menu-item">Actions</span>
+                    </div>
+                    <div class="win95-info-area">
+                        <b>COHESION: +5</b>
+                    </div>
+                    <div class="win95-content-inset" style="color: #800000;">
+                       No holes.<br/><br/>
+                       <span style="color:#000;"><i>"Solid logic."</i></span>
+                    </div>
+                </div>
+             </div>
 
         </div>
     </div>

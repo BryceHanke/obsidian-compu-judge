@@ -10,10 +10,15 @@
         isProcessing: boolean;
         settings: NigsSettings;
         onRunMeta: () => void;
+        onAddRepairInstruction: (instruction: string) => void;
     }
 
-    let { data, meta, isProcessing, settings, onRunMeta }: Props = $props();
+    let { data, meta, isProcessing, settings, onRunMeta, onAddRepairInstruction }: Props = $props();
     let showRaw = $state(false);
+
+    // [WIN95 UPDATE] Selected Agent Logic
+    let selectedAgent = $state<string | null>(null);
+    let openDropdown = $state<string | null>(null);
 
     // --- UTILS ---
     
@@ -361,37 +366,88 @@
         <div class="section-header">TRIBUNAL CONSENSUS</div>
         <div class="tribunal-grid">
             <!-- MARKET -->
-            <div class="agent-card">
-                <div class="agent-header agent-market">MARKET ANALYST</div>
-                <div class="agent-verdict {isMasterpieceEffect(data.tribunal_breakdown.market.commercial_score) ? 'masterpiece-text' : ''}">
-                    SCORE: {formatScoreDisplay(data.tribunal_breakdown.market.commercial_score)}
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <div class="win95-popup-window" onclick={() => selectedAgent = 'market'}>
+                <div class="win95-titlebar {selectedAgent === 'market' ? '' : 'inactive'}">
+                    <div class="win95-titlebar-text">
+                        <span>📈</span> <span>MARKET ANALYST</span>
+                    </div>
                 </div>
-                <div class="agent-list">{data.tribunal_breakdown.market.log_line || "N/A"}</div>
-                <div class="agent-list" style="margin-top:4px;">
+                <div class="win95-menubar" style="position:relative;">
+                    <!-- svelte-ignore a11y-click-events-have-key-events -->
+                    <!-- svelte-ignore a11y-no-static-element-interactions -->
+                    <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); openDropdown = openDropdown === 'market' ? null : 'market'; }}>Actions</span>
+                    {#if openDropdown === 'market'}
+                        <div class="dropdown-list">
+                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Address Commercial Concern: ${data.tribunal_breakdown?.market.commercial_reason}`); openDropdown = null; }}>Inject Issue to Repair</div>
+                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Enhance Commercial Appeal`); openDropdown = null; }}>Focus on Commercial Appeal</div>
+                        </div>
+                    {/if}
+                </div>
+                <div class="win95-info-area">
+                    <b>SCORE: {formatScoreDisplay(data.tribunal_breakdown.market.commercial_score)}</b>
+                </div>
+                <div class="win95-content-inset">
+                    {data.tribunal_breakdown.market.log_line || "N/A"}<br/><br/>
                     <i>"{data.tribunal_breakdown.market.commercial_reason || ""}"</i>
                 </div>
             </div>
             
             <!-- LOGIC -->
-            <div class="agent-card">
-                <div class="agent-header agent-logic">LOGIC ENGINE</div>
-                <div class="agent-verdict {isMasterpieceEffect(data.tribunal_breakdown.logic.cohesion_score) ? 'masterpiece-text' : ''}">
-                    SCORE: {formatScoreDisplay(data.tribunal_breakdown.logic.cohesion_score)}
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <div class="win95-popup-window" onclick={() => selectedAgent = 'logic'}>
+                 <div class="win95-titlebar {selectedAgent === 'logic' ? '' : 'inactive'}">
+                    <div class="win95-titlebar-text">
+                        <span>🧠</span> <span>LOGIC ENGINE</span>
+                    </div>
                 </div>
-                <div class="agent-list" style="color:#800000;">{data.tribunal_breakdown.logic.content_warning || "No Logic Holes Detected."}</div>
-                <div class="agent-list" style="margin-top:4px;">
-                    <i>"{data.tribunal_breakdown.logic.cohesion_reason || ""}"</i>
+                <div class="win95-menubar" style="position:relative;">
+                     <!-- svelte-ignore a11y-click-events-have-key-events -->
+                     <!-- svelte-ignore a11y-no-static-element-interactions -->
+                     <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); openDropdown = openDropdown === 'logic' ? null : 'logic'; }}>Actions</span>
+                     {#if openDropdown === 'logic'}
+                        <div class="dropdown-list">
+                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Fix Logic Hole: ${data.tribunal_breakdown?.logic.content_warning}`); openDropdown = null; }}>Inject Logic Fix</div>
+                             <div class="dd-item" onclick={() => { onAddRepairInstruction(`Improve Internal Cohesion`); openDropdown = null; }}>Focus on Cohesion</div>
+                        </div>
+                    {/if}
+                </div>
+                <div class="win95-info-area">
+                    <b>COHESION: {formatScoreDisplay(data.tribunal_breakdown.logic.cohesion_score)}</b>
+                </div>
+                <div class="win95-content-inset" style="color: #800000;">
+                   {data.tribunal_breakdown.logic.content_warning || "No Logic Holes Detected."}<br/><br/>
+                   <span style="color:#000;"><i>"{data.tribunal_breakdown.logic.cohesion_reason || ""}"</i></span>
                 </div>
             </div>
 
             <!-- LIT -->
-            <div class="agent-card">
-                <div class="agent-header agent-lit">LITERARY CRITIC</div>
-                <div class="agent-verdict {isMasterpieceEffect(data.tribunal_breakdown.lit.novelty_score) ? 'masterpiece-text' : ''}">
-                    NOVELTY: {formatScoreDisplay(data.tribunal_breakdown.lit.novelty_score)}
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <div class="win95-popup-window" onclick={() => selectedAgent = 'lit'}>
+                 <div class="win95-titlebar {selectedAgent === 'lit' ? '' : 'inactive'}">
+                    <div class="win95-titlebar-text">
+                        <span>✒️</span> <span>LITERARY CRITIC</span>
+                    </div>
                 </div>
-                <div class="agent-list">Theme: {formatScoreDisplay(data.tribunal_breakdown.lit.niche_score)}</div>
-                <div class="agent-list" style="margin-top:4px;">
+                 <div class="win95-menubar" style="position:relative;">
+                     <!-- svelte-ignore a11y-click-events-have-key-events -->
+                     <!-- svelte-ignore a11y-no-static-element-interactions -->
+                     <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); openDropdown = openDropdown === 'lit' ? null : 'lit'; }}>Actions</span>
+                     {#if openDropdown === 'lit'}
+                        <div class="dropdown-list">
+                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Refine Theme: ${data.tribunal_breakdown?.lit.niche_reason}`); openDropdown = null; }}>Inject Thematic Repair</div>
+                             <div class="dd-item" onclick={() => { onAddRepairInstruction(`Boost Novelty`); openDropdown = null; }}>Focus on Novelty</div>
+                        </div>
+                    {/if}
+                </div>
+                <div class="win95-info-area">
+                    <b>NOVELTY: {formatScoreDisplay(data.tribunal_breakdown.lit.novelty_score)}</b>
+                </div>
+                <div class="win95-content-inset">
+                    Theme Strength: {formatScoreDisplay(data.tribunal_breakdown.lit.niche_score)}<br/><br/>
                     <i>"{data.tribunal_breakdown.lit.niche_reason || ""}"</i>
                 </div>
             </div>
@@ -574,8 +630,44 @@
     .tooltip-container:hover .tooltip { visibility: visible; opacity: 1; }
 
     /* ANIMATIONS */
-    .masterpiece { color: var(--cj-grade-masterpiece) !important; animation: god-mode 1.5s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95); text-shadow: 0 0 10px var(--cj-grade-masterpiece), 0 0 20px var(--cj-grade-masterpiece); z-index: 5; position: relative; }
-    .glow-bar { background-color: var(--cj-grade-masterpiece) !important; box-shadow: 0 0 10px var(--cj-grade-masterpiece), 0 0 15px var(--cj-grade-masterpiece); animation: pulse-bar 0.8s infinite alternate; }
+    /* [UPDATED] Replaced Glow with Dither/Flat effects */
+    .masterpiece { color: var(--cj-grade-masterpiece) !important; animation: god-mode 1.5s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95); z-index: 5; position: relative; }
+    .masterpiece-text { text-shadow: 1px 1px 0 #000; } /* Hard shadow instead of glow */
+
+    .glow-bar {
+        background-color: var(--cj-grade-masterpiece) !important;
+        background-image: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 80%) !important;
+        animation: pulse-bar 0.8s infinite alternate;
+        border: 1px solid #fff; /* Hard border */
+        box-shadow: none !important;
+    }
+
+    /* DROPDOWN MENU */
+    .dropdown-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background: #c0c0c0;
+        border-top: 1px solid #fff;
+        border-left: 1px solid #fff;
+        border-right: 1px solid #000;
+        border-bottom: 1px solid #000;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+        z-index: 9999;
+        min-width: 150px;
+        padding: 2px;
+    }
+
+    .dd-item {
+        padding: 4px 8px;
+        cursor: pointer;
+        color: #000;
+    }
+
+    .dd-item:hover {
+        background: #000080;
+        color: #fff;
+    }
 
     /* SANDERSON METRICS (Updated for Diverging Bars) */
     .modules-grid { padding: 10px; z-index: 1; position: relative; }
