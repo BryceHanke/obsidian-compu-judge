@@ -1,4 +1,4 @@
-// --- TYPES DEFINITION FOR COMPU-JUDGE (SANDERSON ENGINE v8.0.0) ---
+// --- TYPES DEFINITION FOR COMPU-JUDGE (SANDERSON ENGINE v7.5.0) ---
 
 export type AIProvider = 'gemini' | 'openai' | 'anthropic';
 export type ThemeMode = 'msdos' | 'win95' | 'invert' | 'auto';
@@ -61,10 +61,6 @@ export interface NigsSettings {
     msDosColor: string;
     theme: ThemeMode;
     gradingColors: GradingColors;
-
-    // --- AUDIO ---
-    enableAudio: boolean;
-    audioVolume: number; // 0.0 - 1.0
     
     // --- DATA STORE ---
     projects: Record<string, ProjectData>;
@@ -114,10 +110,6 @@ export const DEFAULT_SETTINGS: NigsSettings = {
         excellent: '#FFFFE0',
         masterpiece: '#FFFFFF'
     },
-
-    enableAudio: true,
-    audioVolume: 0.5,
-
     projects: {},
     drives: [] 
 };

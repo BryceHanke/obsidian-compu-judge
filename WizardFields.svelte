@@ -19,7 +19,6 @@
         onGradeStructure?: (beat: StoryBlock) => Promise<StoryBlock>;
     }
     
-    // Converted to Runes
     let { wizardState, settings, onSave, onAssist, onUploadContext, onScrubContext, onClear, onAutoFill, isContextSynced, loadingField, onGradeCharacter, onGradeStructure }: Props = $props();
 
     function handleInput() { onSave(); }
@@ -143,7 +142,6 @@
         return c.critical;
     }
 
-    // Derived Runes
     let contextLength = $derived(wizardState.inspirationContext ? wizardState.inspirationContext.length : 0);
     let hasContext = $derived(contextLength > 0);
 </script>
@@ -160,7 +158,7 @@
             <div class="status-details">SIZE: {contextLength} CHARS</div>
         </div>
         <div class="context-controls">
-            <button class="upload-btn {isContextSynced ? 'synced' : ''}" onclick={isContextSynced ? undefined : onUploadContext} disabled={isContextSynced}>
+            <button class="upload-btn {isContextSynced ? 'synced' : ''}" onclick={isContextSynced ? null : onUploadContext} disabled={isContextSynced}>
                 {isContextSynced ? '✅ SYNCED' : '📥 IMPORT ACTIVE NOTE'}
             </button>
             <button class="scrub-btn" onclick={onScrubContext} disabled={!hasContext}>🗑️ PURGE</button>
@@ -190,27 +188,27 @@
 
         <div class="grid-3-p">
             <div class="p-col">
-                <label for="p_promise" title="What plot/tonal promise do you make in the first chapter?">THE PROMISE (HOOK)</label>
+                <label title="What plot/tonal promise do you make in the first chapter?">THE PROMISE (HOOK)</label>
                 <div class="input-wrap">
-                    <textarea id="p_promise" class="retro-input" rows="4"
+                    <textarea class="retro-input" rows="4" 
                         bind:value={wizardState.threePs.promise} use:autoResize={wizardState.threePs.promise} oninput={handleInput} onblur={handleBlur} 
                         disabled={loadingField === 'threePs.promise'}></textarea>
                     <button class="assist-btn {loadingField === 'threePs.promise' ? 'loading' : ''}" onclick={() => onAssist('threePs.promise')} disabled={!!loadingField}>?</button>
                 </div>
             </div>
             <div class="p-col">
-                <label for="p_progress" title="How does the story move forward? (Travel, Discovery, Clues)">THE PROGRESS (SHIFT)</label>
+                <label title="How does the story move forward? (Travel, Discovery, Clues)">THE PROGRESS (SHIFT)</label>
                 <div class="input-wrap">
-                    <textarea id="p_progress" class="retro-input" rows="4"
+                    <textarea class="retro-input" rows="4" 
                         bind:value={wizardState.threePs.progress} use:autoResize={wizardState.threePs.progress} oninput={handleInput} onblur={handleBlur}
                         disabled={loadingField === 'threePs.progress'}></textarea>
                      <button class="assist-btn {loadingField === 'threePs.progress' ? 'loading' : ''}" onclick={() => onAssist('threePs.progress')} disabled={!!loadingField}>?</button>
                 </div>
             </div>
             <div class="p-col">
-                <label for="p_payoff" title="How is the promise fulfilled? (Must match the promise type)">THE PAYOFF (CLIMAX)</label>
+                <label title="How is the promise fulfilled? (Must match the promise type)">THE PAYOFF (CLIMAX)</label>
                 <div class="input-wrap">
-                    <textarea id="p_payoff" class="retro-input" rows="4"
+                    <textarea class="retro-input" rows="4" 
                         bind:value={wizardState.threePs.payoff} use:autoResize={wizardState.threePs.payoff} oninput={handleInput} onblur={handleBlur}
                         disabled={loadingField === 'threePs.payoff'}></textarea>
                      <button class="assist-btn {loadingField === 'threePs.payoff' ? 'loading' : ''}" onclick={() => onAssist('threePs.payoff')} disabled={!!loadingField}>?</button>
@@ -223,9 +221,9 @@
         <legend>2. STRUCTURE DNA (M.I.C.E. & CYCLES)</legend>
         <div class="grid-2">
             <div>
-                <label for="dna_mice">Primary M.I.C.E. Thread</label>
+                <label>Primary M.I.C.E. Thread</label>
                 <div class="input-wrap">
-                    <select id="dna_mice" class="retro-input" bind:value={wizardState.structureDNA.primaryThread} onchange={handleInput}>
+                    <select class="retro-input" bind:value={wizardState.structureDNA.primaryThread} onchange={handleInput}>
                         <option value="Event">EVENT (Status Quo)</option>
                         <option value="Character">CHARACTER (Identity)</option>
                         <option value="Milieu">MILIEU (Place)</option>
@@ -235,9 +233,9 @@
                 </div>
             </div>
             <div>
-                <label for="dna_order">Nesting Order</label>
+                <label>Nesting Order</label>
                 <div class="input-wrap">
-                    <input id="dna_order" type="text" class="retro-input"
+                    <input type="text" class="retro-input" 
                         placeholder="e.g. Milieu > Inquiry > Character" 
                         bind:value={wizardState.structureDNA.nestingOrder}
                         oninput={handleInput} />
@@ -246,7 +244,7 @@
             </div>
         </div>
 
-        <div style="margin-top: 15px; color: var(--cj-accent); border-bottom: 1px dashed var(--cj-dim); font-weight:bold; font-size:0.9em; text-transform:uppercase;">TRY / FAIL CYCLES (SCENE ESCALATION)</div>
+        <label style="margin-top: 15px; color: var(--cj-accent); border-bottom: 1px dashed var(--cj-dim);">TRY / FAIL CYCLES (SCENE ESCALATION)</label>
         {#if wizardState.structureDNA.tryFailCycles}
             {#each wizardState.structureDNA.tryFailCycles as cycle, i}
                 <div class="char-block bevel-down" style="margin-bottom: 10px; margin-top: 10px;">
@@ -255,30 +253,30 @@
                         <button class="del-btn" onclick={() => removeTryFailCycle(i)}>×</button>
                     </div>
                     <div class="char-body">
-                        <label for={`cycle_goal_${i}`}>The Goal</label>
+                        <label>The Goal</label>
                         <div class="input-wrap">
-                            <input id={`cycle_goal_${i}`} class="retro-input" bind:value={cycle.goal} onblur={handleBlur} placeholder="What do they want right now?" disabled={loadingField === `structureDNA.tryFailCycles.${i}.goal`} />
+                            <input class="retro-input" bind:value={cycle.goal} onblur={handleBlur} placeholder="What do they want right now?" disabled={loadingField === `structureDNA.tryFailCycles.${i}.goal`} />
                             <button class="assist-btn {loadingField === `structureDNA.tryFailCycles.${i}.goal` ? 'loading' : ''}" onclick={() => onAssist(`structureDNA.tryFailCycles.${i}.goal`)} disabled={!!loadingField}>?</button>
                         </div>
                         <div class="grid-3-p" style="margin-top: 5px;">
                             <div>
-                                <label for={`cycle_att1_${i}`} style="color:#800000; font-size: 0.8em;">1. FAIL (NO, AND)</label>
+                                <label style="color:#800000; font-size: 0.8em;">1. FAIL (NO, AND)</label>
                                 <div class="input-wrap">
-                                    <textarea id={`cycle_att1_${i}`} class="retro-input" rows="3" bind:value={cycle.attempt1} onblur={handleBlur} placeholder="Disaster strikes..." disabled={loadingField === `structureDNA.tryFailCycles.${i}.attempt1`}></textarea>
+                                    <textarea class="retro-input" rows="3" bind:value={cycle.attempt1} onblur={handleBlur} placeholder="Disaster strikes..." disabled={loadingField === `structureDNA.tryFailCycles.${i}.attempt1`}></textarea>
                                      <button class="assist-btn {loadingField === `structureDNA.tryFailCycles.${i}.attempt1` ? 'loading' : ''}" onclick={() => onAssist(`structureDNA.tryFailCycles.${i}.attempt1`)} disabled={!!loadingField}>?</button>
                                 </div>
                             </div>
                             <div>
-                                <label for={`cycle_att2_${i}`} style="color:#808000; font-size: 0.8em;">2. FAIL (NO, BUT)</label>
+                                <label style="color:#808000; font-size: 0.8em;">2. FAIL (NO, BUT)</label>
                                 <div class="input-wrap">
-                                    <textarea id={`cycle_att2_${i}`} class="retro-input" rows="3" bind:value={cycle.attempt2} onblur={handleBlur} placeholder="Learning moment..." disabled={loadingField === `structureDNA.tryFailCycles.${i}.attempt2`}></textarea>
+                                    <textarea class="retro-input" rows="3" bind:value={cycle.attempt2} onblur={handleBlur} placeholder="Learning moment..." disabled={loadingField === `structureDNA.tryFailCycles.${i}.attempt2`}></textarea>
                                      <button class="assist-btn {loadingField === `structureDNA.tryFailCycles.${i}.attempt2` ? 'loading' : ''}" onclick={() => onAssist(`structureDNA.tryFailCycles.${i}.attempt2`)} disabled={!!loadingField}>?</button>
                                 </div>
                             </div>
                             <div>
-                                <label for={`cycle_succ_${i}`} style="color:#008000; font-size: 0.8em;">3. SUCCESS (YES, BUT)</label>
+                                <label style="color:#008000; font-size: 0.8em;">3. SUCCESS (YES, BUT)</label>
                                 <div class="input-wrap">
-                                    <textarea id={`cycle_succ_${i}`} class="retro-input" rows="3" bind:value={cycle.success} onblur={handleBlur} placeholder="New problem arises..." disabled={loadingField === `structureDNA.tryFailCycles.${i}.success`}></textarea>
+                                    <textarea class="retro-input" rows="3" bind:value={cycle.success} onblur={handleBlur} placeholder="New problem arises..." disabled={loadingField === `structureDNA.tryFailCycles.${i}.success`}></textarea>
                                      <button class="assist-btn {loadingField === `structureDNA.tryFailCycles.${i}.success` ? 'loading' : ''}" onclick={() => onAssist(`structureDNA.tryFailCycles.${i}.success`)} disabled={!!loadingField}>?</button>
                                 </div>
                             </div>
@@ -295,7 +293,7 @@
         <div class="char-list">
             {#each wizardState.characters as char, i (char.id)}
                  <div class="char-block bevel-down" animate:flip={{duration: 300}}>
-                    <div class="char-header" onclick={() => toggleExpandChar(i)} title="Toggle Expand" role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && toggleExpandChar(i)}>
+                    <div class="char-header" onclick={() => toggleExpandChar(i)} title="Toggle Expand">
                         <div class="char-title">
                             <span class="role-badge {char.role.toLowerCase()}">{char.role}</span>
                             <input type="text" class="char-name-input" bind:value={char.name} oninput={handleInput} onclick={(e) => e.stopPropagation()} placeholder="Name" />
@@ -320,7 +318,7 @@
                                         <span class="score-label" title="How good are they at what they do?">COMPETENCE</span>
                                         <span class="score-val">{char.competence}%</span>
                                     </div>
-                                    <div class="score-track bevel-down" onclick={(e) => handleScoreClick(e, i, 'competence')} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && handleScoreClick(e as any, i, 'competence')}>
+                                    <div class="score-track bevel-down" onclick={(e) => handleScoreClick(e, i, 'competence')} role="button" tabindex="0">
                                         <div class="score-fill" style="width: {char.competence}%; background: {getScoreColor(char.competence)}"></div>
                                     </div>
                                 </div>
@@ -329,7 +327,7 @@
                                         <span class="score-label" title="Do they make things happen?">PROACTIVITY</span>
                                         <span class="score-val">{char.proactivity}%</span>
                                     </div>
-                                    <div class="score-track bevel-down" onclick={(e) => handleScoreClick(e, i, 'proactivity')} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && handleScoreClick(e as any, i, 'proactivity')}>
+                                    <div class="score-track bevel-down" onclick={(e) => handleScoreClick(e, i, 'proactivity')} role="button" tabindex="0">
                                         <div class="score-fill" style="width: {char.proactivity}%; background: {getScoreColor(char.proactivity)}"></div>
                                     </div>
                                 </div>
@@ -338,7 +336,7 @@
                                         <span class="score-label" title="Do we like them? (Sympathy)">LIKABILITY</span>
                                         <span class="score-val">{char.likability}%</span>
                                     </div>
-                                    <div class="score-track bevel-down" onclick={(e) => handleScoreClick(e, i, 'likability')} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && handleScoreClick(e as any, i, 'likability')}>
+                                    <div class="score-track bevel-down" onclick={(e) => handleScoreClick(e, i, 'likability')} role="button" tabindex="0">
                                         <div class="score-fill" style="width: {char.likability}%; background: {getScoreColor(char.likability)}"></div>
                                     </div>
                                 </div>
@@ -356,7 +354,7 @@
         <div class="char-list">
             {#each wizardState.structure as block, i (block.id)}
                 <div class="char-block bevel-down" animate:flip={{duration: 300}}>
-                    <div class="char-header" onclick={() => toggleExpandStory(i)} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && toggleExpandStory(i)}>
+                    <div class="char-header" onclick={() => toggleExpandStory(i)}>
                         <div class="char-title">
                             <span class="role-badge {block.type.toLowerCase().replace(/\s/g, '-')}" style="width: 80px; text-align:center;">{block.type}</span>
                             <input type="text" class="char-name-input" bind:value={block.title} oninput={handleInput} onclick={(e) => e.stopPropagation()} placeholder="Beat Title" />
@@ -378,7 +376,7 @@
                                     <span class="score-label">TENSION</span>
                                     <span class="score-val">{block.tension}%</span>
                                 </div>
-                                <div class="score-track bevel-down" onclick={(e) => handleTensionClick(e, i)} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && handleTensionClick(e as any, i)}>
+                                <div class="score-track bevel-down" onclick={(e) => handleTensionClick(e, i)} role="button" tabindex="0">
                                     <div class="score-fill" style="width: {block.tension}%; background: {getTensionColor(block.tension)}"></div>
                                 </div>
                             </div>

@@ -14,35 +14,24 @@
     import CriticDisplay from './CriticDisplay.svelte';
     import Win95ProgressBar from './Win95ProgressBar.svelte';
     import { processRegistry, processOrigin, setFileLoading, setStatus } from './store';
-    import { AudioEngine } from './AudioEngine';
 
     interface Props {
         app: App;
         cloud: CloudGenService;
         settings: NigsSettings;
         onUpdateSettings: (s: Partial<NigsSettings>) => void;
-        audio: AudioEngine;
     }
 
-    let { app, cloud, settings: initialSettings, onUpdateSettings, audio }: Props = $props();
-
-    // [FIX] Reactivity: Use a derived state or keep local copy synced
+    let { app, cloud, settings: initialSettings, onUpdateSettings }: Props = $props();
     let settings = $state(initialSettings);
-
-    // [FIX] Ensure theme is initialized immediately to prevent "Broken UI" (Blank styles)
-    let themeClass = $state(getThemeClass(initialSettings.theme));
-
     let activeFile: TFile | null = $state(null);
     let projectData: ProjectData | null = $state(null);
     let currentTab = $state('critic');
-
+    let themeClass = $state('');
     let isSaving = $state(false);
     let estimatedDuration = $state(4000);
     let wizardLoadingField: string | null = $state(null);
     
-    // Derived for MS-DOS mode check
-    let isMsDos = $derived(themeClass === 'theme-msdos');
-
     // Sync States
     let isContextSynced = $state(false);
     let isArchivistSynced = $state(false);
@@ -50,44 +39,20 @@
     let archivistLength = $derived(projectData?.archivistContext ? projectData.archivistContext.length : 0);
     let hasArchivistData = $derived(archivistLength > 0);
 
+    // [FIX]: Moved logic from template to script to prevent build errors with Optional Chaining in HTML
     let activeFileStatus = $derived(
         activeFile && $processRegistry[activeFile.path] ? 'PROCESSING' : 'READY'
     );
 
+    // [OPTIMIZATION] Debounced save for text inputs
     const debouncedSave = debounce(() => saveProject(false), 1000);
-
-    // [FIX] Helper to determine class string synchronously
-    function getThemeClass(mode: string): string {
-        const isDark = document.body.classList.contains('theme-dark');
-        if (mode === 'win95') return 'theme-win95';
-        if (mode === 'msdos') return 'theme-msdos';
-        if (mode === 'invert') return isDark ? 'theme-win95' : 'theme-msdos';
-        // Auto:
-        return isDark ? 'theme-msdos' : 'theme-win95';
-    }
 
     function handleSettingsUpdate(updates: Partial<NigsSettings>) {
         Object.assign(settings, updates);
         onUpdateSettings(updates);
-        // Update local theme state immediately
-        if (updates.theme) {
-            themeClass = getThemeClass(updates.theme);
-            safeAudioSetTheme(updates.theme);
-        }
-    }
-
-    function safeAudioSetTheme(theme: string) {
-        try { if(audio) audio.setTheme(theme); } catch(e) { console.warn("Audio Theme Error", e); }
-    }
-
-    function safeAudioPlay(method: keyof AudioEngine) {
-        try {
-            if(audio && typeof audio[method] === 'function') {
-                (audio[method] as Function)();
-            }
-        } catch(e) { console.warn("Audio Play Error", e); }
     }
     
+    // [NEW] Handle Drive Updates Locally
     function handleDrivesUpdate(newDrives: DriveBlock[]) {
         if (!projectData) return;
         projectData.wizardState.synthesisDrives = newDrives;
@@ -95,7 +60,6 @@
     }
 
     function handleError(context: string, error: any) {
-        safeAudioPlay('playError');
         console.error(`[Compu-Judge] ${context} Error:`, error);
         let msg = error instanceof Error ? error.message : String(error);
         msg = msg.replace(/^Error:\s*/i, "").replace(/^Gemini Error:\s*/i, "");
@@ -114,10 +78,7 @@
         if (file) await loadProjectData(file);
     };
 
-    export const updateTheme = (theme: string) => {
-        themeClass = getThemeClass(theme);
-        safeAudioSetTheme(theme);
-    };
+    export const updateTheme = (theme: string) => applyTheme(theme);
 
     async function loadProjectData(file: TFile) {
         try { 
@@ -187,7 +148,6 @@
 
     async function handleUploadContext() {
         if (!activeFile || !projectData) return;
-        safeAudioPlay('playClick');
         try {
             const content = await app.vault.read(activeFile);
             if (!content.trim()) return new Notice("File is empty.");
@@ -203,7 +163,6 @@
 
     function handleScrubContext() {
         if (!projectData) return;
-        safeAudioPlay('playClick');
         if (confirm("Purge Inspiration Memory?")) {
             projectData.wizardState.inspirationContext = "";
             projectData = { ...projectData };
@@ -214,7 +173,6 @@
 
     function handleClearWizardState() {
         if (!projectData) return;
-        safeAudioPlay('playClick');
         if (confirm("Clear all Wizard fields? (Memory/Context will be kept)")) {
             const currentContext = projectData.wizardState.inspirationContext;
             projectData.wizardState = {
@@ -229,7 +187,6 @@
 
     async function handleUploadArchivist() {
         if (!activeFile || !projectData) return;
-        safeAudioPlay('playClick');
         try {
             const content = await app.vault.read(activeFile);
             if (!content.trim()) return new Notice("File is empty.");
@@ -243,7 +200,6 @@
 
     function handleScrubArchivist() {
         if (!projectData) return;
-        safeAudioPlay('playClick');
         if (confirm("Clear Archivist Memory?")) {
             projectData.archivistContext = "";
             projectData = { ...projectData };
@@ -256,7 +212,6 @@
         estimatedDuration = duration;
         setStatus(label);
         setFileLoading(path, true, currentTab); 
-        safeAudioPlay('playProcess');
     }
     
     function stopLoading(path: string) { 
@@ -282,7 +237,6 @@
         try {
             const context = projectData.wizardState.inspirationContext || "No context provided.";
             const updated = await cloud.gradeCharacter(char, context);
-            safeAudioPlay('playSuccess');
             new Notice(`Metrics Updated for ${char.name}`);
             return updated;
         } catch(e: any) { handleError("Character Grading", e); return char; } 
@@ -297,7 +251,6 @@
         try {
             const context = projectData.wizardState.inspirationContext || "No context provided.";
             const updated = await cloud.gradeStructureBeat(beat, context);
-            safeAudioPlay('playSuccess');
             new Notice(`Tension Calculated for ${beat.title}`);
             return updated;
         } catch(e: any) { handleError("Structure Grading", e); return beat; }
@@ -321,7 +274,6 @@
             projectData.lastAnalysisMtime = file.stat.mtime;
             projectData = { ...projectData }; 
             await saveProject(true);
-            safeAudioPlay('playSuccess');
             new Notice("Deep Scan Complete.");
         } catch (e: any) { handleError("Deep Scan", e);
         } 
@@ -342,7 +294,6 @@
             projectData.lastLightResult = { ...aiGrade, summary_line: summary };
             projectData = { ...projectData }; 
             await saveProject(false);
-            safeAudioPlay('playSuccess');
         } catch (e: any) { handleError("Quick Scan", e);
         } 
         finally { stopLoading(file.path);
@@ -360,7 +311,6 @@
             projectData.lastMetaResult = meta;
             projectData = { ...projectData };
             await saveProject(false);
-            safeAudioPlay('playSuccess');
         } catch (e: any) { handleError("System Diagnostics", e); } 
         finally { stopLoading(path);
         } 
@@ -383,7 +333,6 @@
                 projectData = { ...projectData }; 
                 new Notice("Suggestion Applied.");
                 await saveProject(false);
-                safeAudioPlay('playSuccess');
             }
         } catch(e: any) { handleError("Wizard Assist", e);
         } 
@@ -401,7 +350,6 @@
             const outputName = activeFile.basename + "_FULL_OUTLINE.md";
             await safeCreateFile(outputName, synopsis);
             new Notice(`Full Outline Created.`);
-            safeAudioPlay('playSuccess');
         } catch(e: any) { handleError("Ghostwriter", e);
         } 
         finally { stopLoading(path);
@@ -437,15 +385,16 @@
             projectData = { ...projectData };
             await saveProject(false);
             new Notice("Story Bible Generated Successfully.");
-            safeAudioPlay('playSuccess');
         } catch (e: any) { handleError("Auto-Fill", e);
         } 
         finally { stopLoading(path);
         } 
     }
 
+    // [UPDATED] RUN SYNTHESIS WITH OPTIONAL TITLE
     async function runDriveSynthesis(customTitle?: string) {
         if (!activeFile || !projectData) return;
+        // [UPDATED] Use Local Project Drives
         const drives = projectData.wizardState.synthesisDrives || [];
         if (drives.length === 0) {
             new Notice("No drives found. Create a drive first.");
@@ -456,19 +405,23 @@
         startLoading(path, 10000, "FUSING NARRATIVE DRIVES...");
 
         try {
+            // Returns MARKDOWN string
             const outlineMarkdown = await cloud.synthesizeDrives(drives, customTitle);
+            
+            // [UPDATED] Filename Logic based on User Request
             let outputName = "";
             
             if (customTitle && customTitle.trim().length > 0) {
+                // Use Target Codename ONLY if provided
                 const safeTitle = customTitle.replace(/[^a-z0-9]/gi, '_').substring(0, 50);
                 outputName = `${safeTitle}.md`;
             } else {
+                // Fallback to Active File Name if no codename provided
                 outputName = `${activeFile.basename}_UNIVERSAL_OUTLINE.md`;
             }
 
             await safeCreateFile(outputName, outlineMarkdown);
             new Notice("Universal Outline Created.");
-            safeAudioPlay('playSuccess');
         } catch (e: any) { handleError("Synthesis", e);
         } 
         finally { stopLoading(path);
@@ -482,6 +435,7 @@
         const estTime = cloud.estimateDuration(content, 'scan');
         startLoading(path, estTime, "FORGING ACTION PLAN...");
         try { 
+            // [UPDATED] Pass Scan Results to getActionPlan
             const plan = await cloud.getActionPlan(
                 content, 
                 projectData.repairFocus, 
@@ -493,7 +447,6 @@
             projectData.lastActionPlan = plan; 
             projectData = { ...projectData };
             await saveProject(false);
-            safeAudioPlay('playSuccess');
         } catch (e: any) { handleError("Forge", e); } 
         finally { stopLoading(path);
         } 
@@ -528,7 +481,6 @@
             const outlineText = await cloud.generateOutline(combinedInput, useSearch);
             await safeCreateFile(outputFilename, outlineText);
             new Notice(`Archivist Created.`);
-            safeAudioPlay('playSuccess');
         } catch (e: any) { handleError("Archivist", e);
         } 
         finally { stopLoading(path);
@@ -546,7 +498,6 @@
             const outputName = activeFile.basename + "_REPAIRED.md";
             await safeCreateFile(outputName, repairedText);
             new Notice(`Repaired File Created.`);
-            safeAudioPlay('playSuccess');
         } catch (e: any) { handleError("Auto-Patch", e);
         } 
         finally { stopLoading(path);
@@ -585,7 +536,6 @@
             await saveProject(false);
             
             new Notice(`Renaming Complete. ${updateCount} characters updated.`);
-            safeAudioPlay('playSuccess');
             
         } catch (e: any) { handleError("Deep Rename", e); }
         finally { stopLoading(path); }
@@ -595,7 +545,6 @@
         if (!activeFile) return;
         setFileLoading(activeFile.path, false); 
         if (!projectData) return;
-        safeAudioPlay('playClick');
         if (window.confirm("FORCE FORMAT DISC? Resets all data.")) { 
             const blankState = JSON.parse(JSON.stringify(DEFAULT_WIZARD_STATE));
             projectData.wizardState = blankState; 
@@ -613,15 +562,17 @@
         } 
     }
 
-    // --- UI HELPERS ---
-    function switchTab(tab: string) {
-        safeAudioPlay('playClick');
-        currentTab = tab;
+    function applyTheme(mode: string) { 
+        const isDark = document.body.classList.contains('theme-dark');
+        if (mode === 'win95') themeClass = 'theme-win95';
+        else if (mode === 'msdos') themeClass = 'theme-msdos';
+        else if (mode === 'invert') themeClass = isDark ? 'theme-win95' : 'theme-msdos';
+        else themeClass = isDark ? 'theme-msdos' : 'theme-win95';
     }
 
+    // --- FORGE OPS HOOKS ---
     async function runFixDialogue() {
         if (!activeFile) return;
-        safeAudioPlay('playClick');
         try {
             const content = await getActiveFileContent();
             const fixed = ForgeOps.fixDialogue(content);
@@ -633,7 +584,6 @@
 
     async function runAdverbKiller(mode: 'highlight' | 'kill') {
         if (!activeFile) return;
-        safeAudioPlay('playClick');
         try {
             const content = await getActiveFileContent();
             const fixed = ForgeOps.assassinateAdverbs(content, mode);
@@ -645,7 +595,6 @@
 
     async function runFilterHighlight() {
         if (!activeFile) return;
-        safeAudioPlay('playClick');
         try {
             const content = await getActiveFileContent();
             const fixed = ForgeOps.highlightFilters(content);
@@ -657,17 +606,16 @@
 
     async function runGenerateReport() {
         if (!activeFile || !projectData) return;
-        safeAudioPlay('playClick');
         try {
             await ReportGen.generateReport(app, projectData, activeFile.basename);
         } catch (e: any) { handleError("Report Gen", e); }
     }
 
+
     onMount(() => { 
         const f = app.workspace.getActiveFile(); 
         updateActiveFile(f); 
-        themeClass = getThemeClass(settings.theme);
-        safeAudioSetTheme(settings.theme);
+        applyTheme(settings.theme); 
     });
 </script>
 
@@ -683,20 +631,11 @@
         {/if}
     </div>
 
-    <!-- TAB STRIP: In MS-DOS mode, this might look like [ TAB 1 ] [ TAB 2 ] -->
     <div class="tab-strip">
-        <button class:active={currentTab === 'critic'} onclick={() => switchTab('critic')}>
-            {isMsDos ? '[ CRITIC ]' : 'CRITIC'}
-        </button>
-        <button class:active={currentTab === 'wizard'} onclick={() => switchTab('wizard')}>
-            {isMsDos ? '[ WIZARD ]' : 'WIZARD'}
-        </button>
-        <button class:active={currentTab === 'synth'} onclick={() => switchTab('synth')}>
-             {isMsDos ? '[ SYNTH ]' : 'SYNTH'}
-        </button>
-        <button class:active={currentTab === 'forge'} onclick={() => switchTab('forge')}>
-             {isMsDos ? '[ FORGE ]' : 'FORGE'}
-        </button>
+        <button class:active={currentTab === 'critic'} onclick={() => currentTab = 'critic'}>CRITIC</button>
+        <button class:active={currentTab === 'wizard'} onclick={() => currentTab = 'wizard'}>WIZARD</button>
+        <button class:active={currentTab === 'synth'} onclick={() => currentTab = 'synth'}>SYNTH</button>
+        <button class:active={currentTab === 'forge'} onclick={() => currentTab = 'forge'}>FORGE</button>
     </div>
 
     <div class="window-body">
@@ -707,12 +646,8 @@
             {#if currentTab === 'critic'}
                 <div class="panel-critic">
                     <div class="button-row">
-                        <button class="action-btn primary" onclick={() => runAnalysis()}>
-                             {isMsDos ? '[ RUN DEEP SCAN ]' : `DEEP SCAN (${settings.analysisPasses} CORE)`}
-                        </button>
-                        <button class="action-btn secondary" onclick={runQuickScan}>
-                            {isMsDos ? '[ QUICK SCAN ]' : 'QUICK SCAN'}
-                        </button>
+                        <button class="action-btn primary" onclick={() => runAnalysis()}>DEEP SCAN ({settings.analysisPasses} CORE)</button>
+                        <button class="action-btn secondary" onclick={runQuickScan}>QUICK SCAN</button>
                     </div>
 
                     {#if $processRegistry[activeFile.path] && $processOrigin[activeFile.path] === 'critic'} 
@@ -740,19 +675,14 @@
                             isProcessing={$processRegistry[activeFile.path]}
                             settings={settings}
                             onRunMeta={runMeta} 
-                            isMsDos={isMsDos}
                         />
-                         <button class="action-btn tertiary" onclick={runGenerateReport} style="margin-top:10px;">
-                             {isMsDos ? '[ EXPORT REPORT ]' : '📄 EXPORT FORENSIC REPORT'}
-                         </button>
+                         <button class="action-btn tertiary" onclick={runGenerateReport} style="margin-top:10px;">📄 EXPORT FORENSIC REPORT</button>
                     {/if}
                 </div>
 
             {:else if currentTab === 'wizard'}
                 <div class="panel-wizard">
-                     <button class="action-btn secondary" onclick={runGhostwriter}>
-                        {isMsDos ? '[ GENERATE FULL OUTLINE ]' : 'GENERATE FULL OUTLINE'}
-                     </button>
+                     <button class="action-btn secondary" onclick={runGhostwriter}>GENERATE FULL OUTLINE</button>
                  
                     {#if $processRegistry[activeFile.path] && $processOrigin[activeFile.path] === 'wizard'} 
                         <Win95ProgressBar label="ARCHITECTING..." estimatedDuration={estimatedDuration} /> 
@@ -792,9 +722,7 @@
 
             {:else if currentTab === 'forge'}
                  <div class="panel-forge">
-                     <button class="action-btn primary" onclick={runForge}>
-                        {isMsDos ? '[ GENERATE REPAIR PLAN ]' : 'GENERATE REPAIR PLAN'}
-                     </button>
+                     <button class="action-btn primary" onclick={runForge}>GENERATE REPAIR PLAN</button>
                      
                      {#if $processRegistry[activeFile.path] && $processOrigin[activeFile.path] === 'forge'} 
                         <Win95ProgressBar label="FORGING..." estimatedDuration={estimatedDuration} /> 
@@ -813,31 +741,21 @@
                     </div>
 
                     <fieldset class="outline-fieldset">
-                        <legend>{isMsDos ? '[ PROSE TOOLS ]' : 'PROSE TOOLS'}</legend>
+                        <legend>PROSE TOOLS</legend>
                         <div class="button-grid">
-                            <button class="action-btn secondary" onclick={runFixDialogue}>
-                                {isMsDos ? '[ FIX PUNCTUATION ]' : 'FIX DIALOGUE PUNCTUATION'}
-                            </button>
-                            <button class="action-btn secondary" onclick={() => runAdverbKiller('highlight')}>
-                                {isMsDos ? '[ HIGHLIGHT ADVERBS ]' : 'HIGHLIGHT ADVERBS (RED)'}
-                            </button>
-                            <button class="action-btn secondary" onclick={runFilterHighlight}>
-                                {isMsDos ? '[ HIGHLIGHT FILTER WORDS ]' : 'HIGHLIGHT FILTER WORDS (YELLOW)'}
-                            </button>
+                            <button class="action-btn secondary" onclick={runFixDialogue}>FIX DIALOGUE PUNCTUATION</button>
+                            <button class="action-btn secondary" onclick={() => runAdverbKiller('highlight')}>HIGHLIGHT ADVERBS (RED)</button>
+                            <button class="action-btn secondary" onclick={runFilterHighlight}>HIGHLIGHT FILTER WORDS (YELLOW)</button>
                         </div>
                     </fieldset>
 
                     <fieldset class="outline-fieldset">
-                        <legend>{isMsDos ? '[ ARCHIVIST ]' : 'STRUCTURAL ARCHIVIST'}</legend>
+                        <legend>STRUCTURAL ARCHIVIST</legend>
                         <div class="memory-core bevel-down">
                             <div class="memory-status">
                                 <div class="status-indicator">
-                                    {#if isMsDos}
-                                         <span>{hasArchivistData ? '[ LOADED ]' : '[ EMPTY ]'}</span>
-                                    {:else}
-                                        <span class="led {hasArchivistData ? 'on' : 'off'}"></span>
-                                        <span>{hasArchivistData ? 'BUFFER LOADED' : 'BUFFER EMPTY'}</span>
-                                    {/if}
+                                    <span class="led {hasArchivistData ? 'on' : 'off'}"></span>
+                                    <span>{hasArchivistData ? 'BUFFER LOADED' : 'BUFFER EMPTY'}</span>
                                 </div>
                                 <div class="status-details">{archivistLength} CHARS</div>
                             </div>
@@ -848,11 +766,9 @@
                                     disabled={isArchivistSynced}
                                     title="Load active file into buffer"
                                 >
-                                    {isArchivistSynced ? (isMsDos ? '[ SYNCED ]' : '✅ SYNCED') : (isMsDos ? '[ LOAD ]' : '📥 LOAD BUFFER')}
+                                    {isArchivistSynced ? '✅ SYNCED' : '📥 LOAD BUFFER'}
                                 </button>
-                                <button class="scrub-btn" onclick={handleScrubArchivist} disabled={!hasArchivistData}>
-                                     {isMsDos ? '[ DEL ]' : '🗑️'}
-                                </button>
+                                <button class="scrub-btn" onclick={handleScrubArchivist} disabled={!hasArchivistData}>🗑️</button>
                              </div>
                         </div>
 
@@ -866,11 +782,11 @@
                     
                         <div class="grid-2">
                             <button class="action-btn tertiary outline-btn" onclick={runOutlineGeneration}>
-                                {hasArchivistData ? (isMsDos ? '[ ANALYZE ]' : 'ANALYZE BUFFER') : (isMsDos ? '[ GEN FROM TITLE ]' : 'GENERATE FROM TITLE')}
+                                {hasArchivistData ? 'ANALYZE BUFFER' : 'GENERATE FROM TITLE'}
                             </button>
                             <!-- NEW BUTTON HERE -->
                             <button class="action-btn secondary outline-btn" onclick={runDeepRename}>
-                                {isMsDos ? '[ RENAME CAST ]' : '🏷️ RENAME CAST (DEEP)'}
+                                🏷️ RENAME CAST (DEEP)
                             </button>
                         </div>
                     </fieldset>
@@ -879,7 +795,7 @@
                         <div class="forge-report">
                             {#if projectData.lastActionPlan.thought_process}
                                 <details class="thought-trace bevel-groove">
-                                    <summary class="thought-header">{isMsDos ? '> TRACE' : 'COGNITIVE TRACE (RAW)'}</summary>
+                                    <summary class="thought-header">COGNITIVE TRACE (RAW)</summary>
                                     <div class="thought-content">{projectData.lastActionPlan.thought_process}</div>
                                 </details>
                               {/if}
@@ -907,9 +823,7 @@
                                 </div>
                             {/if}
              
-                             <button class="action-btn secondary" onclick={runAutoRepair}>
-                                {isMsDos ? '[ AUTO-PATCH ]' : 'EXECUTE REPAIR PROTOCOL (AUTO-PATCH)'}
-                             </button>
+                             <button class="action-btn secondary" onclick={runAutoRepair}>EXECUTE REPAIR PROTOCOL (AUTO-PATCH)</button>
                         </div>
                     {/if}
                  </div>
@@ -920,10 +834,81 @@
    <div class="status-bar">
         <span>STATUS: {activeFileStatus}</span>
         <span class="spacer"></span>
-        <span class:active-led={isSaving} class="disk-led">{isMsDos ? '[DISK]' : 'DISK ACT'}</span>
+        <span class:active-led={isSaving} class="disk-led">DISK ACT</span>
     </div>
 </div>
 
 <style>
-    /* GLOBAL OVERRIDES IN STYLES.CSS */
+    :root { --cj-accent: #000080; --cj-bg: #c0c0c0; --cj-text: #000000; --cj-dim: #808080; }
+    .compu-container { height: 100%; display: flex; flex-direction: column; font-family: 'Courier New', monospace; font-size: 15px; font-weight: bold; }
+    .window-body { flex: 1; overflow-y: auto; padding: 12px; background: var(--cj-bg); border: 2px inset #dfdfdf; }
+    .theme-msdos { --cj-bg: #000000; --cj-text: var(--cj-user-color); --cj-accent: var(--cj-user-color); --cj-dim: color-mix(in srgb, var(--cj-user-color), #000 60%); }
+    .theme-win95 { --cj-bg: #c0c0c0; --cj-text: #000000; --cj-accent: #000080; --cj-dim: #808080; }
+    .title-bar { background: var(--cj-accent); color: #fff; padding: 4px 8px; display: flex; justify-content: space-between; font-weight: bold; }
+    
+    .tab-strip { display: flex; padding: 6px 4px 0 4px; gap: 2px; }
+    .tab-strip button { background: var(--cj-bg); color: var(--cj-text); border: 2px outset #fff; border-bottom: none; padding: 6px 14px; font-weight: bold; cursor: pointer; }
+    .tab-strip button.active { padding-bottom: 8px; margin-top: -4px; z-index: 10; border-top: 2px solid var(--cj-accent); }
+    
+    .action-btn { width: 100%; padding: 10px; font-weight: bold; cursor: pointer; border: 2px outset #fff; background: var(--cj-bg); color: var(--cj-text); margin-bottom: 8px; }
+    .action-btn:active { border-style: inset; }
+    
+    .outline-fieldset { margin-bottom: 20px; border: 2px groove var(--cj-dim); padding: 10px; }
+    .repair-focus-area { margin-bottom: 15px; }
+    .input-label { display: block; font-weight: 900; margin-bottom: 4px; color: var(--cj-dim); font-size: 0.9em; }
+    .archivist-prompt { margin-bottom: 8px; }
+    
+    .forge-report { margin-top: 20px; color: var(--cj-text); font-weight: bold; }
+    .weakness-alert { background: var(--cj-text); color: var(--cj-bg); padding: 8px; font-weight: 900; text-align: center; margin-bottom: 10px; border: 2px solid #fff; }
+    .repair-item { margin-bottom: 15px; border-bottom: 2px dashed var(--cj-dim); padding-bottom: 10px; }
+    .repair-header { font-weight: 900; color: var(--cj-accent); text-transform: uppercase; margin-bottom: 4px; }
+    .repair-body { margin-bottom: 4px; line-height: 1.4; font-weight: bold; }
+    .repair-why { font-size: 0.9em; font-style: italic; color: var(--cj-dim); font-weight: bold; }
+    .legacy-mode { opacity: 0.7; border: 1px dashed red; padding: 10px; }
+    .legacy-note { color: red; font-weight: bold; font-size: 10px; margin-bottom: 5px; }
+
+    .quick-result { margin: 15px 0; padding: 12px; border: 2px dotted var(--cj-text); color: var(--cj-text); display: flex; flex-direction: column; gap: 10px; background: rgba(255,255,255,0.05); }
+    .quick-header { display: flex; justify-content: space-between; align-items: center; width: 100%; border-bottom: 2px dashed var(--cj-dim); padding-bottom: 5px; }
+    .quick-grade { font-size: 2.5em; font-weight: 900; }
+    .quick-score { font-size: 1.5em; opacity: 0.8; font-weight: 900; }
+    .quick-summary { font-style: italic; font-weight: bold; }
+    .quick-fix { background: var(--cj-accent); color: #fff; padding: 4px; font-weight: 900; width: 100%; text-align: center; }
+
+    .memory-core { margin-bottom: 10px; background: rgba(0,0,0,0.05); padding: 5px; border: 2px solid var(--cj-dim); }
+    .memory-status { display: flex; justify-content: space-between; align-items: center; background: #000; color: #00ff00; padding: 5px 8px; font-size: 12px; border: 2px inset #808080; margin-bottom: 5px; font-weight: bold; }
+    .status-indicator { display: flex; gap: 8px; align-items: center; font-weight: 900; }
+    .led { width: 8px; height: 8px; border-radius: 50%; background: #004400; border: 1px solid #00ff00; }
+    .led.on { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
+    .context-controls { display: flex; gap: 5px; }
+    .upload-btn { flex: 1; padding: 4px; font-size: 11px; background: var(--cj-bg); border: 2px outset #fff; cursor: pointer; font-weight: bold; }
+    .upload-btn:active { border-style: inset; }
+    .upload-btn.synced { opacity: 0.6; cursor: default; }
+    .scrub-btn { width: 30px; padding: 0; background: var(--cj-bg); border: 2px outset #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+    .thought-trace { margin-bottom: 8px; border: 1px dashed var(--cj-dim); padding: 2px; }
+    .thought-header { cursor: pointer; font-weight: bold; font-size: 11px; padding: 4px; color: var(--cj-dim); list-style: none; }
+    .thought-content { padding: 8px; font-family: 'Courier New', monospace; font-size: 11px; white-space: pre-wrap; max-height: 200px; overflow-y: auto; border-top: 1px dashed var(--cj-dim); background: var(--cj-bg); color: var(--cj-text); opacity: 0.8; font-weight: bold; }
+
+    .status-bar { border-top: 2px solid var(--cj-dim); padding: 4px 8px; background: var(--cj-bg); color: var(--cj-text); display: flex; gap: 15px; font-size: 12px; align-items: center; font-weight: 900; }
+    .spacer { flex: 1; }
+    .disk-led { font-weight: 900; color: #808080; border: 2px inset #808080; padding: 0 4px; background: #c0c0c0; transition: all 0.1s; }
+    .active-led { background: #ff0000; color: #fff; border-color: #ff0000; box-shadow: 0 0 5px #ff0000; }
+    .empty-state { padding: 40px; text-align: center; opacity: 0.5; font-weight: 900; }
+    .reset-btn { font-size: 10px; padding: 0 4px; background: #ff0000; color: white; border: 2px outset #ffaaaa; cursor: pointer; }
+    .reset-btn:active { border-style: inset; }
+
+    .theme-msdos .action-btn { background: #000; color: var(--cj-text); border: 1px solid var(--cj-text); box-shadow: none; }
+    .theme-msdos .action-btn:active, .theme-msdos .action-btn:hover { background: var(--cj-text); color: #000; border-style: solid; }
+    .theme-msdos :global(.bevel-groove), .theme-msdos :global(.bevel-down), .theme-msdos .window-body { border-style: solid !important; border-width: 1px !important; border-color: var(--cj-dim) !important; }
+    .theme-msdos .tab-strip button { background: #000; color: var(--cj-dim); border: 1px solid var(--cj-dim); border-bottom: none; }
+    .theme-msdos .tab-strip button.active { color: var(--cj-text); border-color: var(--cj-text); border-bottom: 1px solid #000; margin-bottom: -1px; }
+    .theme-msdos :global(.upload-btn), .theme-msdos :global(.scrub-btn) { background: transparent !important; color: var(--cj-text) !important; border: 1px solid var(--cj-dim) !important; }
+    .theme-msdos :global(.upload-btn:hover), .theme-msdos :global(.scrub-btn:hover) { background: var(--cj-text) !important; color: #000 !important; }
+
+    @media (max-width: 600px) {
+        .button-row { flex-direction: column; gap: 5px; }
+        .action-btn { padding: 12px; margin-bottom: 5px; }
+    }
+    
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 </style>

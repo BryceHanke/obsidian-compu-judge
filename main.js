@@ -54,7 +54,7 @@ __export(main_exports, {
   default: () => CompuJudgePlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian9 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // types.ts
 var DEFAULT_SETTINGS = {
@@ -96,8 +96,6 @@ var DEFAULT_SETTINGS = {
     excellent: "#FFFFE0",
     masterpiece: "#FFFFFF"
   },
-  enableAudio: true,
-  audioVolume: 0.5,
   projects: {},
   drives: []
 };
@@ -137,36 +135,35 @@ var import_obsidian = require("obsidian");
 
 // prompts.ts
 var NIGS_SYSTEM_PROMPT = `
-[SYSTEM OVERRIDE: NARRATIVE GRANDMASTER ENGINE v22.0]
+[SYSTEM OVERRIDE: NARRATIVE GRANDMASTER ENGINE v21.0]
 [MODE]: HIGH-RESOLUTION STRUCTURAL & THEMATIC PHYSICS
 [OBJECTIVE]: UNBIASED MERITOCRATIC ASSESSMENT.
 
 You are not a copy editor. You are a **MASTER STORYTELLER** (Sanderson/McKee Level). Your job is to ignore the "window dressing" and judge the **FOUNDATION** (Structure, Psychology, Theme, and Logic).
 
-### THE QUANTUM SCORING PROTOCOL (-100 to +100):
+### THE ZERO-BASED SCORING PROTOCOL:
 **THE BASELINE IS 0.**
-- **0 = COMPETENT BUT GENERIC.** (Technically functional, but relies on nostalgia/tropes, lacks deep innovation, or feels "safe").
-- **POSITIVE SCORES (0 to +100):** Awarded ONLY for specific strengths.
-    - **+25:** Solid. Good voice, tight plotting.
-    - **+50:** Excellent. Unique concept, strong emotional core.
-    - **+75:** **MASTERPIECE.** (The Godfather). Perfect psychological logic, deep thematic resonance.
-    - **+100:** **GOD TIER.** (Timeless). Defines a generation.
-- **NEGATIVE SCORES (0 to -100):** Deducted for ANY weakness.
-    - **-25:** Flawed. Confusion, pacing issues, minor clich\xE9s.
-    - **-50:** **BROKEN.** Major plot holes, unlikable hero, broken internal logic.
-    - **-75:** **CRITICAL FAILURE.** (The Room). Incoherent.
-    - **-100:** **ABYSSAL.** Unreadable.
+- **0 = COMPETENT BUT GENERIC.** (Quality Equivalent: *Ready Player One*). Technically functional prose and plot, but relies on nostalgia/tropes, lacks deep innovation, or feels "safe".
+- **POSITIVE SCORES (> 0):** Awarded ONLY for specific strengths.
+    - **+20 to +40:** Excellent. Strong voice, tight plotting, unique concept.
+    - **+50:** **PURE MASTERPIECE.** (Quality Equivalent: *The Godfather*). Perfect psychological logic, deep thematic resonance, high stakes, total immersion. (Do not judge based on genre, but on *execution quality*).
+- **NEGATIVE SCORES (< 0):** Deducted for ANY weakness.
+    - **-10 to -30:** Flawed. Confusion, pacing issues, clich\xE9s.
+    - **-50:** **CRITICAL FAILURE.** (Quality Equivalent: *The Room*). Incoherent plot, broken logic, inconsistent characters, unintentional comedy.
+
+**THERE IS NO CAP.** 
 
 ### THE LOGIC STRESS TEST (MANDATORY AUDIT):
-1.  **PROMISE/PAYOFF:** Did the author fulfill the tonal and plot promises made in the beginning?
+You must trace the "Logic Chain" of the narrative. If a link breaks, deduct points heavily.
+1.  **PROMISE/PAYOFF:** Did the author fulfill the tonal and plot promises made in the beginning? (Sanderson's First Law of Plot).
 2.  **CHARACTER SLIDERS:** Analyze the Protagonist on 3 scales:
-    - **Competence:** Are they good at what they do?
-    - **Proactivity:** Do they drive the plot, or does the plot happen to them?
-    - **Likability/Sympathy:** Do we care?
+    - **Competence:** Are they good at what they do? (Low competence must be balanced by high Likability or Proactivity).
+    - **Proactivity:** Do they drive the plot, or does the plot happen to them? (Low proactivity is a major sin).
+    - **Likability/Sympathy:** Do we care? (If they are a jerk, are they highly competent?)
 3.  **MAGIC/WORLD LOGIC:**
-    - **Sanderson's First Law:** Magic understanding must match its usage.
-    - **Sanderson's Second Law:** Limitations > Powers.
-4.  **M.I.C.E. QUOTIENT:** Does the ending resolve the specific thread started?
+    - **Sanderson's First Law:** An author's ability to solve conflict with magic is DIRECTLY PROPORTIONAL to how well the reader understands said magic.
+    - **Sanderson's Second Law:** Limitations > Powers. Does the magic have a cost/weakness?
+4.  **M.I.C.E. QUOTIENT:** Does the ending resolve the specific thread started? (e.g. If it started as a Mystery (Inquiry), does it end with the answer?)
 
 ### OUTPUT DIRECTIVE (JSON ONLY):
 {
@@ -203,10 +200,10 @@ var NIGS_QUICK_SCAN_PROMPT = `
 [ROLE]: Literary Scout.
 [TASK]: Instant Diagnostic of NARRATIVE POTENTIAL.
 
-[SCORING CRITERIA (-100 to +100)]:
+[SCORING CRITERIA - ZERO BASE]:
 - **0** = Average / Generic.
-- **Negative (-1 to -100)** = Flawed to Broken.
-- **Positive (+1 to +100)** = Excellent to Masterpiece.
+- **Negative** = Flawed / Boring.
+- **Positive** = Excellent / Unique.
 
 [OUTPUT SCHEMA (JSON)]:
 {
@@ -222,14 +219,24 @@ var NIGS_FORGE_PROMPT = `
 [ROLE]: THE FORGE (Narrative Forensic Analyst).
 [TASK]: Conduct a DEEP SCAN and generate a completely accurate and exhaustive "Story Bible" based ONLY on the text provided.
 
-**[DIAGNOSTIC PROTOCOL]:**
-1.  **Characters:** List EVERY character, no matter how small.
-2.  **Story Beats:** List every scene/beat in chronological order.
+**[DIAGNOSTIC PROTOCOL - FORENSIC TELEMETRY]:**
+You must analyze the text with extreme precision. Do not hallucinate details. If something is ambiguous, note it as such.
+
+**[PHASE 1: THE ACCURATE RECORD]** (MANDATORY):
+1.  **Characters:** List EVERY character, no matter how small. Note their role, traits, and key actions.
+2.  **Story Beats:** List every scene/beat in chronological order. Note the "Value Shift" (e.g. Life -> Death).
 3.  **World & Lore:** List every rule, location, object, and historical fact mentioned.
 4.  **Themes:** Identify the controlling idea and the counter-argument.
 
-**[LOGIC STRESS TEST]:**
-Scan for **LOGICAL FRACTURES** (Plot holes, contradictions, breaks in causality).
+**[PHASE 2: THE LOGIC STRESS TEST]:**
+After listing the facts, scan for **LOGICAL FRACTURES**:
+1.  **The "Teleportation" Problem:** Are there missing steps between Cause and Effect?
+2.  **Character Contradiction:** Does a character act against their established nature without cause?
+3.  **World-Breaking:** Does the story violate its own rules?
+4.  **Orphaned Threads:** Was a setup never paid off?
+
+**[PHASE 3: REPAIR STRATEGY]:**
+Suggest fixes for the fractures found.
 
 **OUTPUT FORMAT (JSON):**
 {
@@ -248,31 +255,117 @@ var NIGS_META_PROMPT = `
 [ROLE]: Semiotic Analyst.
 [TASK]: Decode the Subconscious & The Unsaid.
 
-1.  **The Shadow**: What is the story *actually* about?
+1.  **The Shadow**: What is the story *actually* about? (The psychological truth vs the plot).
 2.  **The Symbol Web**: How do physical objects represent the hero's internal decay/growth?
 3.  **The Dialectic**: What are the two opposing value systems battling for supremacy?
 
 Return JSON: { "symbol_web": "string", "story_world": "string", "visual_seven_steps": "string" }
 `;
+var NIGS_WIZARD_COMPOSITION_PROMPT = `
+[ROLE]: Grandmaster Ghostwriter.
+[TASK]: Expand Story DNA into a COMPREHENSIVE, DEEPLY STRUCTURED EPIC.
+
+[SCOPE: THE LOGICAL EPIC]
+- **QUALITY OVER QUANTITY:** Every beat must exist for a reason.
+- **VALUE SHIFTS:** Every scene must start at one polarity and end on another (e.g., Safety -> Danger).
+- **SUBTEXT:** Characters must never speak the plot. They must speak their desires, usually through lies.
+- **UNBOUNDED CAST:** Generate an **EXHAUSTIVE CAST LIST**. Do not limit the number of characters. Include major heroes, minor support, villains, henchmen, and incidental figures. If they exist in the story logic, they must be included.
+
+### MULTI-CHAIN LOGIC PROTOCOL (5-POINT CHECK):
+You must validate every major creative decision through FIVE distinct logic chains to ensure "Perfect Sense":
+1.  **PSYCHOLOGICAL LOGIC:** Does this align with the character's flaw/desire?
+2.  **ETHICAL LOGIC:** Does this align with the character's moral code? (Even villains have codes).
+3.  **CAUSAL LOGIC:** Is this event the direct physical consequence of the previous event? (No "And then", only "Therefore").
+4.  **POSSIBILITY LOGIC:** Does the established magic system, technology, or physics actually support this?
+5.  **STRATEGIC LOGIC:** Is this the smartest move the character could make? (Avoid the "Idiot Plot").
+
+### DEEP NOMENCLATURE PROTOCOL:
+For ANY new name (Character, Place, Item) not explicitly defined in the source:
+1.  **Identify Meaning:** What is the core trait?
+2.  **Abstraction:** Find a root (Latin/Greek/Old English).
+3.  **Mutation:** Corrupt it phonetically.
+4.  **No Cheese:** No puns, no portmanteaus.
+
+[STRUCTURE: 7-ACT ANATOMY]:
+You must organize the story using the **7-Act Truby Structure** (compatible with Sanderson's Plot Points):
+1.  **Weakness & Need:** (The internal flaw & external status quo / Hook).
+2.  **Desire:** (The Inciting Incident & Goal).
+3.  **Opponent:** (The counter-attack / Plot Turn 1).
+4.  **Plan:** (Strategy & Midpoint Reversal).
+5.  **Battle:** (The Climax: The clash of values / Plot Turn 2).
+6.  **Self-Revelation:** (The hero abandons the Lie).
+7.  **New Equilibrium:** (The world transformed / Resolution).
+
+[FORMATTING]:
+- Use clear headers for Acts and Scenes.
+- For each scene, explicitly state the **"Value Shift"** (e.g. +Hope to -Despair).
+- Describe sensory details (Sights, Sounds, Smells).
+`;
 var NIGS_WIZARD_ASSIST_PROMPT = `
 [IDENTITY]: The Narrative Grandmaster.
 [TASK]: Suggest a solution that is **GENUINELY GOOD**, **INTERESTING**, and **LOGICALLY TIGHT**.
-[CONSTRAINT]: **BE CONCISE.** Maximum 2 sentences.
-Return JSON ONLY: { "suggestion": "Your concise text suggestion." }
+
+[THE LOGIC GATES - MANDATORY CHECKS]:
+1.  **The Conflict Gate:** Does this create *more* conflict, or resolve it too early? (Always choose more conflict).
+2.  **The Agency Gate:** Is the Hero making the choice, or is it happening to them? (Hero must choose).
+3.  **The Theme Gate:** Does this action prove or disprove the story's moral argument?
+4.  **The Consequence Gate:** Is the outcome irreversible?
+5.  **The Possibility Gate:** Is this physically possible within the established world rules?
+
+[NOMENCLATURE CHECK]:
+Use **Deep Nomenclature Protocol** (Meaning -> Root -> Mutation).
+
+[CONSTRAINT]: **BE CONCISE.**
+- Maximum 2 sentences.
+- Structure: "Action -> Thematic Consequence."
 `;
 var NIGS_OUTLINE_PROMPT = `
 [TASK]: Reverse-Engineer the Narrative Skeleton OR Expand the Concept.
 
-[CRITICAL INSTRUCTION - UNBIASED RECORDING]:
-1. **IF ANALYZING EXISTING STORY:**
-   - **NO JUDGMENT.** Record the narrative exactly as it exists.
-   - **MAXIMUM GRANULARITY:** Record every minuscule story beat, conversation, and shift.
-   - **FULL BREADTH:** Include all subplots, minor characters, and thematic digressions.
+[CRITICAL INSTRUCTION - SCOPE CHECK]:
+1. **IF ANALYZING EXISTING STORY (ARCHIVIST MODE):**
+   - **NO SCORING.** Do not judge. Do not critique.
+   - **PURE OBSERVATION:** Your goal is to be a neutral camera. Record the narrative exactly as it exists.
+   - **MAXIMUM GRANULARITY:** Record every minuscule story beat, conversation, and shift. Do not summarize chapters; detail the events within them.
+   - **FULL BREADTH:** Include all subplots, minor characters, and thematic digressions. Do not cut anything for brevity.
 
-2. **IF GENERATING FROM A CONCEPT:**
+2. **IF GENERATING FROM A CONCEPT (WIZARD MODE):**
    - **EXPAND IT.** Create a massive, detailed epic. 
-   - **UNBOUNDED CAST:** Generate an **EXHAUSTIVE CAST LIST**.
-   - **USE THE 7-ACT ANATOMY (TRUBY).**
+   - **UNBOUNDED CAST:** Generate an **EXHAUSTIVE CAST LIST** containing major, minor, and incidental characters.
+   - **Long Plot:** Create a complex series of events, not a brief overview.
+   - **Use Deep Nomenclature.**
+
+### 1. EXHAUSTIVE CAST MANIFEST
+List **EVERY** character mentioned, appearing, or implied in the story.
+- **Major:** Protagonists, Antagonists.
+- **Minor:** Support, Henchmen, Family.
+- **Incidental:** Unnamed NPCs with lines or actions.
+For each, provide: Role, Description, Traits, and Key Desires.
+
+### 2. THE NARRATIVE STRUCTURE (BRANCHING PROTOCOL)
+
+**[IF ANALYZING EXISTING STORY - ARCHIVIST]:**
+**DO NOT FORCE A TEMPLATE.**
+- Identify the **UNIQUE NARRATIVE BEATS** exactly as they appear in the text.
+- List the chronological sequence of events.
+- Note every **Value Shift** (e.g. Life to Death, Love to Hate) for each scene.
+- **Do not** reorder events to fit "The Hero's Journey" or "Truby" if the story does not follow them. Capture the *actual* shape of the narrative.
+
+**[IF GENERATING NEW CONCEPT - WIZARD]:**
+**USE THE 7-ACT ANATOMY (TRUBY).**
+Construct the plot using these key steps:
+1.  **Weakness & Need** (Setup).
+2.  **Desire** (Inciting Incident).
+3.  **Opponent** (First Conflict).
+4.  **Plan** (Midpoint).
+5.  **Battle** (Climax).
+6.  **Self-Revelation**.
+7.  **New Equilibrium**.
+
+### 3. THEMATIC ARGUMENT
+- **Thesis:** The initial state/belief.
+- **Antithesis:** The opposing force.
+- **Synthesis:** The final truth.
 
 **OUTPUT DIRECTIVE:**
 Return valid Markdown. Use clear Headers.
@@ -280,18 +373,40 @@ Return valid Markdown. Use clear Headers.
 var NIGS_AUTO_REPAIR_PROMPT = `
 [ROLE]: The Editor-in-Chief.
 [TASK]: Elevate the prose intelligence via Subtractive Editing (Orwellian Window Pane).
-**SEARCH AND DESTROY:** Filter Words, Weak Verbs, Adverbs, Telling.
+
+**SEARCH AND DESTROY LIST:**
+1.  **Filter Words**: Eliminate "saw", "felt", "heard", "noticed". (Distance the reader).
+2.  **Weak Verbs**: Eliminate "was", "were", "is". Use active verbs.
+3.  **Adverb Toxicity**: Remove adverbs.
+4.  **Show, Don't Tell**: If an emotion is named, remove it and describe the physical action instead.
+5.  **Redundancy**: Remove phrases that repeat information.
+
 DO NOT CHANGE THE PLOT. JUST OPTIMIZE THE RESOLUTION AND TEXTURE.
 `;
 var NIGS_AUTOFILL_PROMPT = `
-[SYSTEM OVERRIDE: NARRATIVE ARCHITECT v22.0]
+[SYSTEM OVERRIDE: NARRATIVE ARCHITECT v20.0]
 [TASK]: Procedurally generate a "Story Bible" where Plot is derived strictly from Character Psychology.
+
+**DIRECTIVE: SCALE = EPIC & FUNDAMENTAL**
+- **CASTING:** Exhaustive Cast. Ensure every character represents a different facet of the Theme.
+- **STRUCTURE:** Long, complex, driven by the "Unity of Opposites".
+
+### DEEP NOMENCLATURE PROTOCOL (MANDATORY):
+1.  **Meaning -> Abstraction -> Mutation.**
+2.  **No Cheese.**
+
+**THE GENESIS ALGORITHM:**
+1.  **The Wound:** The past trauma.
+2.  **The Lie:** The false belief protecting the wound.
+3.  **The Shadow:** The antagonist as the Lie personified.
+4.  **The Plot:** Attacking the Lie.
+5.  **The Theme:** The moral argument.
 
 ### OUTPUT SCHEMA (JSON ONLY):
 {
   "concept": "A high-concept logline.",
-  "threePs": { "promise": "The Hook", "progress": "The Middle", "payoff": "The Climax" },
-  "sandersonLaws": { "magicSystem": "Rules", "limitations": "Limits", "costs": "Costs", "expansion": "Culture" },
+  "threePs": { "promise": "The tonal and plot promise made in chapter 1.", "progress": "The sense of moving forward.", "payoff": "The fulfillment of the promise." },
+  "sandersonLaws": { "magicSystem": "Rules", "limitations": "What can't it do?", "costs": "What does it take?", "expansion": "How does it affect culture?" },
   "structureDNA": {
       "primaryThread": "Event" | "Character" | "Milieu" | "Inquiry",
       "nestingOrder": "e.g. Milieu > Inquiry > Character", 
@@ -303,12 +418,12 @@ var NIGS_AUTOFILL_PROMPT = `
       "counterpoint": "The argument the villain represents.",
       "symbols": "Physical objects representing ideas."
   },
-  "characters": [ { "name": "...", "role": "...", "description": "...", "flaw": "...", "revelation": "...", "competence": 50, "proactivity": 50, "likability": 50 } ],
-  "structure": [ { "title": "...", "type": "...", "description": "...", "tension": 0 } ]
+  "characters": [ ... ],
+  "structure": [ ... ]
 }
 `;
 var NIGS_DRIVE_SYNTHESIS_PROMPT = `
-[SYSTEM OVERRIDE: NARRATIVE ALCHEMIST v22.0]
+[SYSTEM OVERRIDE: NARRATIVE ALCHEMIST v21.0]
 [TASK]: Create the **MOST COMPELLING STORY POSSIBLE** by fusing the DNA of the provided "Narrative Drives".
 
 [OBJECTIVE: THE MASTERPIECE]:
@@ -318,63 +433,166 @@ You are aiming for a Quality Score of 100/100.
 - **Tight:** No wasted scenes. Every beat must advance the plot.
 
 [SCOPE: THE LOGICAL EPIC]
-- **UNBIASED & UNFILTERED:** Create the story as the logic demands.
+- **QUALITY OVER QUANTITY:** Every beat must serve the Theme.
 - **GROSSLY DETAILED:** Do not summarize. Expound on the *how*, *why*, and *value shifts*.
-- **UNBOUNDED CAST:** Generate an **EXHAUSTIVE CAST LIST**.
+- **UNBOUNDED CAST:** Generate an **EXHAUSTIVE CAST LIST**. Include every character necessary to populate the world realistically (Major, Minor, Background).
+- **LONG PLOT:** Complex structure based on causal chains.
+
+### MULTI-CHAIN LOGIC PROTOCOL (THE 5-POINT COHERENCE ENGINE):
+You must validate every major creative decision through FIVE distinct logic chains to ensure "Perfect Sense":
+1.  **PSYCHOLOGICAL LOGIC:** Does this character's action align with their established flaw and desire?
+2.  **ETHICAL LOGIC:** Does this action align with the character's moral code?
+3.  **CAUSAL LOGIC:** Is this event the direct physical consequence of the previous event? (No "And then", only "Therefore").
+4.  **POSSIBILITY LOGIC:** Does the established magic system, technology, or physics actually support this?
+5.  **STRATEGIC LOGIC:** Is this the smartest move the character could make? (Avoid the "Idiot Plot").
+
+### INSTRUCTION PRIORITY (META-DATA SCAN):
+Scan the content of every Drive for **User Instructions** (e.g., "Notes:", "Requirements:", "Do not change X", "Make sure...").
+1.  **BINDING:** Explicit user commands found within the text MUST be obeyed. They override "Genetic Splicing" logic.
+2.  **SPECIFICITY:** If a drive explicitly names a character or location and says "Use this name", you must bypass the Nomenclature Protocol for that specific entity.
+3.  **CONFLICT RESOLUTION:** If Drive A says "No Magic" and Drive B says "High Magic", prioritize the instructions in the *later* drive (Drive B overrides Drive A).
+
+### DEEP NOMENCLATURE PROTOCOL (THE CHAIN OF LOGIC):
+For all entities NOT covered by specific user instructions:
+1.  **IDENTIFY MEANING:** What is the core trait?
+2.  **ABSTRACTION LAYER:** Find a root word in Latin, Greek, Sanskrit, or Old English.
+3.  **MUTATION:** Corrupt the word phonetically to create a distinct proper noun.
+4.  **THE "CHEESE" FILTER:** No Puns. No Portmanteaus. No Direct Descriptors.
+
+### FUSION PROTOCOL:
+1.  **NO RECYCLING:** Do not summarize the drives. Do not use the exact plots provided (unless instructed).
+2.  **THE BOX METHOD (Idea Combination):** Take two mundane ideas from the drives and combine them to create something new (e.g., "Monks" + "Computer Code" = "Digital Monks").
+3.  **GENETIC SPLICING:** Extract Theme A + Conflict B.
+4.  **FRESH PLOT:** The events must be new.
 
 **OUTPUT FORMAT (STRICT MARKDOWN):**
+
 # [NEW ORIGINAL TITLE]
-> **Logline:** [A high-concept hook]
+> **Logline:** [A high-concept hook for this NEW story]
+
 ## 1. New Dramatis Personae (The Cast)
-## 2. World & Terminology
+*List EVERY single character. For each, note which "DNA" they inherited from the drives. Use Nomenclature Protocol.*
+
+## 2. World & Terminology (Nomenclature Check)
+*Briefly list 5 key terms (Locations/Resources) and their Etymology Chain.*
+
 ## 3. The 7-Act Narrative Anatomy (Truby)
+*Construct a MASSIVE, Detailed structure for this new story using the 7 Key Steps.*
+1.  **Weakness & Need:** (Setup & Ghost).
+2.  **Desire:** (Inciting Incident & Goal).
+3.  **Opponent:** (First Conflict).
+4.  **Plan:** (The Strategy & Midpoint).
+5.  **Battle:** (The Climax).
+6.  **Self-Revelation:** (The Realization).
+7.  **New Equilibrium:** (The New World).
+
+*For every step, include multiple detailed beats (Action, Value Shift, Polarity). EXPAND ON THE LOGIC.*
+
 ## 4. Thematic Synthesis
+* **Core Truth:** What is this new story arguing?
+* **Alchemical Note:** Briefly explain how you fused the drives to create this.
+
+[CONSTRAINT]: Be creative. Be bold. Surprise the user.
 `;
 var NIGS_RENAME_PROMPT = `
 [ROLE]: Master Etymologist.
 [TASK]: RENAME the entire cast using "Deep Nomenclature".
+
+[THE CHAIN OF LOGIC]:
+For each character in the input list, you must perform this thought process:
+1.  **Identify Core Trait:** What word best describes their soul/function?
+2.  **Abstraction:** Translate that word into a root language (Latin, Greek, Old English, Sanskrit).
+3.  **Mutation:** Corrupt it phonetically to sound like a name.
+4.  **Context Check:** Does this name fit the genre/tone of the source material?
+
 [OUTPUT SCHEMA (JSON KEY-VALUE MAP)]:
-{ "OldName1": "NewName1" }
+{
+  "OldName1": "NewName1",
+  "OldName2": "NewName2"
+}
+
+[INPUT]:
+List of characters provided by user.
 `;
 var NIGS_TRIBUNAL = {
   MARKET: `
 [IDENTITY]: MARKET ANALYST.
-[METRICS - QUANTUM SCALE -100 to +100]:
+[CORE DRIVE]: ROI & Audience Retention.
+[METRICS - ZERO BASED]:
 Start at 0.
 - **Hook:** +Points for grabbing attention, -Points for slow starts.
 - **Pacing:** +Points for tight scenes, -Points for boredom.
-[OUTPUT JSON]: { "commercial_score": 0, "commercial_reason": "...", "log_line": "..." }
+- **Clarity:** -Points for confusion.
+- **Comps:** +Points for marketable mixes.
+
+[OUTPUT JSON]:
+{
+  "commercial_score": 0,
+  "commercial_reason": "Specific market analysis (+/- reasons).",
+  "log_line": "The sales pitch."
+}
 `,
   LOGIC: `
 [IDENTITY]: LOGIC ENGINE.
-[METRICS - QUANTUM SCALE -100 to +100]:
+[CORE DRIVE]: Internal Consistency & Causality.
+[METRICS - ZERO BASED]:
 Start at 0.
 - **Plot Holes:** -20 for each major contradiction.
-- **Consistency:** -10 for breaking character.
-- **Max Positive:** +10 for exceptionally tight plotting.
-[OUTPUT JSON]: { "cohesion_score": 0, "cohesion_reason": "...", "content_warning": "..." }
+- **Character Consistency:** -10 for breaking character.
+- **World Mechanics:** -10 for breaking magic/tech rules.
+- **Promises:** -10 for breaking a promise made to the reader.
+- **No Bonus:** Logic is expected. You mostly subtract. Max positive is +5 for exceptionally tight plotting.
+
+[OUTPUT JSON]:
+{
+  "cohesion_score": 0,
+  "cohesion_reason": "Logic report (+/- reasons).",
+  "content_warning": "Logical failures detected."
+}
 `,
   LITERARY: `
 [IDENTITY]: LITERARY CRITIC.
-[METRICS - QUANTUM SCALE -100 to +100]:
+[CORE DRIVE]: Theme, Prose, & Subtext.
+[METRICS - ZERO BASED]:
 Start at 0.
-- **Voice/Theme:** +Points for unique style and strong moral argument.
+- **Voice:** +Points for unique style.
+- **Theme:** +Points for strong moral argument.
 - **Novelty:** +Points for originality, -Points for clich\xE9s.
-[OUTPUT JSON]: { "niche_score": 0, "niche_reason": "...", "third_act_score": 0, "novelty_score": 0 }
+
+[OUTPUT JSON]:
+{
+  "niche_score": 0,
+  "niche_reason": "Thematic analysis (+/- reasons).",
+  "third_act_score": 0,
+  "novelty_score": 0
+}
 `
 };
 var NIGS_SYNTHESIS_PROMPT = `
 [IDENTITY]: CHIEF JUSTICE (THE JUDGE).
-[TASK]: Synthesize the conflicting reports from your Tribunal (Market, Logic, Lit, and Forensic) into a FINAL VERDICT using the **Quantum Scoring Protocol (-100 to +100)**.
+[TASK]: Synthesize the conflicting reports from your Tribunal (Market, Logic, Lit, and Forensic) into a FINAL VERDICT using the **Zero-Based Scoring Protocol**.
+[OBJECTIVE]: UNBIASED ASSESSMENT based purely on MERIT. No external bias.
+
+[INPUT DATA]: See User Message. You have reports from:
+1. MARKET ANALYST
+2. LOGIC ENGINE
+3. LITERARY CRITIC
+4. FORENSIC SCAN (Legacy Model)
+
+[JUDGMENT PROTOCOL - QUALITY CALIBRATION]:
+Compare the input against these **QUALITY STANDARDS** (Genre irrelevant, Execution paramount):
+1. **0 (Competent):** Quality equivalent to *Ready Player One*. Functional, readable, but relies on tropes/nostalgia. Safe.
+2. **+50 (Masterpiece):** Quality equivalent to *The Godfather*. Perfect logic, deep thematic resonance, high stakes, total immersion.
+3. **-50 (Critical Failure):** Quality equivalent to *The Room*. Incoherent, broken logic, inconsistent characters, unintentional comedy.
 
 [INSTRUCTIONS]:
 - **Start at 0**.
-- **ADD** points for strengths.
-- **SUBTRACT** points for weaknesses.
+- **ADD** points for strengths identified by Market/Lit.
+- **SUBTRACT** points for weaknesses identified by Logic/Forensic.
 - **Logic Veto:** If Logic/Forensic found a Plot Hole, the final Cohesion Score MUST be negative.
-- **Range:** You are free to score anywhere between -100 and +100.
+- **Character Sliders:** Ensure the protagonist scores (Competence/Proactivity/Likability) are extracted or estimated if not provided.
 
-[OUTPUT JSON]: Same format as NIGS_SYSTEM_PROMPT.
+[OUTPUT JSON]: Same format as NIGS_SYSTEM_PROMPT. Ensure all scores are signed integers (e.g. -15, 0, +22).
 `;
 
 // node_modules/esm-env/true.js
@@ -453,7 +671,6 @@ var EAGER_EFFECT = 1 << 17;
 var HEAD_EFFECT = 1 << 18;
 var EFFECT_PRESERVED = 1 << 19;
 var USER_EFFECT = 1 << 20;
-var EFFECT_OFFSCREEN = 1 << 25;
 var WAS_MARKED = 1 << 15;
 var REACTION_IS_UPDATING = 1 << 21;
 var ASYNC = 1 << 22;
@@ -928,7 +1145,10 @@ function set_hydrate_node(node) {
   return hydrate_node = node;
 }
 function hydrate_next() {
-  return set_hydrate_node(get_next_sibling(hydrate_node));
+  return set_hydrate_node(
+    /** @type {TemplateNode} */
+    get_next_sibling(hydrate_node)
+  );
 }
 function reset(node) {
   if (!hydrating)
@@ -1366,23 +1586,20 @@ function create_text(value = "") {
 }
 // @__NO_SIDE_EFFECTS__
 function get_first_child(node) {
-  return (
-    /** @type {TemplateNode | null} */
-    first_child_getter.call(node)
-  );
+  return first_child_getter.call(node);
 }
 // @__NO_SIDE_EFFECTS__
 function get_next_sibling(node) {
-  return (
-    /** @type {TemplateNode | null} */
-    next_sibling_getter.call(node)
-  );
+  return next_sibling_getter.call(node);
 }
 function child(node, is_text) {
   if (!hydrating) {
     return /* @__PURE__ */ get_first_child(node);
   }
-  var child2 = /* @__PURE__ */ get_first_child(hydrate_node);
+  var child2 = (
+    /** @type {TemplateNode} */
+    /* @__PURE__ */ get_first_child(hydrate_node)
+  );
   if (child2 === null) {
     child2 = hydrate_node.appendChild(create_text());
   } else if (is_text && child2.nodeType !== TEXT_NODE) {
@@ -1394,10 +1611,16 @@ function child(node, is_text) {
   set_hydrate_node(child2);
   return child2;
 }
-function first_child(node, is_text = false) {
+function first_child(fragment, is_text = false) {
   var _a3, _b3;
   if (!hydrating) {
-    var first = /* @__PURE__ */ get_first_child(node);
+    var first = (
+      /** @type {DocumentFragment} */
+      /* @__PURE__ */ get_first_child(
+        /** @type {Node} */
+        fragment
+      )
+    );
     if (first instanceof Comment && first.data === "")
       return /* @__PURE__ */ get_next_sibling(first);
     return first;
@@ -1432,7 +1655,10 @@ function sibling(node, count = 1, is_text = false) {
     return text2;
   }
   set_hydrate_node(next_sibling);
-  return next_sibling;
+  return (
+    /** @type {TemplateNode} */
+    next_sibling
+  );
 }
 function clear_text_content(node) {
   node.textContent = "";
@@ -3814,7 +4040,10 @@ function destroy_effect(effect2, remove_dom = true) {
 }
 function remove_effect_dom(node, end2) {
   while (node !== null) {
-    var next2 = node === end2 ? null : get_next_sibling(node);
+    var next2 = node === end2 ? null : (
+      /** @type {TemplateNode} */
+      get_next_sibling(node)
+    );
     node.remove();
     node = next2;
   }
@@ -3837,12 +4066,14 @@ function unlink_effect(effect2) {
 function pause_effect(effect2, callback, destroy = true) {
   var transitions = [];
   pause_children(effect2, transitions, true);
-  var fn = () => {
+  run_out_transitions(transitions, () => {
     if (destroy)
       destroy_effect(effect2);
     if (callback)
       callback();
-  };
+  });
+}
+function run_out_transitions(transitions, fn) {
   var remaining = transitions.length;
   if (remaining > 0) {
     var check = () => --remaining || fn();
@@ -3909,7 +4140,10 @@ function move_effect(effect2, fragment) {
   var node = effect2.nodes.start;
   var end2 = effect2.nodes.end;
   while (node !== null) {
-    var next2 = node === end2 ? null : get_next_sibling(node);
+    var next2 = node === end2 ? null : (
+      /** @type {TemplateNode} */
+      get_next_sibling(node)
+    );
     fragment.append(node);
     node = next2;
   }
@@ -4170,7 +4404,7 @@ function from_html(content, flags2) {
     if (node === void 0) {
       node = create_fragment_from_html(has_start ? content : "<!>" + content);
       if (!is_fragment)
-        node = /** @type {TemplateNode} */
+        node = /** @type {Node} */
         get_first_child(node);
     }
     var clone = (
@@ -4247,10 +4481,14 @@ function hydrate(component2, options) {
   const was_hydrating = hydrating;
   const previous_hydrate_node = hydrate_node;
   try {
-    var anchor = get_first_child(target);
+    var anchor = (
+      /** @type {TemplateNode} */
+      get_first_child(target)
+    );
     while (anchor && (anchor.nodeType !== COMMENT_NODE || /** @type {Comment} */
     anchor.data !== HYDRATION_START)) {
-      anchor = get_next_sibling(anchor);
+      anchor = /** @type {TemplateNode} */
+      get_next_sibling(anchor);
     }
     if (!anchor) {
       throw HYDRATION_ERROR;
@@ -4613,38 +4851,12 @@ function index(_2, i3) {
   return i3;
 }
 function pause_effects(state2, to_destroy, controlled_anchor) {
-  var _a3;
   var transitions = [];
   var length2 = to_destroy.length;
-  var group;
-  var remaining = to_destroy.length;
   for (var i3 = 0; i3 < length2; i3++) {
-    let effect2 = to_destroy[i3];
-    pause_effect(
-      effect2,
-      () => {
-        if (group) {
-          group.pending.delete(effect2);
-          group.done.add(effect2);
-          if (group.pending.size === 0) {
-            var groups = (
-              /** @type {Set<EachOutroGroup>} */
-              state2.outrogroups
-            );
-            destroy_effects(array_from(group.done));
-            groups.delete(group);
-            if (groups.size === 0) {
-              state2.outrogroups = null;
-            }
-          }
-        } else {
-          remaining -= 1;
-        }
-      },
-      false
-    );
+    pause_children(to_destroy[i3].e, transitions, true);
   }
-  if (remaining === 0) {
+  run_out_transitions(transitions, () => {
     var fast_path = transitions.length === 0 && controlled_anchor !== null;
     if (fast_path) {
       var anchor = (
@@ -4658,32 +4870,37 @@ function pause_effects(state2, to_destroy, controlled_anchor) {
       clear_text_content(parent_node);
       parent_node.append(anchor);
       state2.items.clear();
+      link(state2, to_destroy[0].prev, to_destroy[length2 - 1].next);
     }
-    destroy_effects(to_destroy, !fast_path);
-  } else {
-    group = {
-      pending: new Set(to_destroy),
-      done: /* @__PURE__ */ new Set()
-    };
-    ((_a3 = state2.outrogroups) != null ? _a3 : state2.outrogroups = /* @__PURE__ */ new Set()).add(group);
-  }
+    for (var i4 = 0; i4 < length2; i4++) {
+      var item = to_destroy[i4];
+      if (!fast_path) {
+        state2.items.delete(item.k);
+        link(state2, item.prev, item.next);
+      }
+      destroy_effect(item.e, !fast_path);
+    }
+    if (state2.first === to_destroy[0]) {
+      state2.first = to_destroy[0].prev;
+    }
+  });
 }
-function destroy_effects(to_destroy, remove_dom = true) {
-  for (var i3 = 0; i3 < to_destroy.length; i3++) {
-    destroy_effect(to_destroy[i3], remove_dom);
-  }
-}
-var offscreen_anchor;
 function each(node, flags2, get_collection, get_key, render_fn, fallback_fn = null) {
   var anchor = node;
   var items = /* @__PURE__ */ new Map();
+  var first = null;
   var is_controlled = (flags2 & EACH_IS_CONTROLLED) !== 0;
+  var is_reactive_value = (flags2 & EACH_ITEM_REACTIVE) !== 0;
+  var is_reactive_index = (flags2 & EACH_INDEX_REACTIVE) !== 0;
   if (is_controlled) {
     var parent_node = (
       /** @type {Element} */
       node
     );
-    anchor = hydrating ? set_hydrate_node(get_first_child(parent_node)) : parent_node.appendChild(create_text());
+    anchor = hydrating ? set_hydrate_node(
+      /** @type {Comment | Text} */
+      get_first_child(parent_node)
+    ) : parent_node.appendChild(create_text());
   }
   if (hydrating) {
     hydrate_next();
@@ -4696,18 +4913,18 @@ function each(node, flags2, get_collection, get_key, render_fn, fallback_fn = nu
   var array;
   var first_run = true;
   function commit() {
-    state2.fallback = fallback3;
     reconcile(state2, array, anchor, flags2, get_key);
     if (fallback3 !== null) {
       if (array.length === 0) {
-        if ((fallback3.f & EFFECT_OFFSCREEN) === 0) {
-          resume_effect(fallback3);
+        if (fallback3.fragment) {
+          anchor.before(fallback3.fragment);
+          fallback3.fragment = null;
         } else {
-          fallback3.f ^= EFFECT_OFFSCREEN;
-          move(fallback3, null, anchor);
+          resume_effect(fallback3.effect);
         }
+        effect2.first = fallback3.effect;
       } else {
-        pause_effect(fallback3, () => {
+        pause_effect(fallback3.effect, () => {
           fallback3 = null;
         });
       }
@@ -4732,8 +4949,9 @@ function each(node, flags2, get_collection, get_key, render_fn, fallback_fn = nu
       /** @type {Batch} */
       current_batch
     );
+    var prev = null;
     var defer = should_defer_append();
-    for (var index4 = 0; index4 < length2; index4 += 1) {
+    for (var i3 = 0; i3 < length2; i3 += 1) {
       if (hydrating && hydrate_node.nodeType === COMMENT_NODE && /** @type {Comment} */
       hydrate_node.data === HYDRATION_END) {
         anchor = /** @type {Comment} */
@@ -4741,30 +4959,42 @@ function each(node, flags2, get_collection, get_key, render_fn, fallback_fn = nu
         mismatch = true;
         set_hydrating(false);
       }
-      var value = array[index4];
-      var key2 = get_key(value, index4);
+      var value = array[i3];
+      var key2 = get_key(value, i3);
       var item = first_run ? null : items.get(key2);
       if (item) {
-        if (item.v)
+        if (is_reactive_value) {
           internal_set(item.v, value);
-        if (item.i)
-          internal_set(item.i, index4);
+        }
+        if (is_reactive_index) {
+          internal_set(
+            /** @type {Value<number>} */
+            item.i,
+            i3
+          );
+        }
         if (defer) {
           batch.skipped_effects.delete(item.e);
         }
       } else {
         item = create_item(
-          items,
-          first_run ? anchor : offscreen_anchor != null ? offscreen_anchor : offscreen_anchor = create_text(),
+          first_run ? anchor : null,
+          prev,
           value,
           key2,
-          index4,
+          i3,
           render_fn,
           flags2,
           get_collection
         );
-        if (!first_run) {
-          item.e.f |= EFFECT_OFFSCREEN;
+        if (first_run) {
+          item.o = true;
+          if (prev === null) {
+            first = item;
+          } else {
+            prev.next = item;
+          }
+          prev = item;
         }
         items.set(key2, item);
       }
@@ -4772,10 +5002,18 @@ function each(node, flags2, get_collection, get_key, render_fn, fallback_fn = nu
     }
     if (length2 === 0 && fallback_fn && !fallback3) {
       if (first_run) {
-        fallback3 = branch(() => fallback_fn(anchor));
+        fallback3 = {
+          fragment: null,
+          effect: branch(() => fallback_fn(anchor))
+        };
       } else {
-        fallback3 = branch(() => fallback_fn(offscreen_anchor != null ? offscreen_anchor : offscreen_anchor = create_text()));
-        fallback3.f |= EFFECT_OFFSCREEN;
+        var fragment = document.createDocumentFragment();
+        var target = create_text();
+        fragment.append(target);
+        fallback3 = {
+          fragment,
+          effect: branch(() => fallback_fn(target))
+        };
       }
     }
     if (hydrating && length2 > 0) {
@@ -4800,7 +5038,7 @@ function each(node, flags2, get_collection, get_key, render_fn, fallback_fn = nu
     }
     get(each_array);
   });
-  var state2 = { effect: effect2, flags: flags2, items, outrogroups: null, fallback: fallback3 };
+  var state2 = { effect: effect2, flags: flags2, items, first };
   first_run = false;
   if (hydrating) {
     anchor = hydrate_node;
@@ -4811,7 +5049,7 @@ function reconcile(state2, array, anchor, flags2, get_key) {
   var is_animated = (flags2 & EACH_IS_ANIMATED) !== 0;
   var length2 = array.length;
   var items = state2.items;
-  var current = state2.effect.first;
+  var current = state2.first;
   var seen;
   var prev = null;
   var to_animate;
@@ -4819,63 +5057,47 @@ function reconcile(state2, array, anchor, flags2, get_key) {
   var stashed = [];
   var value;
   var key2;
-  var effect2;
+  var item;
   var i3;
   if (is_animated) {
     for (i3 = 0; i3 < length2; i3 += 1) {
       value = array[i3];
       key2 = get_key(value, i3);
-      effect2 = /** @type {EachItem} */
-      items.get(key2).e;
-      if ((effect2.f & EFFECT_OFFSCREEN) === 0) {
-        (_b3 = (_a3 = effect2.nodes) == null ? void 0 : _a3.a) == null ? void 0 : _b3.measure();
-        (to_animate != null ? to_animate : to_animate = /* @__PURE__ */ new Set()).add(effect2);
+      item = /** @type {EachItem} */
+      items.get(key2);
+      if (item.o) {
+        (_b3 = (_a3 = item.e.nodes) == null ? void 0 : _a3.a) == null ? void 0 : _b3.measure();
+        (to_animate != null ? to_animate : to_animate = /* @__PURE__ */ new Set()).add(item);
       }
     }
   }
   for (i3 = 0; i3 < length2; i3 += 1) {
     value = array[i3];
     key2 = get_key(value, i3);
-    effect2 = /** @type {EachItem} */
-    items.get(key2).e;
-    if (state2.outrogroups !== null) {
-      for (const group of state2.outrogroups) {
-        group.pending.delete(effect2);
-        group.done.delete(effect2);
-      }
+    item = /** @type {EachItem} */
+    items.get(key2);
+    (_c2 = state2.first) != null ? _c2 : state2.first = item;
+    if (!item.o) {
+      item.o = true;
+      var next2 = prev ? prev.next : current;
+      link(state2, prev, item);
+      link(state2, item, next2);
+      move(item, next2, anchor);
+      prev = item;
+      matched = [];
+      stashed = [];
+      current = prev.next;
+      continue;
     }
-    if ((effect2.f & EFFECT_OFFSCREEN) !== 0) {
-      effect2.f ^= EFFECT_OFFSCREEN;
-      if (effect2 === current) {
-        move(effect2, null, anchor);
-      } else {
-        var next2 = prev ? prev.next : current;
-        if (effect2 === state2.effect.last) {
-          state2.effect.last = effect2.prev;
-        }
-        if (effect2.prev)
-          effect2.prev.next = effect2.next;
-        if (effect2.next)
-          effect2.next.prev = effect2.prev;
-        link(state2, prev, effect2);
-        link(state2, effect2, next2);
-        move(effect2, next2, anchor);
-        prev = effect2;
-        matched = [];
-        stashed = [];
-        current = prev.next;
-        continue;
-      }
-    }
-    if ((effect2.f & INERT) !== 0) {
-      resume_effect(effect2);
+    if ((item.e.f & INERT) !== 0) {
+      resume_effect(item.e);
       if (is_animated) {
-        (_d = (_c2 = effect2.nodes) == null ? void 0 : _c2.a) == null ? void 0 : _d.unfix();
-        (to_animate != null ? to_animate : to_animate = /* @__PURE__ */ new Set()).delete(effect2);
+        (_e = (_d = item.e.nodes) == null ? void 0 : _d.a) == null ? void 0 : _e.unfix();
+        (to_animate != null ? to_animate : to_animate = /* @__PURE__ */ new Set()).delete(item);
       }
     }
-    if (effect2 !== current) {
-      if (seen !== void 0 && seen.has(effect2)) {
+    if (item !== current) {
+      if (seen !== void 0 && seen.has(item)) {
         if (matched.length < stashed.length) {
           var start2 = stashed[0];
           var j2;
@@ -4897,134 +5119,155 @@ function reconcile(state2, array, anchor, flags2, get_key) {
           matched = [];
           stashed = [];
         } else {
-          seen.delete(effect2);
-          move(effect2, current, anchor);
-          link(state2, effect2.prev, effect2.next);
-          link(state2, effect2, prev === null ? state2.effect.first : prev.next);
-          link(state2, prev, effect2);
-          prev = effect2;
+          seen.delete(item);
+          move(item, current, anchor);
+          link(state2, item.prev, item.next);
+          link(state2, item, prev === null ? state2.first : prev.next);
+          link(state2, prev, item);
+          prev = item;
         }
         continue;
       }
       matched = [];
       stashed = [];
-      while (current !== null && current !== effect2) {
-        (seen != null ? seen : seen = /* @__PURE__ */ new Set()).add(current);
+      while (current !== null && current !== item) {
+        if ((current.e.f & INERT) === 0) {
+          (seen != null ? seen : seen = /* @__PURE__ */ new Set()).add(current);
+        }
         stashed.push(current);
         current = current.next;
       }
       if (current === null) {
         continue;
       }
+      item = current;
     }
-    if ((effect2.f & EFFECT_OFFSCREEN) === 0) {
-      matched.push(effect2);
-    }
-    prev = effect2;
-    current = effect2.next;
+    matched.push(item);
+    prev = item;
+    current = item.next;
   }
-  if (state2.outrogroups !== null) {
-    for (const group of state2.outrogroups) {
-      if (group.pending.size === 0) {
-        destroy_effects(array_from(group.done));
-        (_e = state2.outrogroups) == null ? void 0 : _e.delete(group);
-      }
-    }
-    if (state2.outrogroups.size === 0) {
-      state2.outrogroups = null;
-    }
-  }
+  let has_offscreen_items = items.size > length2;
   if (current !== null || seen !== void 0) {
-    var to_destroy = [];
-    if (seen !== void 0) {
-      for (effect2 of seen) {
-        if ((effect2.f & INERT) === 0) {
-          to_destroy.push(effect2);
-        }
-      }
-    }
+    var to_destroy = seen === void 0 ? [] : array_from(seen);
     while (current !== null) {
-      if ((current.f & INERT) === 0 && current !== state2.fallback) {
+      if ((current.e.f & INERT) === 0) {
         to_destroy.push(current);
       }
       current = current.next;
     }
     var destroy_length = to_destroy.length;
+    has_offscreen_items = items.size - destroy_length > length2;
     if (destroy_length > 0) {
       var controlled_anchor = (flags2 & EACH_IS_CONTROLLED) !== 0 && length2 === 0 ? anchor : null;
       if (is_animated) {
         for (i3 = 0; i3 < destroy_length; i3 += 1) {
-          (_g = (_f = to_destroy[i3].nodes) == null ? void 0 : _f.a) == null ? void 0 : _g.measure();
+          (_g = (_f = to_destroy[i3].e.nodes) == null ? void 0 : _f.a) == null ? void 0 : _g.measure();
         }
         for (i3 = 0; i3 < destroy_length; i3 += 1) {
-          (_i = (_h = to_destroy[i3].nodes) == null ? void 0 : _h.a) == null ? void 0 : _i.fix();
+          (_i = (_h = to_destroy[i3].e.nodes) == null ? void 0 : _h.a) == null ? void 0 : _i.fix();
         }
       }
       pause_effects(state2, to_destroy, controlled_anchor);
     }
   }
+  if (has_offscreen_items) {
+    for (const item2 of items.values()) {
+      if (!item2.o) {
+        link(state2, prev, item2);
+        prev = item2;
+      }
+    }
+  }
+  state2.effect.last = prev && prev.e;
   if (is_animated) {
     queue_micro_task(() => {
       var _a4, _b4;
       if (to_animate === void 0)
         return;
-      for (effect2 of to_animate) {
-        (_b4 = (_a4 = effect2.nodes) == null ? void 0 : _a4.a) == null ? void 0 : _b4.apply();
+      for (item of to_animate) {
+        (_b4 = (_a4 = item.e.nodes) == null ? void 0 : _a4.a) == null ? void 0 : _b4.apply();
       }
     });
   }
 }
-function create_item(items, anchor, value, key2, index4, render_fn, flags2, get_collection) {
-  var v2 = (flags2 & EACH_ITEM_REACTIVE) !== 0 ? (flags2 & EACH_ITEM_IMMUTABLE) === 0 ? mutable_source(value, false, false) : source(value) : null;
-  var i3 = (flags2 & EACH_INDEX_REACTIVE) !== 0 ? source(index4) : null;
-  if (dev_fallback_default && v2) {
+function create_item(anchor, prev, value, key2, index4, render_fn, flags2, get_collection) {
+  var reactive = (flags2 & EACH_ITEM_REACTIVE) !== 0;
+  var mutable = (flags2 & EACH_ITEM_IMMUTABLE) === 0;
+  var v2 = reactive ? mutable ? mutable_source(value, false, false) : source(value) : value;
+  var i3 = (flags2 & EACH_INDEX_REACTIVE) === 0 ? index4 : source(index4);
+  if (dev_fallback_default && reactive) {
     v2.trace = () => {
-      var _a3;
-      get_collection()[(_a3 = i3 == null ? void 0 : i3.v) != null ? _a3 : index4];
+      var collection_index = typeof i3 === "number" ? index4 : i3.v;
+      get_collection()[collection_index];
     };
   }
-  return {
-    v: v2,
+  var item = {
     i: i3,
-    e: branch(() => {
-      render_fn(anchor, v2 != null ? v2 : value, i3 != null ? i3 : index4, get_collection);
-      return () => {
-        items.delete(key2);
-      };
-    })
+    v: v2,
+    k: key2,
+    // @ts-expect-error
+    e: null,
+    o: false,
+    prev,
+    next: null
   };
+  if (anchor === null) {
+    var fragment = document.createDocumentFragment();
+    fragment.append(anchor = create_text());
+  }
+  item.e = branch(() => render_fn(
+    /** @type {Node} */
+    anchor,
+    v2,
+    i3,
+    get_collection
+  ));
+  if (prev !== null) {
+    prev.next = item;
+  }
+  return item;
 }
-function move(effect2, next2, anchor) {
-  if (!effect2.nodes)
+function move(item, next2, anchor) {
+  if (!item.e.nodes)
     return;
-  var node = effect2.nodes.start;
-  var end2 = effect2.nodes.end;
-  var dest = next2 && (next2.f & EFFECT_OFFSCREEN) === 0 ? (
+  var end2 = item.next ? (
     /** @type {EffectNodes} */
-    next2.nodes.start
+    item.next.e.nodes.start
   ) : anchor;
-  while (node !== null) {
+  var dest = next2 ? (
+    /** @type {EffectNodes} */
+    next2.e.nodes.start
+  ) : anchor;
+  var node = (
+    /** @type {TemplateNode} */
+    item.e.nodes.start
+  );
+  while (node !== null && node !== end2) {
     var next_node = (
       /** @type {TemplateNode} */
       get_next_sibling(node)
     );
     dest.before(node);
-    if (node === end2) {
-      return;
-    }
     node = next_node;
   }
 }
 function link(state2, prev, next2) {
   if (prev === null) {
-    state2.effect.first = next2;
+    state2.first = next2;
+    state2.effect.first = next2 && next2.e;
   } else {
+    if (prev.e.next) {
+      prev.e.next.prev = null;
+    }
     prev.next = next2;
+    prev.e.next = next2 && next2.e;
   }
-  if (next2 === null) {
-    state2.effect.last = prev;
-  } else {
+  if (next2 !== null) {
+    if (next2.e.prev) {
+      next2.e.prev.next = null;
+    }
     next2.prev = prev;
+    next2.e.prev = prev && prev.e;
   }
 }
 
@@ -6587,12 +6830,12 @@ function setStatus(msg) {
 // CloudGen.ts
 var FORENSIC_CALIBRATION = `
 [SYSTEM OVERRIDE: NARRATIVE GRANDMASTER]
-[PROTOCOL: QUANTUM SCORING (-100 to +100)]
+[PROTOCOL: THE ZERO-BASED SCORING SYSTEM]
 
 1. **START AT ZERO:** 0 is the baseline for a "technically competent but boring/generic" story.
-2. **POSITIVE SCORES:** Awarded only for strengths (+1 to +100).
-3. **NEGATIVE SCORES:** Deducted for weaknesses (-1 to -100).
-4. **NO CAP:** Do not hesitate to give -100 or +100 if deserved.
+2. **NO CAP:** Scores can be positive (e.g. +50) or negative (e.g. -50).
+3. **ADD POINTS:** Only for specific strengths (Innovation, Voice, Theme).
+4. **SUBTRACT POINTS:** For ANY weakness (Plot Holes, Clich\xE9s, Confusion).
 5. **IGNORE INTENT:** Judge only what is on the page.
 `;
 var GeminiAdapter = class {
@@ -6737,12 +6980,16 @@ var CloudGenService = class {
   constructor(app, settings) {
     this.app = app;
     this.settings = settings;
+    // --- AUTO-FILL WIZARD (Architect Mode) ---
     this.autoFillWizard = async (concept, currentContext) => {
       setStatus("ARCHITECTING STORY BIBLE...");
       const nameRules = this.getNameProtocol();
       const prompt = `
         [INPUT CONCEPT]: "${concept}"
-        [UPLOADED SOURCE MATERIAL]: ${currentContext}
+        
+        [UPLOADED SOURCE MATERIAL]:
+        ${currentContext}
+        
         Using the concept above and the source material, generate the full JSON Story Bible.
         Ensure you generate the "philosopher" section (Theme/Moral Argument) based on the conflict.
         ${nameRules}
@@ -6751,17 +6998,22 @@ var CloudGenService = class {
       const res = await this.callAI(prompt, NIGS_AUTOFILL_PROMPT, true, false, temp);
       return this.parseJson(res);
     };
+    // --- DRIVE SYNTHESIS (Alchemy Mode) ---
+    // [UPDATED] Uses full concatenated context
     this.synthesizeDrives = async (drives, customTitle, targetQuality) => {
       var _a3;
       setStatus("FUSING NARRATIVE DRIVES...");
       let driveContext = "";
+      let totalChars = 0;
       drives.forEach((d2, i3) => {
         const safeContent = d2.content || "";
         driveContext += `
 === DRIVE ${i3 + 1}: ${d2.name} ===
 ${safeContent}
 `;
+        totalChars += safeContent.length;
       });
+      console.log(`[Compu-Judge] Synthesizing ${drives.length} drives. Total Context Payload: ${totalChars} chars.`);
       const nameRules = this.getNameProtocol();
       let titleInstruction = "";
       if (customTitle && customTitle.trim().length > 0) {
@@ -6770,12 +7022,13 @@ ${safeContent}
 You MUST use the title provided above. Do not invent a new one.`;
       }
       const qualityInstruction = `
-[TARGET QUALITY]: Aim for a quality score of ${targetQuality || this.settings.defaultTargetQuality}/100.`;
+[TARGET QUALITY]: Aim for a quality score of ${targetQuality || this.settings.defaultTargetQuality}/100. Make it compelling!`;
       const finalPrompt = `${driveContext}
 ${nameRules}${titleInstruction}${qualityInstruction}`;
       const temp = this.getTemp((_a3 = this.settings.tempSynth) != null ? _a3 : 1);
       return await this.callAI(finalPrompt, NIGS_DRIVE_SYNTHESIS_PROMPT, false, false, temp);
     };
+    // --- GRADING (Unified System) ---
     this.gradeContent = async (text2, context, nlpStats, wizardState) => {
       if (!this.settings.enableTribunal) {
         return this.gradeContentLegacy(text2, context, nlpStats);
@@ -6808,19 +7061,25 @@ ${sourceMaterial}
         this.callAI(inputPayload + deepThought, NIGS_TRIBUNAL.MARKET, true, false, 0.7).catch((e2) => `{"error": "Market Agent Failed: ${e2.message}"}`),
         this.callAI(inputPayload + deepThought, NIGS_TRIBUNAL.LOGIC, true, false, strictTemp).catch((e2) => `{"error": "Logic Agent Failed: ${e2.message}"}`),
         this.callAI(inputPayload + deepThought, NIGS_TRIBUNAL.LITERARY, true, false, 0.9).catch((e2) => `{"error": "Lit Agent Failed: ${e2.message}"}`),
+        // Legacy Pass as "Forensic Agent"
         this.callAI(inputPayload + deepThought, NIGS_SYSTEM_PROMPT, true, false, strictTemp).catch((e2) => `{"error": "Forensic Agent Failed: ${e2.message}"}`)
       ]);
       setStatus("SYNTHESIZING VERDICT...");
       const synthesisPayload = `
 [TRIBUNAL REPORTS]:
-1. MARKET ANALYST: ${marketRaw}
-2. LOGIC ENGINE: ${logicRaw}
-3. LITERARY CRITIC: ${litRaw}
-4. FORENSIC SCAN (Legacy): ${forensicRaw}
+1. MARKET ANALYST:
+${marketRaw}
+2. LOGIC ENGINE:
+${logicRaw}
+3. LITERARY CRITIC:
+${litRaw}
+4. FORENSIC SCAN (Legacy):
+${forensicRaw}
 
 [TASK]: Synthesize a FINAL NigsResponse JSON.
-- **QUANTUM SCORING:** Range -100 to +100.
+- **ZERO-BASED SCORING:** Start at 0. Add for strengths, subtract for weaknesses.
 - **LOGIC VETO:** If Logic/Forensic found a Plot Hole, the final score MUST be negative.
+- **MARKET REALITY:** If Market says boring, the final score cannot be positive.
 `;
       const finalResStr = await this.callAI(synthesisPayload, NIGS_SYNTHESIS_PROMPT, true, false, strictTemp);
       const finalRes = this.parseJson(finalResStr);
@@ -6845,13 +7104,14 @@ ${sourceMaterial}
         statsBlock = `
 [FORENSIC EVIDENCE]:
 - Word Count: ${nlpStats.wordCount}
-- Pacing: ${nlpStats.sentenceVariance}
+- Pacing (Variance): ${nlpStats.sentenceVariance}
 - Adverb Density: ${nlpStats.adverbDensity}%
 - Dialogue Ratio: ${nlpStats.dialogueRatio}%
 `;
       }
       const instructionBlock = `
-[STRICT GRADING INSTRUCTION (-100 to +100)]:
+[STRICT GRADING INSTRUCTION]:
+You are identifying FLAWS.
 If the story is generic, score 0.
 If it has plot holes, score negative.
 Only score positive if it is innovative.
@@ -6879,12 +7139,14 @@ ${instructionBlock}`;
         finalRes.thought_process = results[0].thought_process;
       return finalRes;
     };
+    // --- PASSTHROUGHS ---
     this.generateOutline = async (text2, useSearch = false) => {
       setStatus("INITIALIZING ARCHIVIST PROTOCOL...");
       const prompt = this.settings.customOutlinePrompt ? this.settings.customOutlinePrompt : NIGS_OUTLINE_PROMPT;
       const temp = this.getTemp(this.settings.tempArchitect);
       return await this.callAI(text2, prompt, false, useSearch, temp);
     };
+    // [UPDATED] Pass Scan Telemetry to Action Plan
     this.getActionPlan = async (text2, focus, deepScan, quickScan) => {
       setStatus("ANALYZING WEAKNESSES...");
       let diagnosticBlock = "";
@@ -6921,10 +7183,11 @@ ${instructionBlock}`;
       }
       let inputBlock = `TEXT TO ANALYZE:
 ${text2}`;
-      if (diagnosticBlock)
+      if (diagnosticBlock) {
         inputBlock = `${diagnosticBlock}
 
 ${inputBlock}`;
+      }
       if (focus && focus.trim().length > 0)
         inputBlock = `USER DIRECTIVE: Focus on "${focus}".
 
@@ -6948,6 +7211,7 @@ ${inputBlock}`;
       const temp = this.getTemp(this.settings.tempCritic, true);
       return this.parseJson(await this.callAI(text2, NIGS_QUICK_SCAN_PROMPT, true, false, temp));
     };
+    // --- CHARACTER AUTO-GRADER ---
     this.gradeCharacter = async (char, context) => {
       var _a3, _b3, _c2;
       setStatus(`ANALYZING ${char.name.toUpperCase()}...`);
@@ -6973,6 +7237,7 @@ ${inputBlock}`;
         revelation: data.revelation || char.revelation
       };
     };
+    // --- STRUCTURE AUTO-GRADER ---
     this.gradeStructureBeat = async (beat, context) => {
       var _a3, _b3;
       setStatus(`ANALYZING STORY BEAT...`);
@@ -6995,6 +7260,7 @@ ${inputBlock}`;
         type: (_b3 = data.type) != null ? _b3 : beat.type
       };
     };
+    // --- ASSIST WIZARD (Logic Hardened + Name Protocol) ---
     this.assistWizard = async (field, state2) => {
       var _a3;
       setStatus("CONSULTING NARRATIVE DATABASE...");
@@ -7055,6 +7321,7 @@ ${inputBlock}`;
       const coreDna = {
         concept: state2.concept,
         structureDNA: state2.structureDNA,
+        // Include generic structure DNA (MICE)
         theme: state2.philosopher
       };
       const constraints = this.settings.wizardNegativeConstraints ? `
@@ -7064,16 +7331,22 @@ ${inputBlock}`;
       const prompt = `
         You are a narrative consultant. 
         [TASK]: ${specificInstruction}
+        
         [GENRE & TONE CALIBRATION]:
         1. Analyze the [UPLOADED SOURCE MATERIAL] to determine the TONE.
         2. YOUR SUGGESTION MUST MATCH THIS TONE.
+        
         ${constraints}
         ${nameRules}
+        
         ${targetContext}
+
         [UPLOADED SOURCE MATERIAL]:
         ${sourceMaterial}
+
         [STORY DNA (Overview)]:
         ${JSON.stringify(coreDna, null, 2)}
+        
         Return JSON ONLY: { "suggestion": "Your concise text suggestion." }
         `;
       const temp = this.getTemp(this.settings.tempWizard);
@@ -7081,12 +7354,29 @@ ${inputBlock}`;
       const data = this.parseJson(res);
       return data.suggestion;
     };
+    this.wizardCompose = async (state2) => {
+      setStatus("ARCHITECTING OUTLINE...");
+      const targetQ = state2.targetScore || this.settings.defaultTargetQuality;
+      const promptContext = `
+        [SOURCE DATA]:
+        ${JSON.stringify(state2, null, 2)}
+        
+        [TARGET QUALITY]: ${targetQ}/100.
+        [INSTRUCTION]: 
+        Using the source data above, write a formatted Markdown document. Do not output JSON.
+        Ensure every scene and character beat is generated to meet the Target Quality.
+        `;
+      const temp = this.getTemp(this.settings.tempArchitect);
+      return await this.callAI(promptContext, NIGS_WIZARD_COMPOSITION_PROMPT, false, false, temp);
+    };
+    // --- DEEP RENAME (NEW) ---
     this.generateDeepNames = async (characters, context) => {
       setStatus("ETYMOLOGIST ACTIVE: DEEP RENAMING...");
       const charInput = characters.map((c2) => `- Name: ${c2.name} (Role: ${c2.role}) | Bio: ${c2.description}`).join("\n");
       const input = `
         [SOURCE MATERIAL CONTEXT]:
         ${context.substring(0, 1e3)}...
+
         [CHARACTERS TO RENAME]:
         ${charInput}
         `;
@@ -7125,6 +7415,7 @@ ${inputBlock}`;
     const adapter = this.getAdapter();
     return await adapter.generate(text2, sys, json, useSearch, tempOverride);
   }
+  // [HELPER]: Generate Name Protocol String
   getNameProtocol() {
     let rules2 = "";
     if (this.settings.namePool && this.settings.namePool.trim().length > 0) {
@@ -7230,7 +7521,7 @@ ${inputBlock}`;
 };
 
 // CompuJudgeView.ts
-var import_obsidian8 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // node_modules/svelte/src/version.js
 var PUBLIC_VERSION = "5";
@@ -7242,7 +7533,7 @@ if (typeof window !== "undefined") {
 }
 
 // GradingPanel.svelte
-var import_obsidian7 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // db.ts
 var import_obsidian2 = require("obsidian");
@@ -27440,10 +27731,10 @@ function slide(node, { delay = 0, duration = 400, easing = cubic_out, axis = "y"
 // WizardFields.svelte
 var root_2 = from_html(`<div class="char-block bevel-down svelte-16d9qba" style="margin-bottom: 10px; margin-top: 10px;"><div class="char-header svelte-16d9qba"><span class="char-name-display" style="font-size: 12px;"></span> <button class="del-btn svelte-16d9qba">\xD7</button></div> <div class="char-body svelte-16d9qba"><label class="svelte-16d9qba">The Goal</label> <div class="input-wrap svelte-16d9qba"><input class="retro-input" placeholder="What do they want right now?"/> <button>?</button></div> <div class="grid-3-p svelte-16d9qba" style="margin-top: 5px;"><div><label style="color:#800000; font-size: 0.8em;" class="svelte-16d9qba">1. FAIL (NO, AND)</label> <div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="3" placeholder="Disaster strikes..."></textarea> <button>?</button></div></div> <div><label style="color:#808000; font-size: 0.8em;" class="svelte-16d9qba">2. FAIL (NO, BUT)</label> <div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="3" placeholder="Learning moment..."></textarea> <button>?</button></div></div> <div><label style="color:#008000; font-size: 0.8em;" class="svelte-16d9qba">3. SUCCESS (YES, BUT)</label> <div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="3" placeholder="New problem arises..."></textarea> <button>?</button></div></div></div></div></div>`);
 var root_4 = from_html(`<div class="char-body svelte-16d9qba"><div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="2" placeholder="Role &amp; Bio..."></textarea> <button>?</button> <button class="assist-btn analyze-btn svelte-16d9qba" title="Auto-Grade Scales">\u26A1</button></div> <div class="score-grid svelte-16d9qba"><div class="score-item svelte-16d9qba"><div class="score-header svelte-16d9qba"><span class="score-label" title="How good are they at what they do?">COMPETENCE</span> <span class="score-val"> </span></div> <div class="score-track bevel-down svelte-16d9qba" role="button" tabindex="0"><div class="score-fill svelte-16d9qba"></div></div></div> <div class="score-item svelte-16d9qba"><div class="score-header svelte-16d9qba"><span class="score-label" title="Do they make things happen?">PROACTIVITY</span> <span class="score-val"> </span></div> <div class="score-track bevel-down svelte-16d9qba" role="button" tabindex="0"><div class="score-fill svelte-16d9qba"></div></div></div> <div class="score-item svelte-16d9qba"><div class="score-header svelte-16d9qba"><span class="score-label" title="Do we like them? (Sympathy)">LIKABILITY</span> <span class="score-val"> </span></div> <div class="score-track bevel-down svelte-16d9qba" role="button" tabindex="0"><div class="score-fill svelte-16d9qba"></div></div></div></div></div>`);
-var root_3 = from_html(`<div class="char-block bevel-down svelte-16d9qba"><div class="char-header svelte-16d9qba" title="Toggle Expand" role="button" tabindex="0"><div class="char-title svelte-16d9qba"><span> </span> <input type="text" class="char-name-input svelte-16d9qba" placeholder="Name"/></div> <div class="char-controls svelte-16d9qba"><button class="svelte-16d9qba">\u25B2</button> <button class="del-btn svelte-16d9qba">\xD7</button> <span class="expand-icon"> </span></div></div> <!></div>`);
+var root_3 = from_html(`<div class="char-block bevel-down svelte-16d9qba"><div class="char-header svelte-16d9qba" title="Toggle Expand"><div class="char-title svelte-16d9qba"><span> </span> <input type="text" class="char-name-input svelte-16d9qba" placeholder="Name"/></div> <div class="char-controls svelte-16d9qba"><button class="svelte-16d9qba">\u25B2</button> <button class="del-btn svelte-16d9qba">\xD7</button> <span class="expand-icon"> </span></div></div> <!></div>`);
 var root_6 = from_html(`<div class="char-body svelte-16d9qba"><div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="3" placeholder="Action &amp; Change..."></textarea> <button>?</button> <button class="assist-btn analyze-btn svelte-16d9qba" title="Auto-Grade Tension &amp; Type">\u26A1</button></div> <div class="score-item svelte-16d9qba" style="margin-top: 10px;"><div class="score-header svelte-16d9qba"><span class="score-label">TENSION</span> <span class="score-val"> </span></div> <div class="score-track bevel-down svelte-16d9qba" role="button" tabindex="0"><div class="score-fill svelte-16d9qba"></div></div></div></div>`);
-var root_5 = from_html(`<div class="char-block bevel-down svelte-16d9qba"><div class="char-header svelte-16d9qba" role="button" tabindex="0"><div class="char-title svelte-16d9qba"><span style="width: 80px; text-align:center;"> </span> <input type="text" class="char-name-input svelte-16d9qba" placeholder="Beat Title"/></div> <div class="char-controls svelte-16d9qba"><button class="svelte-16d9qba">\u25B2</button> <button class="del-btn svelte-16d9qba">\xD7</button></div></div> <!></div>`);
-var root = from_html(`<div class="wizard-container svelte-16d9qba"><fieldset class="bevel-groove memory-core svelte-16d9qba"><legend class="svelte-16d9qba">MEMORY CORE</legend> <div class="memory-status svelte-16d9qba"><div class="status-indicator svelte-16d9qba"><span></span> <span> </span></div> <div class="status-details"> </div></div> <div class="context-controls svelte-16d9qba"><button> </button> <button class="scrub-btn svelte-16d9qba">\u{1F5D1}\uFE0F PURGE</button></div></fieldset> <fieldset class="bevel-groove svelte-16d9qba"><legend class="svelte-16d9qba">1. CORE ENGINE (SANDERSON'S 1ST LAW OF PLOT)</legend> <label for="w_concept" class="svelte-16d9qba">Concept / Logline</label> <div class="input-wrap svelte-16d9qba"><textarea id="w_concept" class="retro-input" rows="2" placeholder="High concept summary..."></textarea> <button>?</button></div> <label for="w_target" class="svelte-16d9qba"> </label> <div class="input-wrap svelte-16d9qba"><input type="range" id="w_target" class="retro-range" min="50" max="100" step="5"/></div> <button class="autofill-btn svelte-16d9qba">\u2728 AUTO-GENERATE STORY BIBLE</button> <div class="grid-3-p svelte-16d9qba"><div class="p-col svelte-16d9qba"><label for="p_promise" title="What plot/tonal promise do you make in the first chapter?" class="svelte-16d9qba">THE PROMISE (HOOK)</label> <div class="input-wrap svelte-16d9qba"><textarea id="p_promise" class="retro-input" rows="4"></textarea> <button>?</button></div></div> <div class="p-col svelte-16d9qba"><label for="p_progress" title="How does the story move forward? (Travel, Discovery, Clues)" class="svelte-16d9qba">THE PROGRESS (SHIFT)</label> <div class="input-wrap svelte-16d9qba"><textarea id="p_progress" class="retro-input" rows="4"></textarea> <button>?</button></div></div> <div class="p-col svelte-16d9qba"><label for="p_payoff" title="How is the promise fulfilled? (Must match the promise type)" class="svelte-16d9qba">THE PAYOFF (CLIMAX)</label> <div class="input-wrap svelte-16d9qba"><textarea id="p_payoff" class="retro-input" rows="4"></textarea> <button>?</button></div></div></div></fieldset> <fieldset class="bevel-groove svelte-16d9qba"><legend class="svelte-16d9qba">2. STRUCTURE DNA (M.I.C.E. & CYCLES)</legend> <div class="grid-2 svelte-16d9qba"><div><label for="dna_mice" class="svelte-16d9qba">Primary M.I.C.E. Thread</label> <div class="input-wrap svelte-16d9qba"><select id="dna_mice" class="retro-input"><option>EVENT (Status Quo)</option><option>CHARACTER (Identity)</option><option>MILIEU (Place)</option><option>INQUIRY (Mystery)</option></select> <button>?</button></div></div> <div><label for="dna_order" class="svelte-16d9qba">Nesting Order</label> <div class="input-wrap svelte-16d9qba"><input id="dna_order" type="text" class="retro-input" placeholder="e.g. Milieu > Inquiry > Character"/> <button>?</button></div></div></div> <div style="margin-top: 15px; color: var(--cj-accent); border-bottom: 1px dashed var(--cj-dim); font-weight:bold; font-size:0.9em; text-transform:uppercase;">TRY / FAIL CYCLES (SCENE ESCALATION)</div> <!> <button class="add-char-btn svelte-16d9qba">+ ADD TRY-FAIL CYCLE</button></fieldset> <fieldset class="bevel-groove character-section svelte-16d9qba"><legend class="svelte-16d9qba">3. DRAMATIS PERSONAE (THE SLIDERS)</legend> <div class="char-list"></div> <button class="add-char-btn svelte-16d9qba">+ ADD CHARACTER</button></fieldset> <fieldset class="bevel-groove svelte-16d9qba"><legend class="svelte-16d9qba">4. THE BEAT SHEET</legend> <div class="char-list"></div> <button class="add-char-btn svelte-16d9qba">+ ADD STORY BEAT</button></fieldset> <div class="footer-controls svelte-16d9qba"><button class="reset-form-btn svelte-16d9qba">RESET FIELDS</button></div></div>`);
+var root_5 = from_html(`<div class="char-block bevel-down svelte-16d9qba"><div class="char-header svelte-16d9qba"><div class="char-title svelte-16d9qba"><span style="width: 80px; text-align:center;"> </span> <input type="text" class="char-name-input svelte-16d9qba" placeholder="Beat Title"/></div> <div class="char-controls svelte-16d9qba"><button class="svelte-16d9qba">\u25B2</button> <button class="del-btn svelte-16d9qba">\xD7</button></div></div> <!></div>`);
+var root = from_html(`<div class="wizard-container svelte-16d9qba"><fieldset class="bevel-groove memory-core svelte-16d9qba"><legend class="svelte-16d9qba">MEMORY CORE</legend> <div class="memory-status svelte-16d9qba"><div class="status-indicator svelte-16d9qba"><span></span> <span> </span></div> <div class="status-details"> </div></div> <div class="context-controls svelte-16d9qba"><button> </button> <button class="scrub-btn svelte-16d9qba">\u{1F5D1}\uFE0F PURGE</button></div></fieldset> <fieldset class="bevel-groove svelte-16d9qba"><legend class="svelte-16d9qba">1. CORE ENGINE (SANDERSON'S 1ST LAW OF PLOT)</legend> <label for="w_concept" class="svelte-16d9qba">Concept / Logline</label> <div class="input-wrap svelte-16d9qba"><textarea id="w_concept" class="retro-input" rows="2" placeholder="High concept summary..."></textarea> <button>?</button></div> <label for="w_target" class="svelte-16d9qba"> </label> <div class="input-wrap svelte-16d9qba"><input type="range" id="w_target" class="retro-range" min="50" max="100" step="5"/></div> <button class="autofill-btn svelte-16d9qba">\u2728 AUTO-GENERATE STORY BIBLE</button> <div class="grid-3-p svelte-16d9qba"><div class="p-col svelte-16d9qba"><label title="What plot/tonal promise do you make in the first chapter?" class="svelte-16d9qba">THE PROMISE (HOOK)</label> <div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="4"></textarea> <button>?</button></div></div> <div class="p-col svelte-16d9qba"><label title="How does the story move forward? (Travel, Discovery, Clues)" class="svelte-16d9qba">THE PROGRESS (SHIFT)</label> <div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="4"></textarea> <button>?</button></div></div> <div class="p-col svelte-16d9qba"><label title="How is the promise fulfilled? (Must match the promise type)" class="svelte-16d9qba">THE PAYOFF (CLIMAX)</label> <div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="4"></textarea> <button>?</button></div></div></div></fieldset> <fieldset class="bevel-groove svelte-16d9qba"><legend class="svelte-16d9qba">2. STRUCTURE DNA (M.I.C.E. & CYCLES)</legend> <div class="grid-2 svelte-16d9qba"><div><label class="svelte-16d9qba">Primary M.I.C.E. Thread</label> <div class="input-wrap svelte-16d9qba"><select class="retro-input"><option>EVENT (Status Quo)</option><option>CHARACTER (Identity)</option><option>MILIEU (Place)</option><option>INQUIRY (Mystery)</option></select> <button>?</button></div></div> <div><label class="svelte-16d9qba">Nesting Order</label> <div class="input-wrap svelte-16d9qba"><input type="text" class="retro-input" placeholder="e.g. Milieu > Inquiry > Character"/> <button>?</button></div></div></div> <label style="margin-top: 15px; color: var(--cj-accent); border-bottom: 1px dashed var(--cj-dim);" class="svelte-16d9qba">TRY / FAIL CYCLES (SCENE ESCALATION)</label> <!> <button class="add-char-btn svelte-16d9qba">+ ADD TRY-FAIL CYCLE</button></fieldset> <fieldset class="bevel-groove character-section svelte-16d9qba"><legend class="svelte-16d9qba">3. DRAMATIS PERSONAE (THE SLIDERS)</legend> <div class="char-list"></div> <button class="add-char-btn svelte-16d9qba">+ ADD CHARACTER</button></fieldset> <fieldset class="bevel-groove svelte-16d9qba"><legend class="svelte-16d9qba">4. THE BEAT SHEET</legend> <div class="char-list"></div> <button class="add-char-btn svelte-16d9qba">+ ADD STORY BEAT</button></fieldset> <div class="footer-controls svelte-16d9qba"><button class="reset-form-btn svelte-16d9qba">RESET FIELDS</button></div></div>`);
 var $$css = {
   hash: "svelte-16d9qba",
   code: '.wizard-container.svelte-16d9qba {display:flex;flex-direction:column;gap:20px;padding-bottom:20px;}.bevel-groove.svelte-16d9qba {border:2px groove var(--cj-dim);padding:15px;margin:0;background:transparent;}legend.svelte-16d9qba {font-weight:bold;padding:0 5px;color:var(--cj-text);font-size:1.1em;}label.svelte-16d9qba {display:block;margin-top:12px;margin-bottom:4px;font-size:0.9em;font-weight:bold;color:var(--cj-dim);text-transform:uppercase;}.input-wrap.svelte-16d9qba {display:flex;gap:5px;align-items:flex-start;}.autofill-btn.svelte-16d9qba {width:100%;margin:15px 0;padding:10px;background:linear-gradient(90deg, #4b0082, #800080);color:#fff;font-weight:900;border:2px outset #a020f0;cursor:pointer;}.autofill-btn.svelte-16d9qba:hover {background:linear-gradient(90deg, #6a0dad, #9932cc);}\n    \n    /* Reused styles from old version for consistency */.char-block.svelte-16d9qba {background:rgba(0,0,0,0.03);padding:5px;border:2px solid var(--cj-dim);}.char-header.svelte-16d9qba {display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.1);padding:5px;cursor:pointer;}.char-title.svelte-16d9qba {display:flex;align-items:center;gap:8px;flex:1;}.role-badge.svelte-16d9qba {font-size:10px;font-weight:900;padding:2px 4px;color:#fff;text-transform:uppercase;background:#555;}.char-name-input.svelte-16d9qba {background:transparent;border:none;font-weight:bold;font-family:inherit;font-size:14px;color:var(--cj-text);width:100%;}.char-name-input.svelte-16d9qba:focus {outline:none;border-bottom:1px dashed var(--cj-accent);}.char-controls.svelte-16d9qba button:where(.svelte-16d9qba) {background:transparent;border:none;cursor:pointer;font-weight:bold;color:var(--cj-dim);padding:0 4px;}.del-btn.svelte-16d9qba {color:red !important;margin-left:5px;}.char-body.svelte-16d9qba {padding:10px;border-top:1px dashed var(--cj-dim);}.add-char-btn.svelte-16d9qba {width:100%;padding:8px;border:2px dashed var(--cj-dim);background:transparent;cursor:pointer;font-weight:bold;color:var(--cj-dim);}.add-char-btn.svelte-16d9qba:hover {background:rgba(0,0,0,0.05);color:var(--cj-text);border-style:solid;}.grid-3-p.svelte-16d9qba {display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}.grid-2.svelte-16d9qba {display:grid;grid-template-columns:1fr 1fr;gap:15px;}.p-col.svelte-16d9qba label:where(.svelte-16d9qba) {text-align:center;color:var(--cj-accent);}.retro-input {resize:none;overflow:hidden;min-height:28px;box-sizing:border-box;}.memory-core.svelte-16d9qba {background:rgba(0,0,0,0.05);}.memory-status.svelte-16d9qba {display:flex;justify-content:space-between;align-items:center;background:#000;color:#00ff00;padding:8px;margin-bottom:10px;border:2px inset var(--cj-dim);}.status-indicator.svelte-16d9qba {display:flex;gap:8px;align-items:center;font-weight:900;}.led.svelte-16d9qba {width:10px;height:10px;border-radius:50%;border:1px solid #00ff00;}.led.on.svelte-16d9qba {background:#00ff00;box-shadow:0 0 5px #00ff00;}.led.off.svelte-16d9qba {background:#111;border-color:#555;}.context-controls.svelte-16d9qba {display:flex;gap:5px;}.upload-btn.svelte-16d9qba, .scrub-btn.svelte-16d9qba, .assist-btn.svelte-16d9qba, .reset-form-btn.svelte-16d9qba {background:var(--cj-bg);color:var(--cj-text);border:2px outset var(--cj-light);cursor:pointer;font-weight:bold;display:flex;align-items:center;justify-content:center;}.upload-btn.svelte-16d9qba {flex:1;padding:8px;}.assist-btn.svelte-16d9qba {width:32px;height:30px;flex-shrink:0;background:var(--cj-accent);color:#fff;border-color:var(--cj-light);position:relative;}.assist-btn.loading.svelte-16d9qba::after {content:"";width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%; animation: svelte-16d9qba-spin 0.8s linear infinite;position:absolute;}\n    @keyframes svelte-16d9qba-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }.footer-controls.svelte-16d9qba {margin-top:20px;}.reset-form-btn.svelte-16d9qba {width:100%;padding:10px;border-color:#ff0000;color:#ff0000;}.reset-form-btn.svelte-16d9qba:hover {background:#ff0000;color:#fff;}\n\n    /* CHARACTER SCALES */.score-grid.svelte-16d9qba {display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:15px 0;}.score-item.svelte-16d9qba {display:flex;flex-direction:column;gap:4px;}.score-header.svelte-16d9qba {display:flex;justify-content:space-between;font-size:10px;font-weight:bold;color:var(--cj-dim);}.score-track.svelte-16d9qba {height:16px;background:#fff;border:2px inset var(--cj-dim);cursor:crosshair;position:relative;overflow:hidden;}.score-fill.svelte-16d9qba {height:100%;transition:width 0.3s ease;border-right:2px solid rgba(0,0,0,0.5);}.analyze-btn.svelte-16d9qba {background:#800080;color:white;border-color:#dcdcdc;}\n\n    @media (max-width: 600px) {.grid-3-p.svelte-16d9qba, .grid-2.svelte-16d9qba {grid-template-columns:1fr;}.score-grid.svelte-16d9qba {grid-template-columns:1fr;}\n    }'
@@ -27595,7 +27886,7 @@ function WizardFields($$anchor, $$props) {
   var button = child(div_4);
   button.__click = function(...$$args) {
     var _a3;
-    (_a3 = $$props.isContextSynced ? void 0 : $$props.onUploadContext) == null ? void 0 : _a3.apply(this, $$args);
+    (_a3 = $$props.isContextSynced ? null : $$props.onUploadContext) == null ? void 0 : _a3.apply(this, $$args);
   };
   var text_2 = child(button, true);
   reset(button);
@@ -27720,45 +28011,33 @@ function WizardFields($$anchor, $$props) {
         button_9.__click = () => removeTryFailCycle(i3);
         reset(div_20);
         var div_21 = sibling(div_20, 2);
-        var label_1 = child(div_21);
-        set_attribute2(label_1, "for", `cycle_goal_${i3}`);
-        var div_22 = sibling(label_1, 2);
+        var div_22 = sibling(child(div_21), 2);
         var input_2 = child(div_22);
         remove_input_defaults(input_2);
-        set_attribute2(input_2, "id", `cycle_goal_${i3}`);
         var button_10 = sibling(input_2, 2);
         button_10.__click = () => $$props.onAssist(`structureDNA.tryFailCycles.${i3}.goal`);
         reset(div_22);
         var div_23 = sibling(div_22, 2);
         var div_24 = child(div_23);
-        var label_2 = child(div_24);
-        set_attribute2(label_2, "for", `cycle_att1_${i3}`);
-        var div_25 = sibling(label_2, 2);
+        var div_25 = sibling(child(div_24), 2);
         var textarea_4 = child(div_25);
         remove_textarea_child(textarea_4);
-        set_attribute2(textarea_4, "id", `cycle_att1_${i3}`);
         var button_11 = sibling(textarea_4, 2);
         button_11.__click = () => $$props.onAssist(`structureDNA.tryFailCycles.${i3}.attempt1`);
         reset(div_25);
         reset(div_24);
         var div_26 = sibling(div_24, 2);
-        var label_3 = child(div_26);
-        set_attribute2(label_3, "for", `cycle_att2_${i3}`);
-        var div_27 = sibling(label_3, 2);
+        var div_27 = sibling(child(div_26), 2);
         var textarea_5 = child(div_27);
         remove_textarea_child(textarea_5);
-        set_attribute2(textarea_5, "id", `cycle_att2_${i3}`);
         var button_12 = sibling(textarea_5, 2);
         button_12.__click = () => $$props.onAssist(`structureDNA.tryFailCycles.${i3}.attempt2`);
         reset(div_27);
         reset(div_26);
         var div_28 = sibling(div_26, 2);
-        var label_4 = child(div_28);
-        set_attribute2(label_4, "for", `cycle_succ_${i3}`);
-        var div_29 = sibling(label_4, 2);
+        var div_29 = sibling(child(div_28), 2);
         var textarea_6 = child(div_29);
         remove_textarea_child(textarea_6);
-        set_attribute2(textarea_6, "id", `cycle_succ_${i3}`);
         var button_13 = sibling(textarea_6, 2);
         button_13.__click = () => $$props.onAssist(`structureDNA.tryFailCycles.${i3}.success`);
         reset(div_29);
@@ -27806,7 +28085,6 @@ function WizardFields($$anchor, $$props) {
     var div_31 = root_3();
     var div_32 = child(div_31);
     div_32.__click = () => toggleExpandChar(get(i3));
-    div_32.__keydown = (e2) => e2.key === "Enter" && toggleExpandChar(get(i3));
     var div_33 = child(div_32);
     var span_3 = child(div_33);
     var text_4 = child(span_3, true);
@@ -27859,7 +28137,6 @@ function WizardFields($$anchor, $$props) {
         reset(div_39);
         var div_40 = sibling(div_39, 2);
         div_40.__click = (e2) => handleScoreClick(e2, get(i3), "competence");
-        div_40.__keydown = (e2) => e2.key === "Enter" && handleScoreClick(e2, get(i3), "competence");
         var div_41 = child(div_40);
         reset(div_40);
         reset(div_38);
@@ -27871,7 +28148,6 @@ function WizardFields($$anchor, $$props) {
         reset(div_43);
         var div_44 = sibling(div_43, 2);
         div_44.__click = (e2) => handleScoreClick(e2, get(i3), "proactivity");
-        div_44.__keydown = (e2) => e2.key === "Enter" && handleScoreClick(e2, get(i3), "proactivity");
         var div_45 = child(div_44);
         reset(div_44);
         reset(div_42);
@@ -27883,7 +28159,6 @@ function WizardFields($$anchor, $$props) {
         reset(div_47);
         var div_48 = sibling(div_47, 2);
         div_48.__click = (e2) => handleScoreClick(e2, get(i3), "likability");
-        div_48.__keydown = (e2) => e2.key === "Enter" && handleScoreClick(e2, get(i3), "likability");
         var div_49 = child(div_48);
         reset(div_48);
         reset(div_46);
@@ -27939,7 +28214,6 @@ function WizardFields($$anchor, $$props) {
     var div_51 = root_5();
     var div_52 = child(div_51);
     div_52.__click = () => toggleExpandStory(get(i3));
-    div_52.__keydown = (e2) => e2.key === "Enter" && toggleExpandStory(get(i3));
     var div_53 = child(div_52);
     var span_8 = child(div_53);
     var text_9 = child(span_8, true);
@@ -27988,7 +28262,6 @@ function WizardFields($$anchor, $$props) {
         reset(div_58);
         var div_59 = sibling(div_58, 2);
         div_59.__click = (e2) => handleTensionClick(e2, get(i3));
-        div_59.__keydown = (e2) => e2.key === "Enter" && handleTensionClick(e2, get(i3));
         var div_60 = child(div_59);
         reset(div_59);
         reset(div_57);
@@ -28074,7 +28347,7 @@ function WizardFields($$anchor, $$props) {
   append($$anchor, div);
   pop();
 }
-delegate(["click", "input", "change", "keydown"]);
+delegate(["click", "input", "change"]);
 
 // SynthesizerView.svelte
 var import_obsidian5 = require("obsidian");
@@ -28427,37 +28700,24 @@ var IDEAL_ARCS = {
 };
 
 // CriticDisplay.svelte
-var root_1 = from_html(`<div class="score-divider-horizontal svelte-1wfho06"></div>`);
-var root_23 = from_html(`<div class="tooltip bottom svelte-1wfho06"> </div>`);
-var root_33 = from_html(`<div class="sub-divider svelte-1wfho06"></div>`);
-var root_43 = from_html(`<div class="tooltip bottom svelte-1wfho06"> </div>`);
-var root_53 = from_html(`<div class="sub-divider svelte-1wfho06"></div>`);
-var root_62 = from_html(`<div class="tooltip bottom svelte-1wfho06"> </div>`);
-var root_72 = from_html(`<div class="warning-box warning-stripe svelte-1wfho06"><span class="warning-icon">\u26A0</span> <span class="warning-text"> </span></div>`);
-var root_10 = from_html(`<div class="ascii-bar"> </div>`);
-var root_11 = from_html(`<div class="slider-track svelte-1wfho06"><div class="slider-fill svelte-1wfho06"></div></div>`);
-var root_9 = from_html(`<div class="slider-item svelte-1wfho06"><div class="slider-text-row svelte-1wfho06"><span class="s-label"> </span> <span class="s-val"> </span></div> <!></div>`);
-var root_8 = from_html(`<div class="slider-group svelte-1wfho06"><div class="slider-label svelte-1wfho06">PROTAGONIST SCALE</div> <!></div>`);
-var root_13 = from_html(`<span class="mod-score svelte-1wfho06"> </span>`);
-var root_14 = from_html(`<div class="diverging-bar-container svelte-1wfho06"><div class="center-line svelte-1wfho06"></div> <div></div></div> <span> </span>`, 1);
-var root_12 = from_html(`<div class="module-item svelte-1wfho06"><span class="mod-label svelte-1wfho06"> </span> <!></div>`);
-var root_18 = from_html(`<div class="metric-bar-container diverging-bar-container svelte-1wfho06"><div class="center-line svelte-1wfho06"></div> <div></div></div>`);
-var root_17 = from_html(`<div class="metric-card svelte-1wfho06"><div class="metric-top svelte-1wfho06"><span class="metric-name svelte-1wfho06"> </span> <span> </span></div> <!> <div class="metric-diagnosis svelte-1wfho06"><span class="diag-label svelte-1wfho06">DIAGNOSIS:</span> <span class="diag-text svelte-1wfho06"> </span></div></div>`);
-var root_16 = from_html(`<div class="detail-category svelte-1wfho06"><div class="cat-header svelte-1wfho06"><span class="cat-name"> </span> <span> </span></div> <div class="cat-items svelte-1wfho06"></div></div>`);
-var root_15 = from_html(`<div class="section-header svelte-1wfho06">FORENSIC REPORT</div> <div class="details-grid bevel-down svelte-1wfho06"></div>`, 1);
-var root_20 = from_html(`<option> </option>`);
-var root_19 = from_html(`<select class="retro-select svelte-1wfho06"></select>`);
-var root_21 = from_html(`<pre style="font-size:10px; line-height:10px; color:var(--cj-text); overflow-x:auto;"> </pre>`);
-var root_232 = from_html(`<div class="bar-col tooltip-container svelte-1wfho06"><div></div> <div class="tooltip chart-tooltip svelte-1wfho06"><strong> </strong><br/> <br/> <span style="font-size:0.8em; opacity:0.8"> </span></div></div>`);
-var root_222 = from_html(`<div class="chart-area zero-center svelte-1wfho06"><div class="chart-center-line svelte-1wfho06"></div> <svg class="chart-overlay svelte-1wfho06" preserveAspectRatio="none" viewBox="0 0 100 100"><path fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6"></path></svg> <!></div>`);
-var root_25 = from_html(`<div><div class="node-header svelte-1wfho06"><span class="node-type svelte-1wfho06"> </span> <span class="node-title"> </span> <span> </span></div> <div class="node-desc svelte-1wfho06"> </div> <div class="node-chars svelte-1wfho06"> </div></div>`);
-var root_27 = from_html(`<div class="structure-item"><div class="square-bullet">\u25A0</div> <div class="beat-text"> </div></div>`);
-var root_29 = from_html(`<div class="raw-box svelte-1wfho06"><pre> </pre></div>`);
-var root_28 = from_html(`<button class="toggle-btn svelte-1wfho06"> </button> <!>`, 1);
-var root3 = from_html(`<div class="critic-display svelte-1wfho06"><div><div class="main-score-row svelte-1wfho06"><div class="score-block main svelte-1wfho06"><div class="score-title svelte-1wfho06">OVERALL SCORE</div> <div> </div> <div> </div></div></div> <!> <div class="sub-score-row svelte-1wfho06"><div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">COMMERCIAL</div> <div class="sub-val svelte-1wfho06"> </div> <!></div> <!> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">LITERARY</div> <div class="sub-val svelte-1wfho06"> </div> <!></div> <!> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">COHESION</div> <div class="sub-val svelte-1wfho06"> </div> <!></div></div> <!> <div class="log-section svelte-1wfho06" style="margin-top: 10px;"><span class="log-label svelte-1wfho06">LOGLINE:</span> <span class="log-text-blue"> </span></div></div> <div class="section-header svelte-1wfho06">SANDERSON ENGINE METRICS</div> <div class="modules-grid bevel-down svelte-1wfho06"><!> <div class="divider-line svelte-1wfho06"></div> <!></div> <!> <div class="section-header svelte-1wfho06"><span>NARRATIVE TENSION ARC</span> <!></div> <div class="chart-box bevel-down svelte-1wfho06"><!></div> <div class="section-header svelte-1wfho06">UNIVERSAL OUTLINE</div> <div class="structure-box bevel-down svelte-1wfho06"><!></div> <!> <button class="action-btn secondary"> </button></div>`);
+var root_1 = from_html(`<div class="warning-box warning-stripe svelte-1wfho06" style="margin-top: 15px;"><span class="warning-icon">\u26A0</span> <span class="warning-text"> </span></div>`);
+var root_33 = from_html(`<div class="slider-item svelte-1wfho06"><div class="slider-text-row svelte-1wfho06"><span class="s-label"> </span> <span class="s-val"> </span></div> <div class="slider-track svelte-1wfho06"><div class="slider-fill svelte-1wfho06"></div></div></div>`);
+var root_23 = from_html(`<div class="slider-group svelte-1wfho06"><div class="slider-label svelte-1wfho06">PROTAGONIST SCALE</div> <!></div>`);
+var root_43 = from_html(`<div class="module-item svelte-1wfho06"><span class="mod-label svelte-1wfho06"> </span> <div class="diverging-bar-container svelte-1wfho06"><div class="center-line svelte-1wfho06"></div> <div></div></div> <span> </span></div>`);
+var root_72 = from_html(`<div class="metric-card svelte-1wfho06"><div class="metric-top svelte-1wfho06"><span class="metric-name svelte-1wfho06"> </span> <span> </span></div> <div class="metric-bar-container diverging-bar-container svelte-1wfho06"><div class="center-line svelte-1wfho06"></div> <div></div></div> <div class="metric-diagnosis svelte-1wfho06"><span class="diag-label svelte-1wfho06">DIAGNOSIS:</span> <span class="diag-text svelte-1wfho06"> </span></div></div>`);
+var root_62 = from_html(`<div class="detail-category svelte-1wfho06"><div class="cat-header svelte-1wfho06"><span class="cat-name"> </span> <span> </span></div> <div class="cat-items svelte-1wfho06"></div></div>`);
+var root_53 = from_html(`<div class="section-header svelte-1wfho06">FORENSIC REPORT</div> <div class="details-grid bevel-down svelte-1wfho06"></div>`, 1);
+var root_8 = from_html(`<div class="section-header svelte-1wfho06">TRIBUNAL CONSENSUS</div> <div class="tribunal-grid"><div class="agent-card"><div class="agent-header agent-market">MARKET ANALYST</div> <div> </div> <div class="agent-list"> </div> <div class="agent-list" style="margin-top:4px;"><i> </i></div></div> <div class="agent-card"><div class="agent-header agent-logic">LOGIC ENGINE</div> <div> </div> <div class="agent-list" style="color:#800000;"> </div> <div class="agent-list" style="margin-top:4px;"><i> </i></div></div> <div class="agent-card"><div class="agent-header agent-lit">LITERARY CRITIC</div> <div> </div> <div class="agent-list"> </div> <div class="agent-list" style="margin-top:4px;"><i> </i></div></div></div>`, 1);
+var root_9 = from_html(`<option> </option>`);
+var root_10 = from_html(`<div class="bar-col tooltip-container svelte-1wfho06"><div></div> <div class="tooltip chart-tooltip svelte-1wfho06"><strong> </strong><br/> <br/> <span style="font-size:0.8em; opacity:0.8"> </span></div></div>`);
+var root_12 = from_html(`<div><div class="node-header svelte-1wfho06"><span class="node-type svelte-1wfho06"> </span> <span class="node-title"> </span> <span> </span></div> <div class="node-desc svelte-1wfho06"> </div> <div class="node-chars svelte-1wfho06"> </div></div>`);
+var root_14 = from_html(`<div class="structure-item"><div class="square-bullet">\u25A0</div> <div class="beat-text"> </div></div>`);
+var root_16 = from_html(`<div class="raw-box svelte-1wfho06"><pre> </pre></div>`);
+var root_15 = from_html(`<button class="toggle-btn svelte-1wfho06"> </button> <!>`, 1);
+var root3 = from_html(`<div class="critic-display svelte-1wfho06"><div><div class="main-score-row svelte-1wfho06"><div class="score-block main svelte-1wfho06"><div class="score-title svelte-1wfho06">OVERALL SCORE</div> <div> </div> <div> </div></div></div> <div class="score-divider-horizontal svelte-1wfho06"></div> <div class="sub-score-row svelte-1wfho06"><div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">COMMERCIAL</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">LITERARY</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">COHESION</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div></div> <!> <div class="log-section svelte-1wfho06" style="margin-top: 10px;"><span class="log-label svelte-1wfho06">LOGLINE:</span> <span class="log-text-blue"> </span></div></div> <div class="section-header svelte-1wfho06">SANDERSON ENGINE METRICS</div> <div class="modules-grid bevel-down svelte-1wfho06"><!> <div class="divider-line svelte-1wfho06"></div> <!></div> <!> <!> <div class="section-header svelte-1wfho06"><span>NARRATIVE TENSION ARC</span> <select class="retro-select svelte-1wfho06"></select></div> <div class="chart-box bevel-down svelte-1wfho06"><div class="chart-area zero-center svelte-1wfho06"><div class="chart-center-line svelte-1wfho06"></div> <svg class="chart-overlay svelte-1wfho06" preserveAspectRatio="none" viewBox="0 0 100 100"><path fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6"></path></svg> <!></div> <div class="chart-axis svelte-1wfho06"><span>START</span> <div style="display:flex; align-items:center; gap:5px;"><span class="legend-box svelte-1wfho06" style="border:1px dashed #000080;"></span> <span style="font-size:9px; color:#000080;"> </span></div> <span>END</span></div></div> <div class="section-header svelte-1wfho06">UNIVERSAL OUTLINE</div> <div class="structure-box bevel-down svelte-1wfho06"><!></div> <!> <button class="action-btn secondary">RUN DEEP META-ANALYSIS</button></div>`);
 var $$css3 = {
   hash: "svelte-1wfho06",
-  code: `.critic-display.svelte-1wfho06 {display:flex;flex-direction:column;gap:15px;font-family:'Courier New', monospace;color:#000;font-weight:bold;}.bevel-down.svelte-1wfho06 {border:2px solid #808080;border-bottom-color:#fff;border-right-color:#fff;background:#c0c0c0;padding:10px;}.no-border.svelte-1wfho06 {border:none;background:transparent;padding:0;}
+  code: `.critic-display.svelte-1wfho06 {display:flex;flex-direction:column;gap:15px;font-family:'Courier New', monospace;color:#000;font-weight:bold;}.bevel-down.svelte-1wfho06 {border:2px solid #808080;border-bottom-color:#fff;border-right-color:#fff;background:#c0c0c0;padding:10px;}
     
     /* SCORES */.score-container.svelte-1wfho06 {background:#d4d4d4;padding-bottom:25px;position:relative;z-index:100; /* Ensure tooltips are above following sections */}
     
@@ -28484,36 +28744,27 @@ var $$css3 = {
 function CriticDisplay($$anchor, $$props) {
   push($$props, true);
   append_styles($$anchor, $$css3);
-  let isMsDos = prop($$props, "isMsDos", 3, false);
   let showRaw = state(false);
   function getBarColor(val) {
-    if (isMsDos())
-      return $$props.settings.msDosColor || "#00FF00";
-    if (val >= 75)
+    if (val >= 30)
       return $$props.settings.gradingColors.masterpiece;
-    if (val >= 50)
+    if (val >= 10)
       return $$props.settings.gradingColors.excellent;
     if (val > 0)
       return $$props.settings.gradingColors.good;
     if (val === 0)
       return $$props.settings.gradingColors.average;
-    if (val >= -25)
+    if (val >= -10)
       return $$props.settings.gradingColors.poor;
     return $$props.settings.gradingColors.critical;
   }
   function isMasterpieceEffect(val) {
-    if (isMsDos())
-      return false;
     return getBarColor(val) === $$props.settings.gradingColors.masterpiece;
   }
   function isCritical(val) {
-    if (isMsDos())
-      return false;
-    return val <= -50;
+    return val <= -20;
   }
   function getContainerClass(val) {
-    if (isMsDos())
-      return "score-container no-border";
     if (isMasterpieceEffect(val))
       return "score-container bevel-down masterpiece-border pattern-mesh-dark";
     if (isCritical(val))
@@ -28521,7 +28772,7 @@ function CriticDisplay($$anchor, $$props) {
     return "score-container bevel-down";
   }
   function getBarMetrics(val) {
-    const cap = 100;
+    const cap = 50;
     const clamped = Math.max(-cap, Math.min(cap, val));
     const width = Math.abs(clamped) / cap * 50;
     const isNegative = val < 0;
@@ -28542,19 +28793,19 @@ function CriticDisplay($$anchor, $$props) {
     return val.toFixed(0);
   }
   function getVerdict(val) {
-    if (val >= 90)
-      return "GOD TIER";
-    if (val >= 75)
-      return "MASTERPIECE";
     if (val >= 50)
+      return "GOD TIER";
+    if (val >= 30)
+      return "MASTERPIECE";
+    if (val >= 10)
       return "EXCELLENT";
     if (val > 0)
       return "GOOD";
     if (val === 0)
       return "COMPETENT";
-    if (val >= -25)
+    if (val >= -10)
       return "FLAWED";
-    if (val >= -50)
+    if (val >= -30)
       return "BROKEN";
     return "CRITICAL FAILURE";
   }
@@ -28627,29 +28878,6 @@ function CriticDisplay($$anchor, $$props) {
     });
     return path;
   });
-  function generateAsciiChart(data) {
-    const rows = 10;
-    const cols = 40;
-    let grid = Array(rows).fill(null).map(() => Array(cols).fill(" "));
-    const mid = Math.floor(rows / 2);
-    for (let c2 = 0; c2 < cols; c2++)
-      grid[mid][c2] = "-";
-    data.forEach((beat, i3) => {
-      const x = Math.floor(i3 / data.length * cols);
-      const norm = Math.max(-100, Math.min(100, beat.tension));
-      const y = Math.floor(mid - norm / 100 * (rows / 2));
-      const safeY = Math.max(0, Math.min(rows - 1, y));
-      grid[safeY][x] = "*";
-      if (safeY < mid) {
-        for (let k2 = safeY + 1; k2 < mid; k2++)
-          grid[k2][x] = "|";
-      } else {
-        for (let k2 = mid + 1; k2 < safeY; k2++)
-          grid[k2][x] = "|";
-      }
-    });
-    return grid.map((r2) => r2.join("")).join("\n");
-  }
   var div = root3();
   var div_1 = child(div);
   var div_2 = child(div_1);
@@ -28663,131 +28891,65 @@ function CriticDisplay($$anchor, $$props) {
   reset(div_6);
   reset(div_3);
   reset(div_2);
-  var node_1 = sibling(div_2, 2);
-  {
-    var consequent = ($$anchor2) => {
-      var div_7 = root_1();
-      append($$anchor2, div_7);
-    };
-    if_block(node_1, ($$render) => {
-      if (!isMsDos())
-        $$render(consequent);
-    });
-  }
-  var div_8 = sibling(node_1, 2);
+  var div_7 = sibling(div_2, 4);
+  var div_8 = child(div_7);
   var div_9 = child(div_8);
-  var div_10 = sibling(child(div_9), 2);
+  var div_10 = sibling(div_9, 2);
   var text_2 = child(div_10, true);
   reset(div_10);
-  var node_2 = sibling(div_10, 2);
-  {
-    var consequent_1 = ($$anchor2) => {
-      var div_11 = root_23();
-      var text_3 = child(div_11, true);
-      reset(div_11);
-      template_effect(() => set_text(text_3, $$props.data.commercial_reason));
-      append($$anchor2, div_11);
-    };
-    if_block(node_2, ($$render) => {
-      if (!isMsDos())
-        $$render(consequent_1);
-    });
-  }
-  reset(div_9);
-  var node_3 = sibling(div_9, 2);
-  {
-    var consequent_2 = ($$anchor2) => {
-      var div_12 = root_33();
-      append($$anchor2, div_12);
-    };
-    if_block(node_3, ($$render) => {
-      if (!isMsDos())
-        $$render(consequent_2);
-    });
-  }
-  var div_13 = sibling(node_3, 2);
-  var div_14 = sibling(child(div_13), 2);
+  var div_11 = sibling(div_10, 2);
+  var text_3 = child(div_11, true);
+  reset(div_11);
+  reset(div_8);
+  var div_12 = sibling(div_8, 4);
+  var div_13 = child(div_12);
+  var div_14 = sibling(div_13, 2);
   var text_4 = child(div_14, true);
   reset(div_14);
-  var node_4 = sibling(div_14, 2);
-  {
-    var consequent_3 = ($$anchor2) => {
-      var div_15 = root_43();
-      var text_5 = child(div_15, true);
-      reset(div_15);
-      template_effect(() => set_text(text_5, $$props.data.niche_reason));
-      append($$anchor2, div_15);
-    };
-    if_block(node_4, ($$render) => {
-      if (!isMsDos())
-        $$render(consequent_3);
-    });
-  }
-  reset(div_13);
-  var node_5 = sibling(div_13, 2);
-  {
-    var consequent_4 = ($$anchor2) => {
-      var div_16 = root_53();
-      append($$anchor2, div_16);
-    };
-    if_block(node_5, ($$render) => {
-      if (!isMsDos())
-        $$render(consequent_4);
-    });
-  }
-  var div_17 = sibling(node_5, 2);
-  var div_18 = sibling(child(div_17), 2);
+  var div_15 = sibling(div_14, 2);
+  var text_5 = child(div_15, true);
+  reset(div_15);
+  reset(div_12);
+  var div_16 = sibling(div_12, 4);
+  var div_17 = child(div_16);
+  var div_18 = sibling(div_17, 2);
   var text_6 = child(div_18, true);
   reset(div_18);
-  var node_6 = sibling(div_18, 2);
+  var div_19 = sibling(div_18, 2);
+  var text_7 = child(div_19, true);
+  reset(div_19);
+  reset(div_16);
+  reset(div_7);
+  var node_1 = sibling(div_7, 2);
   {
-    var consequent_5 = ($$anchor2) => {
-      var div_19 = root_62();
-      var text_7 = child(div_19, true);
-      reset(div_19);
-      template_effect(() => set_text(text_7, $$props.data.cohesion_reason));
-      append($$anchor2, div_19);
-    };
-    if_block(node_6, ($$render) => {
-      if (!isMsDos())
-        $$render(consequent_5);
-    });
-  }
-  reset(div_17);
-  reset(div_8);
-  var node_7 = sibling(div_8, 2);
-  {
-    var consequent_6 = ($$anchor2) => {
-      var div_20 = root_72();
+    var consequent = ($$anchor2) => {
+      var div_20 = root_1();
       var span = sibling(child(div_20), 2);
       var text_8 = child(span, true);
       reset(span);
       reset(div_20);
-      template_effect(() => {
-        set_style(div_20, `margin-top: 15px; ${isMsDos() ? "background:transparent; color:red; border:1px solid red;" : ""}`);
-        set_text(text_8, get(warning));
-      });
+      template_effect(() => set_text(text_8, get(warning)));
       append($$anchor2, div_20);
     };
-    if_block(node_7, ($$render) => {
+    if_block(node_1, ($$render) => {
       if (get(warning) && get(warning).length > 5 && get(warning) !== "None")
-        $$render(consequent_6);
+        $$render(consequent);
     });
   }
-  var div_21 = sibling(node_7, 2);
+  var div_21 = sibling(node_1, 2);
   var span_1 = sibling(child(div_21), 2);
   var text_9 = child(span_1);
   reset(span_1);
   reset(div_21);
   reset(div_1);
   var div_22 = sibling(div_1, 4);
-  var node_8 = child(div_22);
+  var node_2 = child(div_22);
   {
-    var consequent_8 = ($$anchor2) => {
-      var div_23 = root_8();
-      var node_9 = sibling(child(div_23), 2);
+    var consequent_1 = ($$anchor2) => {
+      var div_23 = root_23();
+      var node_3 = sibling(child(div_23), 2);
       each(
-        node_9,
+        node_3,
         17,
         () => {
           var _a3, _b3, _c2;
@@ -28802,7 +28964,7 @@ function CriticDisplay($$anchor, $$props) {
         },
         index,
         ($$anchor3, s3) => {
-          var div_24 = root_9();
+          var div_24 = root_33();
           var div_25 = child(div_24);
           var span_2 = child(div_25);
           var text_10 = child(span_2, true);
@@ -28811,38 +28973,20 @@ function CriticDisplay($$anchor, $$props) {
           var text_11 = child(span_3);
           reset(span_3);
           reset(div_25);
-          var node_10 = sibling(div_25, 2);
-          {
-            var consequent_7 = ($$anchor4) => {
-              var div_26 = root_10();
-              var text_12 = child(div_26);
-              reset(div_26);
-              template_effect(($0) => set_text(text_12, `[${$0 != null ? $0 : ""}]`), [
-                () => "|".repeat(Math.round(get(s3).val / 5)).padEnd(20, ".")
-              ]);
-              append($$anchor4, div_26);
-            };
-            var alternate = ($$anchor4) => {
-              var div_27 = root_11();
-              var div_28 = child(div_27);
-              reset(div_27);
-              template_effect(($0) => set_style(div_28, `width: ${$0 != null ? $0 : ""}%;`), [() => getSliderMetrics(get(s3).val)]);
-              append($$anchor4, div_27);
-            };
-            if_block(node_10, ($$render) => {
-              if (isMsDos())
-                $$render(consequent_7);
-              else
-                $$render(alternate, false);
-            });
-          }
+          var div_26 = sibling(div_25, 2);
+          var div_27 = child(div_26);
+          reset(div_26);
           reset(div_24);
           template_effect(
-            ($0) => {
+            ($0, $1) => {
               set_text(text_10, get(s3).label);
               set_text(text_11, `${$0 != null ? $0 : ""}%`);
+              set_style(div_27, `width: ${$1 != null ? $1 : ""}%;`);
             },
-            [() => formatUnsignedScore(get(s3).val)]
+            [
+              () => formatUnsignedScore(get(s3).val),
+              () => getSliderMetrics(get(s3).val)
+            ]
           );
           append($$anchor3, div_24);
         }
@@ -28850,14 +28994,14 @@ function CriticDisplay($$anchor, $$props) {
       reset(div_23);
       append($$anchor2, div_23);
     };
-    if_block(node_8, ($$render) => {
+    if_block(node_2, ($$render) => {
       if (get(sanderson).competence !== void 0)
-        $$render(consequent_8);
+        $$render(consequent_1);
     });
   }
-  var node_11 = sibling(node_8, 4);
+  var node_4 = sibling(node_2, 4);
   each(
-    node_11,
+    node_4,
     17,
     () => [
       {
@@ -28870,151 +29014,115 @@ function CriticDisplay($$anchor, $$props) {
     index,
     ($$anchor2, m3) => {
       const bar = user_derived(() => getBarMetrics(get(m3).val));
-      var div_29 = root_12();
-      var span_4 = child(div_29);
-      var text_13 = child(span_4, true);
+      var div_28 = root_43();
+      var span_4 = child(div_28);
+      var text_12 = child(span_4, true);
       reset(span_4);
-      var node_12 = sibling(span_4, 2);
-      {
-        var consequent_9 = ($$anchor3) => {
-          var span_5 = root_13();
-          var text_14 = child(span_5, true);
-          reset(span_5);
-          template_effect(($0) => set_text(text_14, $0), [() => formatScoreDisplay(get(m3).val)]);
-          append($$anchor3, span_5);
-        };
-        var alternate_1 = ($$anchor3) => {
-          var fragment = root_14();
-          var div_30 = first_child(fragment);
-          var div_31 = sibling(child(div_30), 2);
-          reset(div_30);
-          var span_6 = sibling(div_30, 2);
-          var text_15 = child(span_6, true);
-          reset(span_6);
-          template_effect(
-            ($0, $1, $2, $3, $4) => {
-              var _a3;
-              set_class(div_31, 1, `fill ${$0 != null ? $0 : ""}`, "svelte-1wfho06");
-              set_style(div_31, `
-                                width: ${(_a3 = get(bar).width) != null ? _a3 : ""}%;
-                                left: ${get(bar).isNegative ? 50 - get(bar).width + "%" : "50%"};
-                                background: ${$1 != null ? $1 : ""}
-                             `);
-              set_class(span_6, 1, `mod-score ${$2 != null ? $2 : ""}`, "svelte-1wfho06");
-              set_style(span_6, `color: ${$3 != null ? $3 : ""}`);
-              set_text(text_15, $4);
-            },
-            [
-              () => isMasterpieceEffect(get(m3).val) ? "glow-bar" : "",
-              () => getBarColor(get(m3).val),
-              () => isMasterpieceEffect(get(m3).val) ? "masterpiece-text" : "",
-              () => isMasterpieceEffect(get(m3).val) ? "" : getBarColor(get(m3).val),
-              () => formatScoreDisplay(get(m3).val)
-            ]
-          );
-          append($$anchor3, fragment);
-        };
-        if_block(node_12, ($$render) => {
-          if (isMsDos())
-            $$render(consequent_9);
-          else
-            $$render(alternate_1, false);
-        });
-      }
+      var div_29 = sibling(span_4, 2);
+      var div_30 = sibling(child(div_29), 2);
       reset(div_29);
-      template_effect(() => set_text(text_13, get(m3).label));
-      append($$anchor2, div_29);
+      var span_5 = sibling(div_29, 2);
+      var text_13 = child(span_5, true);
+      reset(span_5);
+      reset(div_28);
+      template_effect(
+        ($0, $1, $2, $3, $4) => {
+          var _a3;
+          set_text(text_12, get(m3).label);
+          set_class(div_30, 1, `fill ${$0 != null ? $0 : ""}`, "svelte-1wfho06");
+          set_style(div_30, `
+                            width: ${(_a3 = get(bar).width) != null ? _a3 : ""}%; 
+                            left: ${get(bar).isNegative ? 50 - get(bar).width + "%" : "50%"};
+                            background: ${$1 != null ? $1 : ""}
+                         `);
+          set_class(span_5, 1, `mod-score ${$2 != null ? $2 : ""}`, "svelte-1wfho06");
+          set_style(span_5, `color: ${$3 != null ? $3 : ""}`);
+          set_text(text_13, $4);
+        },
+        [
+          () => isMasterpieceEffect(get(m3).val) ? "glow-bar" : "",
+          () => getBarColor(get(m3).val),
+          () => isMasterpieceEffect(get(m3).val) ? "masterpiece-text" : "",
+          () => isMasterpieceEffect(get(m3).val) ? "" : getBarColor(get(m3).val),
+          () => formatScoreDisplay(get(m3).val)
+        ]
+      );
+      append($$anchor2, div_28);
     }
   );
   reset(div_22);
-  var node_13 = sibling(div_22, 2);
+  var node_5 = sibling(div_22, 2);
   {
-    var consequent_11 = ($$anchor2) => {
-      var fragment_1 = root_15();
-      var div_32 = sibling(first_child(fragment_1), 2);
-      each(div_32, 21, () => Object.entries(get(details)), index, ($$anchor3, $$item) => {
+    var consequent_2 = ($$anchor2) => {
+      var fragment = root_53();
+      var div_31 = sibling(first_child(fragment), 2);
+      each(div_31, 21, () => Object.entries(get(details)), index, ($$anchor3, $$item) => {
         var $$array = user_derived(() => to_array(get($$item), 2));
         let key2 = () => get($$array)[0];
         let cat = () => get($$array)[1];
-        var div_33 = root_16();
-        var div_34 = child(div_33);
-        var span_7 = child(div_34);
-        var text_16 = child(span_7, true);
+        var div_32 = root_62();
+        var div_33 = child(div_32);
+        var span_6 = child(div_33);
+        var text_14 = child(span_6, true);
+        reset(span_6);
+        var span_7 = sibling(span_6, 2);
+        var text_15 = child(span_7);
         reset(span_7);
-        var span_8 = sibling(span_7, 2);
-        var text_17 = child(span_8);
-        reset(span_8);
-        reset(div_34);
-        var div_35 = sibling(div_34, 2);
-        each(div_35, 21, () => cat().items, index, ($$anchor4, item) => {
+        reset(div_33);
+        var div_34 = sibling(div_33, 2);
+        each(div_34, 21, () => cat().items, index, ($$anchor4, item) => {
           const bar = user_derived(() => getBarMetrics(get(item).score));
-          var div_36 = root_17();
-          var div_37 = child(div_36);
-          var span_9 = child(div_37);
-          var text_18 = child(span_9, true);
+          var div_35 = root_72();
+          var div_36 = child(div_35);
+          var span_8 = child(div_36);
+          var text_16 = child(span_8, true);
+          reset(span_8);
+          var span_9 = sibling(span_8, 2);
+          var text_17 = child(span_9, true);
           reset(span_9);
-          var span_10 = sibling(span_9, 2);
-          var text_19 = child(span_10, true);
-          reset(span_10);
+          reset(div_36);
+          var div_37 = sibling(div_36, 2);
+          var div_38 = sibling(child(div_37), 2);
           reset(div_37);
-          var node_14 = sibling(div_37, 2);
-          {
-            var consequent_10 = ($$anchor5) => {
-              var div_38 = root_18();
-              var div_39 = sibling(child(div_38), 2);
-              reset(div_38);
-              template_effect(
-                ($0, $1) => {
-                  var _a3;
-                  set_class(div_39, 1, `metric-bar ${$0 != null ? $0 : ""}`, "svelte-1wfho06");
-                  set_style(div_39, `
+          var div_39 = sibling(div_37, 2);
+          var span_10 = sibling(child(div_39), 2);
+          var text_18 = child(span_10, true);
+          reset(span_10);
+          reset(div_39);
+          reset(div_35);
+          template_effect(
+            ($0, $1, $2, $3, $4) => {
+              var _a3;
+              set_text(text_16, get(item).name);
+              set_class(span_9, 1, `metric-val ${$0 != null ? $0 : ""}`, "svelte-1wfho06");
+              set_style(span_9, `color: ${$1 != null ? $1 : ""}`);
+              set_text(text_17, $2);
+              set_class(div_38, 1, `metric-bar ${$3 != null ? $3 : ""}`, "svelte-1wfho06");
+              set_style(div_38, `
                                         width: ${(_a3 = get(bar).width) != null ? _a3 : ""}%; 
                                         left: ${get(bar).isNegative ? 50 - get(bar).width + "%" : "50%"};
-                                        background: ${$1 != null ? $1 : ""}
+                                        background: ${$4 != null ? $4 : ""}
                                      `);
-                },
-                [
-                  () => isMasterpieceEffect(get(item).score) ? "glow-bar" : "",
-                  () => getBarColor(get(item).score)
-                ]
-              );
-              append($$anchor5, div_38);
-            };
-            if_block(node_14, ($$render) => {
-              if (!isMsDos())
-                $$render(consequent_10);
-            });
-          }
-          var div_40 = sibling(node_14, 2);
-          var span_11 = sibling(child(div_40), 2);
-          var text_20 = child(span_11, true);
-          reset(span_11);
-          reset(div_40);
-          reset(div_36);
-          template_effect(
-            ($0, $1, $2) => {
-              set_text(text_18, get(item).name);
-              set_class(span_10, 1, `metric-val ${$0 != null ? $0 : ""}`, "svelte-1wfho06");
-              set_style(span_10, `color: ${$1 != null ? $1 : ""}`);
-              set_text(text_19, $2);
-              set_text(text_20, get(item).reason);
+              set_text(text_18, get(item).reason);
             },
             [
               () => isMasterpieceEffect(get(item).score) ? "masterpiece-text" : "",
               () => isMasterpieceEffect(get(item).score) ? "" : getBarColor(get(item).score),
-              () => formatScoreDisplay(get(item).score)
+              () => formatScoreDisplay(get(item).score),
+              () => isMasterpieceEffect(get(item).score) ? "glow-bar" : "",
+              () => getBarColor(get(item).score)
             ]
           );
-          append($$anchor4, div_36);
+          append($$anchor4, div_35);
         });
-        reset(div_35);
-        reset(div_33);
+        reset(div_34);
+        reset(div_32);
         template_effect(
           ($0, $1, $2, $3) => {
-            set_text(text_16, $0);
-            set_class(span_8, 1, `cat-score ${$1 != null ? $1 : ""}`);
-            set_style(span_8, `color: ${$2 != null ? $2 : ""}`);
-            set_text(text_17, `AVG: ${$3 != null ? $3 : ""}`);
+            set_text(text_14, $0);
+            set_class(span_7, 1, `cat-score ${$1 != null ? $1 : ""}`);
+            set_style(span_7, `color: ${$2 != null ? $2 : ""}`);
+            set_text(text_15, `AVG: ${$3 != null ? $3 : ""}`);
           },
           [
             () => key2().toUpperCase(),
@@ -29023,157 +29131,208 @@ function CriticDisplay($$anchor, $$props) {
             () => formatScoreDisplay(cat().score)
           ]
         );
-        append($$anchor3, div_33);
+        append($$anchor3, div_32);
       });
-      reset(div_32);
+      reset(div_31);
+      append($$anchor2, fragment);
+    };
+    if_block(node_5, ($$render) => {
+      if (get(hasDetails))
+        $$render(consequent_2);
+    });
+  }
+  var node_6 = sibling(node_5, 2);
+  {
+    var consequent_3 = ($$anchor2) => {
+      var fragment_1 = root_8();
+      var div_40 = sibling(first_child(fragment_1), 2);
+      var div_41 = child(div_40);
+      var div_42 = sibling(child(div_41), 2);
+      var text_19 = child(div_42);
+      reset(div_42);
+      var div_43 = sibling(div_42, 2);
+      var text_20 = child(div_43, true);
+      reset(div_43);
+      var div_44 = sibling(div_43, 2);
+      var i_1 = child(div_44);
+      var text_21 = child(i_1);
+      reset(i_1);
+      reset(div_44);
+      reset(div_41);
+      var div_45 = sibling(div_41, 2);
+      var div_46 = sibling(child(div_45), 2);
+      var text_22 = child(div_46);
+      reset(div_46);
+      var div_47 = sibling(div_46, 2);
+      var text_23 = child(div_47, true);
+      reset(div_47);
+      var div_48 = sibling(div_47, 2);
+      var i_2 = child(div_48);
+      var text_24 = child(i_2);
+      reset(i_2);
+      reset(div_48);
+      reset(div_45);
+      var div_49 = sibling(div_45, 2);
+      var div_50 = sibling(child(div_49), 2);
+      var text_25 = child(div_50);
+      reset(div_50);
+      var div_51 = sibling(div_50, 2);
+      var text_26 = child(div_51);
+      reset(div_51);
+      var div_52 = sibling(div_51, 2);
+      var i_3 = child(div_52);
+      var text_27 = child(i_3);
+      reset(i_3);
+      reset(div_52);
+      reset(div_49);
+      reset(div_40);
+      template_effect(
+        ($0, $1, $2, $3, $4, $5, $6) => {
+          var _a3, _b3, _c2;
+          set_class(div_42, 1, `agent-verdict ${$0 != null ? $0 : ""}`);
+          set_text(text_19, `SCORE: ${$1 != null ? $1 : ""}`);
+          set_text(text_20, $$props.data.tribunal_breakdown.market.log_line || "N/A");
+          set_text(text_21, `"${(_a3 = $$props.data.tribunal_breakdown.market.commercial_reason || "") != null ? _a3 : ""}"`);
+          set_class(div_46, 1, `agent-verdict ${$2 != null ? $2 : ""}`);
+          set_text(text_22, `SCORE: ${$3 != null ? $3 : ""}`);
+          set_text(text_23, $$props.data.tribunal_breakdown.logic.content_warning || "No Logic Holes Detected.");
+          set_text(text_24, `"${(_b3 = $$props.data.tribunal_breakdown.logic.cohesion_reason || "") != null ? _b3 : ""}"`);
+          set_class(div_50, 1, `agent-verdict ${$4 != null ? $4 : ""}`);
+          set_text(text_25, `NOVELTY: ${$5 != null ? $5 : ""}`);
+          set_text(text_26, `Theme: ${$6 != null ? $6 : ""}`);
+          set_text(text_27, `"${(_c2 = $$props.data.tribunal_breakdown.lit.niche_reason || "") != null ? _c2 : ""}"`);
+        },
+        [
+          () => isMasterpieceEffect($$props.data.tribunal_breakdown.market.commercial_score) ? "masterpiece-text" : "",
+          () => formatScoreDisplay($$props.data.tribunal_breakdown.market.commercial_score),
+          () => isMasterpieceEffect($$props.data.tribunal_breakdown.logic.cohesion_score) ? "masterpiece-text" : "",
+          () => formatScoreDisplay($$props.data.tribunal_breakdown.logic.cohesion_score),
+          () => isMasterpieceEffect($$props.data.tribunal_breakdown.lit.novelty_score) ? "masterpiece-text" : "",
+          () => formatScoreDisplay($$props.data.tribunal_breakdown.lit.novelty_score),
+          () => formatScoreDisplay($$props.data.tribunal_breakdown.lit.niche_score)
+        ]
+      );
       append($$anchor2, fragment_1);
     };
-    if_block(node_13, ($$render) => {
-      if (get(hasDetails))
-        $$render(consequent_11);
+    if_block(node_6, ($$render) => {
+      if ($$props.data.tribunal_breakdown)
+        $$render(consequent_3);
     });
   }
-  var div_41 = sibling(node_13, 2);
-  var node_15 = sibling(child(div_41), 2);
-  {
-    var consequent_12 = ($$anchor2) => {
-      var select = root_19();
-      each(select, 21, () => Object.entries(IDEAL_ARCS), index, ($$anchor3, $$item) => {
-        var $$array_1 = user_derived(() => to_array(get($$item), 2));
-        let key2 = () => get($$array_1)[0];
-        let arc = () => get($$array_1)[1];
-        var option = root_20();
-        var text_21 = child(option, true);
-        reset(option);
-        var option_value = {};
-        template_effect(() => {
-          var _a3;
-          set_text(text_21, arc().label);
-          if (option_value !== (option_value = key2())) {
-            option.value = (_a3 = option.__value = key2()) != null ? _a3 : "";
-          }
-        });
-        append($$anchor3, option);
-      });
-      reset(select);
-      bind_select_value(select, () => get(selectedArc), ($$value) => set(selectedArc, $$value));
-      append($$anchor2, select);
-    };
-    if_block(node_15, ($$render) => {
-      if (!isMsDos())
-        $$render(consequent_12);
+  var div_53 = sibling(node_6, 2);
+  var select = sibling(child(div_53), 2);
+  each(select, 21, () => Object.entries(IDEAL_ARCS), index, ($$anchor2, $$item) => {
+    var $$array_1 = user_derived(() => to_array(get($$item), 2));
+    let key2 = () => get($$array_1)[0];
+    let arc = () => get($$array_1)[1];
+    var option = root_9();
+    var text_28 = child(option, true);
+    reset(option);
+    var option_value = {};
+    template_effect(() => {
+      var _a3;
+      set_text(text_28, arc().label);
+      if (option_value !== (option_value = key2())) {
+        option.value = (_a3 = option.__value = key2()) != null ? _a3 : "";
+      }
     });
-  }
-  reset(div_41);
-  var div_42 = sibling(div_41, 2);
-  var node_16 = child(div_42);
+    append($$anchor2, option);
+  });
+  reset(select);
+  reset(div_53);
+  var div_54 = sibling(div_53, 2);
+  var div_55 = child(div_54);
+  var svg = sibling(child(div_55), 2);
+  var path_1 = child(svg);
+  reset(svg);
+  var node_7 = sibling(svg, 2);
+  each(node_7, 17, () => get(chartData), index, ($$anchor2, beat, i3) => {
+    const bar = user_derived(() => getBarMetrics(get(beat).tension));
+    var div_56 = root_10();
+    var div_57 = child(div_56);
+    var div_58 = sibling(div_57, 2);
+    var strong = child(div_58);
+    var text_29 = child(strong);
+    reset(strong);
+    var text_30 = sibling(strong, 2);
+    var span_11 = sibling(text_30, 3);
+    var text_31 = child(span_11);
+    reset(span_11);
+    reset(div_58);
+    reset(div_56);
+    template_effect(
+      ($0, $1, $2, $3) => {
+        var _a3, _b3, _c2;
+        set_style(div_56, `flex-grow: ${(_a3 = get(beat).widthPerc) != null ? _a3 : ""};`);
+        set_class(div_57, 1, `bar-fill ${$0 != null ? $0 : ""}`, "svelte-1wfho06");
+        set_style(div_57, `
+                            height: ${(_b3 = get(bar).width) != null ? _b3 : ""}%; 
+                            background-color: ${$1 != null ? $1 : ""};
+                            position: absolute;
+                            bottom: ${get(bar).isNegative ? "auto" : "50%"};
+                            top: ${get(bar).isNegative ? "50%" : "auto"};
+                            left: 1px; right: 1px;
+                         `);
+        set_text(text_29, `${i3 + 1}. ${(_c2 = get(beat).title) != null ? _c2 : ""}`);
+        set_text(text_30, ` Tension: ${$2 != null ? $2 : ""}`);
+        set_text(text_31, `Duration: ${$3 != null ? $3 : ""}%`);
+      },
+      [
+        () => isMasterpieceEffect(get(beat).tension) ? "glow-bar" : "",
+        () => getBarColor(get(beat).tension),
+        () => formatScoreDisplay(get(beat).tension),
+        () => Math.round(get(beat).widthPerc)
+      ]
+    );
+    append($$anchor2, div_56);
+  });
+  reset(div_55);
+  var div_59 = sibling(div_55, 2);
+  var div_60 = sibling(child(div_59), 2);
+  var span_12 = sibling(child(div_60), 2);
+  var text_32 = child(span_12);
+  reset(span_12);
+  reset(div_60);
+  next(2);
+  reset(div_59);
+  reset(div_54);
+  var div_61 = sibling(div_54, 4);
+  var node_8 = child(div_61);
   {
-    var consequent_13 = ($$anchor2) => {
-      var pre = root_21();
-      var text_22 = child(pre);
-      reset(pre);
-      template_effect(
-        ($0) => set_text(text_22, `${$0 != null ? $0 : ""}
-            `),
-        [() => generateAsciiChart(get(chartData))]
-      );
-      append($$anchor2, pre);
-    };
-    var alternate_2 = ($$anchor2) => {
-      var div_43 = root_222();
-      var svg = sibling(child(div_43), 2);
-      var path_1 = child(svg);
-      reset(svg);
-      var node_17 = sibling(svg, 2);
-      each(node_17, 17, () => get(chartData), index, ($$anchor3, beat, i3) => {
-        const bar = user_derived(() => getBarMetrics(get(beat).tension));
-        var div_44 = root_232();
-        var div_45 = child(div_44);
-        var div_46 = sibling(div_45, 2);
-        var strong = child(div_46);
-        var text_23 = child(strong);
-        reset(strong);
-        var text_24 = sibling(strong, 2);
-        var span_12 = sibling(text_24, 3);
-        var text_25 = child(span_12);
-        reset(span_12);
-        reset(div_46);
-        reset(div_44);
-        template_effect(
-          ($0, $1, $2, $3) => {
-            var _a3, _b3, _c2;
-            set_style(div_44, `flex-grow: ${(_a3 = get(beat).widthPerc) != null ? _a3 : ""};`);
-            set_class(div_45, 1, `bar-fill ${$0 != null ? $0 : ""}`, "svelte-1wfho06");
-            set_style(div_45, `
-                                height: ${(_b3 = get(bar).width) != null ? _b3 : ""}%;
-                                background-color: ${$1 != null ? $1 : ""};
-                                position: absolute;
-                                bottom: ${get(bar).isNegative ? "auto" : "50%"};
-                                top: ${get(bar).isNegative ? "50%" : "auto"};
-                                left: 1px; right: 1px;
-                             `);
-            set_text(text_23, `${i3 + 1}. ${(_c2 = get(beat).title) != null ? _c2 : ""}`);
-            set_text(text_24, ` Tension: ${$2 != null ? $2 : ""}`);
-            set_text(text_25, `Duration: ${$3 != null ? $3 : ""}%`);
-          },
-          [
-            () => isMasterpieceEffect(get(beat).tension) ? "glow-bar" : "",
-            () => getBarColor(get(beat).tension),
-            () => formatScoreDisplay(get(beat).tension),
-            () => Math.round(get(beat).widthPerc)
-          ]
-        );
-        append($$anchor3, div_44);
-      });
-      reset(div_43);
-      template_effect(() => set_attribute2(path_1, "d", get(idealPathD)));
-      append($$anchor2, div_43);
-    };
-    if_block(node_16, ($$render) => {
-      if (isMsDos())
-        $$render(consequent_13);
-      else
-        $$render(alternate_2, false);
-    });
-  }
-  reset(div_42);
-  var div_47 = sibling(div_42, 4);
-  var node_18 = child(div_47);
-  {
-    var consequent_14 = ($$anchor2) => {
+    var consequent_4 = ($$anchor2) => {
       var fragment_2 = comment();
-      var node_19 = first_child(fragment_2);
-      each(node_19, 17, () => get(structure), index, ($$anchor3, node) => {
-        var div_48 = root_25();
-        var div_49 = child(div_48);
-        var span_13 = child(div_49);
-        var text_26 = child(span_13, true);
+      var node_9 = first_child(fragment_2);
+      each(node_9, 17, () => get(structure), index, ($$anchor3, node) => {
+        var div_62 = root_12();
+        var div_63 = child(div_62);
+        var span_13 = child(div_63);
+        var text_33 = child(span_13, true);
         reset(span_13);
         var span_14 = sibling(span_13, 2);
-        var text_27 = child(span_14, true);
+        var text_34 = child(span_14, true);
         reset(span_14);
         var span_15 = sibling(span_14, 2);
-        var text_28 = child(span_15);
+        var text_35 = child(span_15);
         reset(span_15);
-        reset(div_49);
-        var div_50 = sibling(div_49, 2);
-        var text_29 = child(div_50, true);
-        reset(div_50);
-        var div_51 = sibling(div_50, 2);
-        var text_30 = child(div_51);
-        reset(div_51);
-        reset(div_48);
+        reset(div_63);
+        var div_64 = sibling(div_63, 2);
+        var text_36 = child(div_64, true);
+        reset(div_64);
+        var div_65 = sibling(div_64, 2);
+        var text_37 = child(div_65);
+        reset(div_65);
+        reset(div_62);
         template_effect(
           ($0, $1, $2, $3, $4) => {
             var _a3;
-            set_class(div_48, 1, `structure-node ${(_a3 = get(node).type) != null ? _a3 : ""}`, "svelte-1wfho06");
-            set_text(text_26, $0);
-            set_text(text_27, get(node).title);
+            set_class(div_62, 1, `structure-node ${(_a3 = get(node).type) != null ? _a3 : ""}`, "svelte-1wfho06");
+            set_text(text_33, $0);
+            set_text(text_34, get(node).title);
             set_class(span_15, 1, `node-tension ${$1 != null ? $1 : ""}`, "svelte-1wfho06");
             set_style(span_15, `color: ${$2 != null ? $2 : ""}`);
-            set_text(text_28, `\u26A1 ${$3 != null ? $3 : ""}`);
-            set_text(text_29, get(node).description);
-            set_text(text_30, `ACTORS: ${$4 != null ? $4 : ""}`);
+            set_text(text_35, `\u26A1 ${$3 != null ? $3 : ""}`);
+            set_text(text_36, get(node).description);
+            set_text(text_37, `ACTORS: ${$4 != null ? $4 : ""}`);
           },
           [
             () => get(node).type.toUpperCase(),
@@ -29183,76 +29342,74 @@ function CriticDisplay($$anchor, $$props) {
             () => get(node).characters.join(", ")
           ]
         );
-        append($$anchor3, div_48);
+        append($$anchor3, div_62);
       });
       append($$anchor2, fragment_2);
     };
-    var alternate_3 = ($$anchor2) => {
+    var alternate = ($$anchor2) => {
       var fragment_3 = comment();
-      var node_20 = first_child(fragment_3);
-      each(node_20, 17, () => get(structure), index, ($$anchor3, beat) => {
-        var div_52 = root_27();
-        var div_53 = sibling(child(div_52), 2);
-        var text_31 = child(div_53, true);
-        reset(div_53);
-        reset(div_52);
-        template_effect(() => set_text(text_31, get(beat)));
-        append($$anchor3, div_52);
+      var node_10 = first_child(fragment_3);
+      each(node_10, 17, () => get(structure), index, ($$anchor3, beat) => {
+        var div_66 = root_14();
+        var div_67 = sibling(child(div_66), 2);
+        var text_38 = child(div_67, true);
+        reset(div_67);
+        reset(div_66);
+        template_effect(() => set_text(text_38, get(beat)));
+        append($$anchor3, div_66);
       });
       append($$anchor2, fragment_3);
     };
-    if_block(node_18, ($$render) => {
+    if_block(node_8, ($$render) => {
       if (get(isUniversalOutline))
-        $$render(consequent_14);
+        $$render(consequent_4);
       else
-        $$render(alternate_3, false);
+        $$render(alternate, false);
     });
   }
-  reset(div_47);
-  var node_21 = sibling(div_47, 2);
+  reset(div_61);
+  var node_11 = sibling(div_61, 2);
   {
-    var consequent_16 = ($$anchor2) => {
-      var fragment_4 = root_28();
+    var consequent_6 = ($$anchor2) => {
+      var fragment_4 = root_15();
       var button = first_child(fragment_4);
       button.__click = () => set(showRaw, !get(showRaw));
-      var text_32 = child(button, true);
+      var text_39 = child(button, true);
       reset(button);
-      var node_22 = sibling(button, 2);
+      var node_12 = sibling(button, 2);
       {
-        var consequent_15 = ($$anchor3) => {
-          var div_54 = root_29();
-          var pre_1 = child(div_54);
-          var text_33 = child(pre_1, true);
-          reset(pre_1);
-          reset(div_54);
-          template_effect(() => set_text(text_33, $$props.data.thought_process));
-          transition(3, div_54, () => slide);
-          append($$anchor3, div_54);
+        var consequent_5 = ($$anchor3) => {
+          var div_68 = root_16();
+          var pre = child(div_68);
+          var text_40 = child(pre, true);
+          reset(pre);
+          reset(div_68);
+          template_effect(() => set_text(text_40, $$props.data.thought_process));
+          transition(3, div_68, () => slide);
+          append($$anchor3, div_68);
         };
-        if_block(node_22, ($$render) => {
+        if_block(node_12, ($$render) => {
           if (get(showRaw))
-            $$render(consequent_15);
+            $$render(consequent_5);
         });
       }
-      template_effect(() => set_text(text_32, get(showRaw) ? "[-] HIDE RAW LOGIC" : "[+] SHOW TRUBY LOGIC"));
+      template_effect(() => set_text(text_39, get(showRaw) ? "[-] HIDE RAW LOGIC" : "[+] SHOW TRUBY LOGIC"));
       append($$anchor2, fragment_4);
     };
-    if_block(node_21, ($$render) => {
+    if_block(node_11, ($$render) => {
       if ($$props.data.thought_process)
-        $$render(consequent_16);
+        $$render(consequent_6);
     });
   }
-  var button_1 = sibling(node_21, 2);
+  var button_1 = sibling(node_11, 2);
   button_1.__click = function(...$$args) {
     var _a3;
     (_a3 = $$props.onRunMeta) == null ? void 0 : _a3.apply(this, $$args);
   };
-  var text_34 = child(button_1, true);
-  reset(button_1);
   reset(div);
   template_effect(
-    ($0, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) => {
-      var _a3;
+    ($0, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) => {
+      var _a3, _b3;
       set_class(div_1, 1, $0, "svelte-1wfho06");
       set_style(div_4, `color: ${$1 != null ? $1 : ""}`);
       set_class(
@@ -29267,36 +29424,52 @@ function CriticDisplay($$anchor, $$props) {
       set_class(div_6, 1, `score-verdict ${$6 != null ? $6 : ""} ${$7 != null ? $7 : ""}`, "svelte-1wfho06");
       set_style(div_6, `color: ${$8 != null ? $8 : ""}`);
       set_text(text_1, $9);
-      set_style(div_10, `color: ${$10 != null ? $10 : ""}`);
-      set_text(text_2, $11);
-      set_style(div_14, `color: ${$12 != null ? $12 : ""}`);
-      set_text(text_4, $13);
-      set_style(div_18, `color: ${$14 != null ? $14 : ""}`);
-      set_text(text_6, $15);
-      set_style(span_1, isMsDos() ? "color:var(--cj-text); font-style:normal;" : "");
+      set_style(div_9, `color: ${$10 != null ? $10 : ""}`);
+      set_class(div_10, 1, `sub-val ${$11 != null ? $11 : ""}`, "svelte-1wfho06");
+      set_style(div_10, `color: ${$12 != null ? $12 : ""}`);
+      set_text(text_2, $13);
+      set_text(text_3, $$props.data.commercial_reason || "No reasoning available.");
+      set_style(div_13, `color: ${$14 != null ? $14 : ""}`);
+      set_class(div_14, 1, `sub-val ${$15 != null ? $15 : ""}`, "svelte-1wfho06");
+      set_style(div_14, `color: ${$16 != null ? $16 : ""}`);
+      set_text(text_4, $17);
+      set_text(text_5, $$props.data.niche_reason || "No reasoning available.");
+      set_style(div_17, `color: ${$18 != null ? $18 : ""}`);
+      set_class(div_18, 1, `sub-val ${$19 != null ? $19 : ""}`, "svelte-1wfho06");
+      set_style(div_18, `color: ${$20 != null ? $20 : ""}`);
+      set_text(text_6, $21);
+      set_text(text_7, $$props.data.cohesion_reason || "No reasoning available.");
       set_text(text_9, `"${(_a3 = $$props.data.log_line || "Analysis pending...") != null ? _a3 : ""}"`);
+      set_attribute2(path_1, "d", get(idealPathD));
+      set_text(text_32, `IDEAL (${(_b3 = IDEAL_ARCS[get(selectedArc)].label) != null ? _b3 : ""})`);
       button_1.disabled = $$props.isProcessing;
-      set_text(text_34, isMsDos() ? "[ RUN META-ANALYSIS ]" : "RUN DEEP META-ANALYSIS");
     },
     [
       () => getContainerClass(get(averageScore)),
-      () => isMsDos() ? "var(--cj-dim)" : isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#999" : "#555",
+      () => isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#999" : "#555",
       () => isMasterpieceEffect(get(averageScore)) ? "masterpiece-text" : "",
       () => isCritical(get(averageScore)) ? "critical-text" : "",
-      () => isMsDos() ? "var(--cj-text)" : isMasterpieceEffect(get(averageScore)) ? "" : isCritical(get(averageScore)) ? "#000" : getBarColor(get(averageScore)),
+      () => isMasterpieceEffect(get(averageScore)) ? "" : isCritical(get(averageScore)) ? "#000" : getBarColor(get(averageScore)),
       () => formatScoreDisplay(get(averageScore)),
       () => isMasterpieceEffect(get(averageScore)) ? "masterpiece-text" : "",
       () => isCritical(get(averageScore)) ? "critical-text" : "",
-      () => isMsDos() ? "var(--cj-text)" : isMasterpieceEffect(get(averageScore)) ? "" : isCritical(get(averageScore)) ? "#000" : getBarColor(get(averageScore)),
+      () => isMasterpieceEffect(get(averageScore)) ? "" : isCritical(get(averageScore)) ? "#000" : getBarColor(get(averageScore)),
       () => getVerdict(get(averageScore)),
-      () => getBarColor($$props.data.commercial_score),
+      () => isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#aaa" : "#555",
+      () => isMasterpieceEffect($$props.data.commercial_score) ? "masterpiece-text" : "",
+      () => isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#fff" : getBarColor($$props.data.commercial_score),
       () => formatScoreDisplay($$props.data.commercial_score),
-      () => getBarColor($$props.data.niche_score),
+      () => isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#aaa" : "#555",
+      () => isMasterpieceEffect($$props.data.niche_score) ? "masterpiece-text" : "",
+      () => isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#fff" : getBarColor($$props.data.niche_score),
       () => formatScoreDisplay($$props.data.niche_score),
-      () => getBarColor($$props.data.cohesion_score),
+      () => isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#aaa" : "#555",
+      () => isMasterpieceEffect($$props.data.cohesion_score) ? "masterpiece-text" : "",
+      () => isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#fff" : getBarColor($$props.data.cohesion_score),
       () => formatScoreDisplay($$props.data.cohesion_score)
     ]
   );
+  bind_select_value(select, () => get(selectedArc), ($$value) => set(selectedArc, $$value));
   append($$anchor, div);
   pop();
 }
@@ -29399,164 +29572,26 @@ function Win95ProgressBar($$anchor, $$props) {
   $$cleanup();
 }
 
-// AudioEngine.ts
-var import_obsidian6 = require("obsidian");
-var AudioEngine = class {
-  constructor() {
-    this.ctx = null;
-    this.gainNode = null;
-    this.enabled = true;
-    this.volume = 0.5;
-    this.theme = "win95";
-    try {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      this.ctx = new AudioContextClass();
-      this.gainNode = this.ctx.createGain();
-      this.gainNode.connect(this.ctx.destination);
-      this.setVolume(0.5);
-    } catch (e2) {
-      console.error("AudioEngine Init Failed", e2);
-    }
-  }
-  setEnabled(enabled) {
-    var _a3;
-    this.enabled = enabled;
-    if (((_a3 = this.ctx) == null ? void 0 : _a3.state) === "suspended" && enabled) {
-      this.ctx.resume();
-    }
-  }
-  setVolume(vol) {
-    this.volume = Math.max(0, Math.min(1, vol));
-    if (this.gainNode) {
-      this.gainNode.gain.value = this.volume;
-    }
-  }
-  setTheme(theme) {
-    if (theme === "msdos" || theme === "win95") {
-      this.theme = theme;
-    } else {
-      this.theme = "win95";
-    }
-  }
-  playTone(freq2, type, duration, startTime = 0) {
-    if (!this.enabled || !this.ctx || !this.gainNode)
-      return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq2, this.ctx.currentTime + startTime);
-    gain.gain.setValueAtTime(0, this.ctx.currentTime + startTime);
-    gain.gain.linearRampToValueAtTime(this.volume, this.ctx.currentTime + startTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(1e-3, this.ctx.currentTime + startTime + duration);
-    osc.connect(gain);
-    gain.connect(this.gainNode);
-    osc.start(this.ctx.currentTime + startTime);
-    osc.stop(this.ctx.currentTime + startTime + duration + 0.1);
-  }
-  playNoise(duration) {
-    if (!this.enabled || !this.ctx || !this.gainNode)
-      return;
-    const bufferSize = this.ctx.sampleRate * duration;
-    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i3 = 0; i3 < bufferSize; i3++) {
-      data[i3] = Math.random() * 2 - 1;
-    }
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = buffer;
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(this.volume * 0.2, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + duration);
-    noise.connect(gain);
-    gain.connect(this.gainNode);
-    noise.start();
-  }
-  // --- SOUND PROFILES ---
-  playStartup() {
-    if (this.theme === "msdos") {
-      this.playTone(880, "square", 0.3);
-    } else {
-      const t3 = 0;
-      const dur = 2;
-      this.playTone(311.13, "sine", dur, t3);
-      this.playTone(466.16, "sine", dur, t3 + 0.1);
-      this.playTone(622.25, "triangle", dur, t3 + 0.2);
-      this.playTone(830.61, "sine", dur * 1.5, t3 + 0.4);
-      this.playTone(932.33, "sine", dur, t3 + 0.6);
-    }
-  }
-  playClick() {
-    if (this.theme === "msdos") {
-      this.playTone(1200, "square", 0.01);
-    } else {
-      this.playTone(600, "triangle", 0.02);
-      this.playTone(800, "sine", 0.02, 0.01);
-    }
-  }
-  playKeystroke() {
-    if (this.theme === "msdos") {
-      this.playTone(150, "sawtooth", 0.03);
-    } else {
-      this.playTone(300, "triangle", 0.02);
-    }
-  }
-  playProcess() {
-    if (this.theme === "msdos") {
-      const count = 3;
-      for (let i3 = 0; i3 < count; i3++) {
-        this.playTone(200 + Math.random() * 600, "square", 0.05, i3 * 0.1);
-      }
-    } else {
-      this.playNoise(0.1);
-      setTimeout(() => this.playNoise(0.05), 150);
-    }
-  }
-  playSuccess() {
-    if (this.theme === "msdos") {
-      this.playTone(523.25, "square", 0.1, 0);
-      this.playTone(659.25, "square", 0.1, 0.1);
-      this.playTone(783.99, "square", 0.2, 0.2);
-    } else {
-      const start2 = 0;
-      this.playTone(1046.5, "triangle", 0.4, start2);
-      this.playTone(523.25, "sine", 0.4, start2);
-      this.playTone(1318.51, "triangle", 0.6, start2 + 0.1);
-      this.playTone(1567.98, "sine", 0.8, start2 + 0.2);
-      this.playTone(2093, "triangle", 1, start2 + 0.4);
-    }
-  }
-  playError() {
-    if (this.theme === "msdos") {
-      this.playTone(100, "sawtooth", 0.4);
-    } else {
-      this.playTone(200, "sawtooth", 0.2, 0);
-      this.playTone(150, "square", 0.2, 0);
-    }
-  }
-};
-
 // GradingPanel.svelte
-var root_110 = from_html(`<button class="reset-btn" title="Force Format / Stop">RST</button>`);
-var root_24 = from_html(`<div class="empty-state">INSERT DISK (OPEN MARKDOWN FILE)</div>`);
+var root_13 = from_html(`<button class="reset-btn svelte-1ykavxi" title="Force Format / Stop">RST</button>`);
+var root_24 = from_html(`<div class="empty-state svelte-1ykavxi">INSERT DISK (OPEN MARKDOWN FILE)</div>`);
 var root_82 = from_html(`<p class="quick-synopsis"><span class="prefix">LOG:</span> </p>`);
-var root_73 = from_html(`<div class="quick-result"><div class="quick-header"><span class="quick-grade"> </span> <span class="quick-score"> </span></div> <!> <p class="quick-summary"> </p> <p class="quick-fix"> </p></div>`);
-var root_92 = from_html(`<!> <button class="action-btn tertiary" style="margin-top:10px;"> </button>`, 1);
-var root_54 = from_html(`<div class="panel-critic"><div class="button-row"><button class="action-btn primary"> </button> <button class="action-btn secondary"> </button></div> <!> <!> <!></div>`);
-var root_112 = from_html(`<div class="panel-wizard"><button class="action-btn secondary"> </button> <!> <!></div>`);
+var root_73 = from_html(`<div class="quick-result svelte-1ykavxi"><div class="quick-header svelte-1ykavxi"><span class="quick-grade svelte-1ykavxi"> </span> <span class="quick-score svelte-1ykavxi"> </span></div> <!> <p class="quick-summary svelte-1ykavxi"> </p> <p class="quick-fix svelte-1ykavxi"> </p></div>`);
+var root_92 = from_html(`<!> <button class="action-btn tertiary svelte-1ykavxi" style="margin-top:10px;">\u{1F4C4} EXPORT FORENSIC REPORT</button>`, 1);
+var root_54 = from_html(`<div class="panel-critic"><div class="button-row svelte-1ykavxi"><button class="action-btn primary svelte-1ykavxi"> </button> <button class="action-btn secondary svelte-1ykavxi">QUICK SCAN</button></div> <!> <!> <!></div>`);
+var root_11 = from_html(`<div class="panel-wizard"><button class="action-btn secondary svelte-1ykavxi">GENERATE FULL OUTLINE</button> <!> <!></div>`);
 var root_142 = from_html(`<div class="panel-synth"><!> <!></div>`);
-var root_192 = from_html(`<span> </span>`);
-var root_202 = from_html(`<span></span> <span> </span>`, 1);
-var root_223 = from_html(`<details class="thought-trace bevel-groove"><summary class="thought-header"> </summary> <div class="thought-content"> </div></details>`);
-var root_242 = from_html(`<div class="repair-item"><div class="repair-header"> </div> <div class="repair-body"> </div> <div class="repair-why"> </div></div>`);
-var root_233 = from_html(`<div class="repair-list"></div>`);
-var root_272 = from_html(`<li> </li>`);
-var root_26 = from_html(`<div class="repair-list legacy-mode"><p class="legacy-note">[LEGACY REPORT DETECTED - RE-RUN FOR DETAILS]</p> <ol class="forge-steps"></ol></div>`);
-var root_212 = from_html(`<div class="forge-report"><!> <div class="weakness-alert"> </div> <!> <button class="action-btn secondary"> </button></div>`);
-var root_172 = from_html(`<div class="panel-forge"><button class="action-btn primary"> </button> <!> <div class="repair-focus-area"><label for="repairFocus" class="input-label">REPAIR FOCUS (OPTIONAL):</label> <textarea id="repairFocus" class="retro-input" rows="2" placeholder="E.g., 'Fix the pacing in Act 2' or 'Make the villain scarier'"></textarea></div> <fieldset class="outline-fieldset"><legend> </legend> <div class="button-grid"><button class="action-btn secondary"> </button> <button class="action-btn secondary"> </button> <button class="action-btn secondary"> </button></div></fieldset> <fieldset class="outline-fieldset"><legend> </legend> <div class="memory-core bevel-down"><div class="memory-status"><div class="status-indicator"><!></div> <div class="status-details"> </div></div> <div class="context-controls"><button title="Load active file into buffer"> </button> <button class="scrub-btn"> </button></div></div> <textarea class="retro-input archivist-prompt" rows="2" placeholder="INSTRUCTIONS: Focus area OR Story Title (e.g. 'The Matrix')"></textarea> <div class="grid-2"><button class="action-btn tertiary outline-btn"> </button> <button class="action-btn secondary outline-btn"> </button></div></fieldset> <!></div>`);
-var root5 = from_html(`<div><div class="title-bar"><div class="title-bar-text"> </div> <!></div> <div class="tab-strip"><button> </button> <button> </button> <button> </button> <button> </button></div> <div class="window-body"><!></div> <div class="status-bar"><span> </span> <span class="spacer"></span> <span> </span></div></div>`);
+var root_20 = from_html(`<details class="thought-trace bevel-groove svelte-1ykavxi"><summary class="thought-header svelte-1ykavxi">COGNITIVE TRACE (RAW)</summary> <div class="thought-content svelte-1ykavxi"> </div></details>`);
+var root_222 = from_html(`<div class="repair-item svelte-1ykavxi"><div class="repair-header svelte-1ykavxi"> </div> <div class="repair-body svelte-1ykavxi"> </div> <div class="repair-why svelte-1ykavxi"> </div></div>`);
+var root_21 = from_html(`<div class="repair-list"></div>`);
+var root_25 = from_html(`<li> </li>`);
+var root_242 = from_html(`<div class="repair-list legacy-mode svelte-1ykavxi"><p class="legacy-note svelte-1ykavxi">[LEGACY REPORT DETECTED - RE-RUN FOR DETAILS]</p> <ol class="forge-steps"></ol></div>`);
+var root_19 = from_html(`<div class="forge-report svelte-1ykavxi"><!> <div class="weakness-alert svelte-1ykavxi"> </div> <!> <button class="action-btn secondary svelte-1ykavxi">EXECUTE REPAIR PROTOCOL (AUTO-PATCH)</button></div>`);
+var root_17 = from_html(`<div class="panel-forge"><button class="action-btn primary svelte-1ykavxi">GENERATE REPAIR PLAN</button> <!> <div class="repair-focus-area svelte-1ykavxi"><label for="repairFocus" class="input-label svelte-1ykavxi">REPAIR FOCUS (OPTIONAL):</label> <textarea id="repairFocus" class="retro-input" rows="2" placeholder="E.g., 'Fix the pacing in Act 2' or 'Make the villain scarier'"></textarea></div> <fieldset class="outline-fieldset svelte-1ykavxi"><legend>PROSE TOOLS</legend> <div class="button-grid"><button class="action-btn secondary svelte-1ykavxi">FIX DIALOGUE PUNCTUATION</button> <button class="action-btn secondary svelte-1ykavxi">HIGHLIGHT ADVERBS (RED)</button> <button class="action-btn secondary svelte-1ykavxi">HIGHLIGHT FILTER WORDS (YELLOW)</button></div></fieldset> <fieldset class="outline-fieldset svelte-1ykavxi"><legend>STRUCTURAL ARCHIVIST</legend> <div class="memory-core bevel-down svelte-1ykavxi"><div class="memory-status svelte-1ykavxi"><div class="status-indicator svelte-1ykavxi"><span></span> <span> </span></div> <div class="status-details"> </div></div> <div class="context-controls svelte-1ykavxi"><button title="Load active file into buffer"> </button> <button class="scrub-btn svelte-1ykavxi">\u{1F5D1}\uFE0F</button></div></div> <textarea class="retro-input archivist-prompt svelte-1ykavxi" rows="2" placeholder="INSTRUCTIONS: Focus area OR Story Title (e.g. 'The Matrix')"></textarea> <div class="grid-2 svelte-1ykavxi"><button class="action-btn tertiary outline-btn svelte-1ykavxi"> </button> <button class="action-btn secondary outline-btn svelte-1ykavxi">\u{1F3F7}\uFE0F RENAME CAST (DEEP)</button></div></fieldset> <!></div>`);
+var root5 = from_html(`<div><div class="title-bar svelte-1ykavxi"><div class="title-bar-text"> </div> <!></div> <div class="tab-strip svelte-1ykavxi"><button>CRITIC</button> <button>WIZARD</button> <button>SYNTH</button> <button>FORGE</button></div> <div class="window-body svelte-1ykavxi"><!></div> <div class="status-bar svelte-1ykavxi"><span> </span> <span class="spacer svelte-1ykavxi"></span> <span>DISK ACT</span></div></div>`);
 var $$css5 = {
   hash: "svelte-1ykavxi",
-  code: "\n    /* GLOBAL OVERRIDES IN STYLES.CSS */"
+  code: ":root {--cj-accent: #000080;--cj-bg: #c0c0c0;--cj-text: #000000;--cj-dim: #808080;}.compu-container.svelte-1ykavxi {height:100%;display:flex;flex-direction:column;font-family:'Courier New', monospace;font-size:15px;font-weight:bold;}.window-body.svelte-1ykavxi {flex:1;overflow-y:auto;padding:12px;background:var(--cj-bg);border:2px inset #dfdfdf;}.theme-msdos.svelte-1ykavxi {--cj-bg: #000000;--cj-text: var(--cj-user-color);--cj-accent: var(--cj-user-color);--cj-dim: color-mix(in srgb, var(--cj-user-color), #000 60%);}.theme-win95.svelte-1ykavxi {--cj-bg: #c0c0c0;--cj-text: #000000;--cj-accent: #000080;--cj-dim: #808080;}.title-bar.svelte-1ykavxi {background:var(--cj-accent);color:#fff;padding:4px 8px;display:flex;justify-content:space-between;font-weight:bold;}.tab-strip.svelte-1ykavxi {display:flex;padding:6px 4px 0 4px;gap:2px;}.tab-strip.svelte-1ykavxi button:where(.svelte-1ykavxi) {background:var(--cj-bg);color:var(--cj-text);border:2px outset #fff;border-bottom:none;padding:6px 14px;font-weight:bold;cursor:pointer;}.tab-strip.svelte-1ykavxi button.active:where(.svelte-1ykavxi) {padding-bottom:8px;margin-top:-4px;z-index:10;border-top:2px solid var(--cj-accent);}.action-btn.svelte-1ykavxi {width:100%;padding:10px;font-weight:bold;cursor:pointer;border:2px outset #fff;background:var(--cj-bg);color:var(--cj-text);margin-bottom:8px;}.action-btn.svelte-1ykavxi:active {border-style:inset;}.outline-fieldset.svelte-1ykavxi {margin-bottom:20px;border:2px groove var(--cj-dim);padding:10px;}.repair-focus-area.svelte-1ykavxi {margin-bottom:15px;}.input-label.svelte-1ykavxi {display:block;font-weight:900;margin-bottom:4px;color:var(--cj-dim);font-size:0.9em;}.archivist-prompt.svelte-1ykavxi {margin-bottom:8px;}.forge-report.svelte-1ykavxi {margin-top:20px;color:var(--cj-text);font-weight:bold;}.weakness-alert.svelte-1ykavxi {background:var(--cj-text);color:var(--cj-bg);padding:8px;font-weight:900;text-align:center;margin-bottom:10px;border:2px solid #fff;}.repair-item.svelte-1ykavxi {margin-bottom:15px;border-bottom:2px dashed var(--cj-dim);padding-bottom:10px;}.repair-header.svelte-1ykavxi {font-weight:900;color:var(--cj-accent);text-transform:uppercase;margin-bottom:4px;}.repair-body.svelte-1ykavxi {margin-bottom:4px;line-height:1.4;font-weight:bold;}.repair-why.svelte-1ykavxi {font-size:0.9em;font-style:italic;color:var(--cj-dim);font-weight:bold;}.legacy-mode.svelte-1ykavxi {opacity:0.7;border:1px dashed red;padding:10px;}.legacy-note.svelte-1ykavxi {color:red;font-weight:bold;font-size:10px;margin-bottom:5px;}.quick-result.svelte-1ykavxi {margin:15px 0;padding:12px;border:2px dotted var(--cj-text);color:var(--cj-text);display:flex;flex-direction:column;gap:10px;background:rgba(255,255,255,0.05);}.quick-header.svelte-1ykavxi {display:flex;justify-content:space-between;align-items:center;width:100%;border-bottom:2px dashed var(--cj-dim);padding-bottom:5px;}.quick-grade.svelte-1ykavxi {font-size:2.5em;font-weight:900;}.quick-score.svelte-1ykavxi {font-size:1.5em;opacity:0.8;font-weight:900;}.quick-summary.svelte-1ykavxi {font-style:italic;font-weight:bold;}.quick-fix.svelte-1ykavxi {background:var(--cj-accent);color:#fff;padding:4px;font-weight:900;width:100%;text-align:center;}.memory-core.svelte-1ykavxi {margin-bottom:10px;background:rgba(0,0,0,0.05);padding:5px;border:2px solid var(--cj-dim);}.memory-status.svelte-1ykavxi {display:flex;justify-content:space-between;align-items:center;background:#000;color:#00ff00;padding:5px 8px;font-size:12px;border:2px inset #808080;margin-bottom:5px;font-weight:bold;}.status-indicator.svelte-1ykavxi {display:flex;gap:8px;align-items:center;font-weight:900;}.led.svelte-1ykavxi {width:8px;height:8px;border-radius:50%;background:#004400;border:1px solid #00ff00;}.led.on.svelte-1ykavxi {background:#00ff00;box-shadow:0 0 5px #00ff00;}.context-controls.svelte-1ykavxi {display:flex;gap:5px;}.upload-btn.svelte-1ykavxi {flex:1;padding:4px;font-size:11px;background:var(--cj-bg);border:2px outset #fff;cursor:pointer;font-weight:bold;}.upload-btn.svelte-1ykavxi:active {border-style:inset;}.upload-btn.synced.svelte-1ykavxi {opacity:0.6;cursor:default;}.scrub-btn.svelte-1ykavxi {width:30px;padding:0;background:var(--cj-bg);border:2px outset #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;}.thought-trace.svelte-1ykavxi {margin-bottom:8px;border:1px dashed var(--cj-dim);padding:2px;}.thought-header.svelte-1ykavxi {cursor:pointer;font-weight:bold;font-size:11px;padding:4px;color:var(--cj-dim);list-style:none;}.thought-content.svelte-1ykavxi {padding:8px;font-family:'Courier New', monospace;font-size:11px;white-space:pre-wrap;max-height:200px;overflow-y:auto;border-top:1px dashed var(--cj-dim);background:var(--cj-bg);color:var(--cj-text);opacity:0.8;font-weight:bold;}.status-bar.svelte-1ykavxi {border-top:2px solid var(--cj-dim);padding:4px 8px;background:var(--cj-bg);color:var(--cj-text);display:flex;gap:15px;font-size:12px;align-items:center;font-weight:900;}.spacer.svelte-1ykavxi {flex:1;}.disk-led.svelte-1ykavxi {font-weight:900;color:#808080;border:2px inset #808080;padding:0 4px;background:#c0c0c0;transition:all 0.1s;}.active-led.svelte-1ykavxi {background:#ff0000;color:#fff;border-color:#ff0000;box-shadow:0 0 5px #ff0000;}.empty-state.svelte-1ykavxi {padding:40px;text-align:center;opacity:0.5;font-weight:900;}.reset-btn.svelte-1ykavxi {font-size:10px;padding:0 4px;background:#ff0000;color:white;border:2px outset #ffaaaa;cursor:pointer;}.reset-btn.svelte-1ykavxi:active {border-style:inset;}.theme-msdos.svelte-1ykavxi .action-btn:where(.svelte-1ykavxi) {background:#000;color:var(--cj-text);border:1px solid var(--cj-text);box-shadow:none;}.theme-msdos.svelte-1ykavxi .action-btn:where(.svelte-1ykavxi):active, .theme-msdos.svelte-1ykavxi .action-btn:where(.svelte-1ykavxi):hover {background:var(--cj-text);color:#000;border-style:solid;}.theme-msdos.svelte-1ykavxi .bevel-groove, .theme-msdos.svelte-1ykavxi .bevel-down, .theme-msdos.svelte-1ykavxi .window-body:where(.svelte-1ykavxi) {border-style:solid !important;border-width:1px !important;border-color:var(--cj-dim) !important;}.theme-msdos.svelte-1ykavxi .tab-strip:where(.svelte-1ykavxi) button:where(.svelte-1ykavxi) {background:#000;color:var(--cj-dim);border:1px solid var(--cj-dim);border-bottom:none;}.theme-msdos.svelte-1ykavxi .tab-strip:where(.svelte-1ykavxi) button.active:where(.svelte-1ykavxi) {color:var(--cj-text);border-color:var(--cj-text);border-bottom:1px solid #000;margin-bottom:-1px;}.theme-msdos.svelte-1ykavxi .upload-btn, .theme-msdos.svelte-1ykavxi .scrub-btn {background:transparent !important;color:var(--cj-text) !important;border:1px solid var(--cj-dim) !important;}.theme-msdos.svelte-1ykavxi .upload-btn:hover, .theme-msdos.svelte-1ykavxi .scrub-btn:hover {background:var(--cj-text) !important;color:#000 !important;}\n\n    @media (max-width: 600px) {.button-row.svelte-1ykavxi {flex-direction:column;gap:5px;}.action-btn.svelte-1ykavxi {padding:12px;margin-bottom:5px;}\n    }.grid-2.svelte-1ykavxi {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}"
 };
 function GradingPanel($$anchor, $$props) {
   push($$props, true);
@@ -29565,54 +29600,22 @@ function GradingPanel($$anchor, $$props) {
   const $processOrigin = () => store_get(processOrigin, "$processOrigin", $$stores);
   const [$$stores, $$cleanup] = setup_stores();
   let settings = proxy($$props.settings);
-  let themeClass = state(proxy(getThemeClass($$props.settings.theme)));
   let activeFile = state(null);
   let projectData = state(null);
   let currentTab = state("critic");
+  let themeClass = state("");
   let isSaving = state(false);
   let estimatedDuration = state(4e3);
   let wizardLoadingField = state(null);
-  let isMsDos = user_derived(() => get(themeClass) === "theme-msdos");
   let isContextSynced = state(false);
   let isArchivistSynced = state(false);
   let archivistLength = user_derived(() => (get(projectData) === null || get(projectData) === void 0 ? void 0 : get(projectData).archivistContext) ? get(projectData).archivistContext.length : 0);
   let hasArchivistData = user_derived(() => get(archivistLength) > 0);
   let activeFileStatus = user_derived(() => get(activeFile) && $processRegistry()[get(activeFile).path] ? "PROCESSING" : "READY");
   const debouncedSave = debounce(() => saveProject(false), 1e3);
-  function getThemeClass(mode) {
-    const isDark = document.body.classList.contains("theme-dark");
-    if (mode === "win95")
-      return "theme-win95";
-    if (mode === "msdos")
-      return "theme-msdos";
-    if (mode === "invert")
-      return isDark ? "theme-win95" : "theme-msdos";
-    return isDark ? "theme-msdos" : "theme-win95";
-  }
   function handleSettingsUpdate(updates) {
     Object.assign(settings, updates);
     $$props.onUpdateSettings(updates);
-    if (updates.theme) {
-      set(themeClass, getThemeClass(updates.theme), true);
-      safeAudioSetTheme(updates.theme);
-    }
-  }
-  function safeAudioSetTheme(theme) {
-    try {
-      if ($$props.audio)
-        $$props.audio.setTheme(theme);
-    } catch (e2) {
-      console.warn("Audio Theme Error", e2);
-    }
-  }
-  function safeAudioPlay(method) {
-    try {
-      if ($$props.audio && typeof $$props.audio[method] === "function") {
-        $$props.audio[method]();
-      }
-    } catch (e2) {
-      console.warn("Audio Play Error", e2);
-    }
   }
   function handleDrivesUpdate(newDrives) {
     if (!get(projectData))
@@ -29621,7 +29624,6 @@ function GradingPanel($$anchor, $$props) {
     saveProject(false);
   }
   function handleError(context, error) {
-    safeAudioPlay("playError");
     console.error(`[Compu-Judge] ${context} Error:`, error);
     let msg = error instanceof Error ? error.message : String(error);
     msg = msg.replace(/^Error:\s*/i, "").replace(/^Gemini Error:\s*/i, "");
@@ -29631,7 +29633,7 @@ function GradingPanel($$anchor, $$props) {
       msg = "Invalid API Key or Permissions.";
     if (msg.includes("TIMEOUT"))
       msg = "AI Timeout. Task was too heavy.";
-    new import_obsidian7.Notice(`\u274C ${context}: ${msg}`, 6e3);
+    new import_obsidian6.Notice(`\u274C ${context}: ${msg}`, 6e3);
     set(wizardLoadingField, null);
   }
   const updateActiveFile = async (file) => {
@@ -29642,10 +29644,7 @@ function GradingPanel($$anchor, $$props) {
     if (file)
       await loadProjectData(file);
   };
-  const updateTheme = (theme) => {
-    set(themeClass, getThemeClass(theme), true);
-    safeAudioSetTheme(theme);
-  };
+  const updateTheme = (theme) => applyTheme(theme);
   async function loadProjectData(file) {
     try {
       const loadedData = await db.getProjectData(file.path);
@@ -29666,7 +29665,7 @@ function GradingPanel($$anchor, $$props) {
     }
     set(isSaving, true);
     try {
-      if (updateMtime && get(activeFile) instanceof import_obsidian7.TFile) {
+      if (updateMtime && get(activeFile) instanceof import_obsidian6.TFile) {
         get(projectData).lastAnalysisMtime = get(activeFile).stat.mtime;
       }
       await db.saveProjectData(get(projectData), get(projectData).lastAnalysisMtime);
@@ -29712,11 +29711,10 @@ function GradingPanel($$anchor, $$props) {
   async function handleUploadContext() {
     if (!get(activeFile) || !get(projectData))
       return;
-    safeAudioPlay("playClick");
     try {
       const content = await $$props.app.vault.read(get(activeFile));
       if (!content.trim())
-        return new import_obsidian7.Notice("File is empty.");
+        return new import_obsidian6.Notice("File is empty.");
       const currentContext = get(projectData).wizardState.inspirationContext || "";
       const newContext = currentContext ? `${currentContext}
 
@@ -29725,7 +29723,7 @@ ${content}` : `[IMPORTED SOURCE]:
 ${content}`;
       get(projectData).wizardState.inspirationContext = newContext;
       set(projectData, { ...get(projectData) }, true);
-      new import_obsidian7.Notice("Wizard Memory Updated.");
+      new import_obsidian6.Notice("Wizard Memory Updated.");
       await saveProject(false);
     } catch (e2) {
       handleError("Memory Upload", e2);
@@ -29734,18 +29732,16 @@ ${content}`;
   function handleScrubContext() {
     if (!get(projectData))
       return;
-    safeAudioPlay("playClick");
     if (confirm("Purge Inspiration Memory?")) {
       get(projectData).wizardState.inspirationContext = "";
       set(projectData, { ...get(projectData) }, true);
       saveProject(false);
-      new import_obsidian7.Notice("Wizard Memory Purged.");
+      new import_obsidian6.Notice("Wizard Memory Purged.");
     }
   }
   function handleClearWizardState() {
     if (!get(projectData))
       return;
-    safeAudioPlay("playClick");
     if (confirm("Clear all Wizard fields? (Memory/Context will be kept)")) {
       const currentContext = get(projectData).wizardState.inspirationContext;
       get(projectData).wizardState = {
@@ -29754,20 +29750,19 @@ ${content}`;
       };
       set(projectData, { ...get(projectData) }, true);
       saveProject(false);
-      new import_obsidian7.Notice("Wizard Fields Cleared.");
+      new import_obsidian6.Notice("Wizard Fields Cleared.");
     }
   }
   async function handleUploadArchivist() {
     if (!get(activeFile) || !get(projectData))
       return;
-    safeAudioPlay("playClick");
     try {
       const content = await $$props.app.vault.read(get(activeFile));
       if (!content.trim())
-        return new import_obsidian7.Notice("File is empty.");
+        return new import_obsidian6.Notice("File is empty.");
       get(projectData).archivistContext = content;
       set(projectData, { ...get(projectData) }, true);
-      new import_obsidian7.Notice("Archivist Memory Loaded.");
+      new import_obsidian6.Notice("Archivist Memory Loaded.");
       await saveProject(false);
     } catch (e2) {
       handleError("Buffer Load", e2);
@@ -29776,19 +29771,17 @@ ${content}`;
   function handleScrubArchivist() {
     if (!get(projectData))
       return;
-    safeAudioPlay("playClick");
     if (confirm("Clear Archivist Memory?")) {
       get(projectData).archivistContext = "";
       set(projectData, { ...get(projectData) }, true);
       saveProject(false);
-      new import_obsidian7.Notice("Archivist Memory Cleared.");
+      new import_obsidian6.Notice("Archivist Memory Cleared.");
     }
   }
   function startLoading(path, duration = 4e3, label = "PROCESSING...") {
     set(estimatedDuration, duration, true);
     setStatus(label);
     setFileLoading(path, true, get(currentTab));
-    safeAudioPlay("playProcess");
   }
   function stopLoading(path) {
     setTimeout(() => setFileLoading(path, false), 200);
@@ -29801,7 +29794,7 @@ ${content}`;
       finalPath = filename.replace(".md", `_${Date.now()}.md`);
     }
     const file = await $$props.app.vault.create(finalPath, content);
-    new import_obsidian7.Notice(`Created: ${file.path}`);
+    new import_obsidian6.Notice(`Created: ${file.path}`);
     return file.path;
   }
   async function handleGradeCharacter(char) {
@@ -29812,8 +29805,7 @@ ${content}`;
     try {
       const context = get(projectData).wizardState.inspirationContext || "No context provided.";
       const updated = await $$props.cloud.gradeCharacter(char, context);
-      safeAudioPlay("playSuccess");
-      new import_obsidian7.Notice(`Metrics Updated for ${char.name}`);
+      new import_obsidian6.Notice(`Metrics Updated for ${char.name}`);
       return updated;
     } catch (e2) {
       handleError("Character Grading", e2);
@@ -29830,8 +29822,7 @@ ${content}`;
     try {
       const context = get(projectData).wizardState.inspirationContext || "No context provided.";
       const updated = await $$props.cloud.gradeStructureBeat(beat, context);
-      safeAudioPlay("playSuccess");
-      new import_obsidian7.Notice(`Tension Calculated for ${beat.title}`);
+      new import_obsidian6.Notice(`Tension Calculated for ${beat.title}`);
       return updated;
     } catch (e2) {
       handleError("Structure Grading", e2);
@@ -29861,8 +29852,7 @@ ${content}`;
       get(projectData).lastAnalysisMtime = file.stat.mtime;
       set(projectData, { ...get(projectData) }, true);
       await saveProject(true);
-      safeAudioPlay("playSuccess");
-      new import_obsidian7.Notice("Deep Scan Complete.");
+      new import_obsidian6.Notice("Deep Scan Complete.");
     } catch (e2) {
       handleError("Deep Scan", e2);
     } finally {
@@ -29884,7 +29874,6 @@ ${content}`;
       get(projectData).lastLightResult = { ...aiGrade, summary_line: summary };
       set(projectData, { ...get(projectData) }, true);
       await saveProject(false);
-      safeAudioPlay("playSuccess");
     } catch (e2) {
       handleError("Quick Scan", e2);
     } finally {
@@ -29904,7 +29893,6 @@ ${content}`;
       get(projectData).lastMetaResult = meta;
       set(projectData, { ...get(projectData) }, true);
       await saveProject(false);
-      safeAudioPlay("playSuccess");
     } catch (e2) {
       handleError("System Diagnostics", e2);
     } finally {
@@ -29929,9 +29917,8 @@ ${content}`;
       if (target) {
         target[key2] = suggestion;
         set(projectData, { ...get(projectData) }, true);
-        new import_obsidian7.Notice("Suggestion Applied.");
+        new import_obsidian6.Notice("Suggestion Applied.");
         await saveProject(false);
-        safeAudioPlay("playSuccess");
       }
     } catch (e2) {
       handleError("Wizard Assist", e2);
@@ -29949,8 +29936,7 @@ ${content}`;
       const synopsis = await $$props.cloud.wizardCompose(get(projectData).wizardState);
       const outputName = get(activeFile).basename + "_FULL_OUTLINE.md";
       await safeCreateFile(outputName, synopsis);
-      new import_obsidian7.Notice(`Full Outline Created.`);
-      safeAudioPlay("playSuccess");
+      new import_obsidian6.Notice(`Full Outline Created.`);
     } catch (e2) {
       handleError("Ghostwriter", e2);
     } finally {
@@ -29962,7 +29948,7 @@ ${content}`;
       return;
     const concept = get(projectData).wizardState.concept;
     if (!concept || concept.length < 5) {
-      new import_obsidian7.Notice("Please enter a Concept/Logline first.");
+      new import_obsidian6.Notice("Please enter a Concept/Logline first.");
       return;
     }
     if (!confirm("AUTO-FILL WARNING:\nThis will overwrite your current characters, structure, and 3 Ps.\n\nContinue?"))
@@ -29988,8 +29974,7 @@ ${content}`;
       };
       set(projectData, { ...get(projectData) }, true);
       await saveProject(false);
-      new import_obsidian7.Notice("Story Bible Generated Successfully.");
-      safeAudioPlay("playSuccess");
+      new import_obsidian6.Notice("Story Bible Generated Successfully.");
     } catch (e2) {
       handleError("Auto-Fill", e2);
     } finally {
@@ -30001,7 +29986,7 @@ ${content}`;
       return;
     const drives = get(projectData).wizardState.synthesisDrives || [];
     if (drives.length === 0) {
-      new import_obsidian7.Notice("No drives found. Create a drive first.");
+      new import_obsidian6.Notice("No drives found. Create a drive first.");
       return;
     }
     if (!confirm("INITIATE FUSION?\nThis will generate a new Universal Outline document from your drives.\n\nProceed?"))
@@ -30018,8 +30003,7 @@ ${content}`;
         outputName = `${get(activeFile).basename}_UNIVERSAL_OUTLINE.md`;
       }
       await safeCreateFile(outputName, outlineMarkdown);
-      new import_obsidian7.Notice("Universal Outline Created.");
-      safeAudioPlay("playSuccess");
+      new import_obsidian6.Notice("Universal Outline Created.");
     } catch (e2) {
       handleError("Synthesis", e2);
     } finally {
@@ -30040,7 +30024,6 @@ ${content}`;
       get(projectData).lastActionPlan = plan;
       set(projectData, { ...get(projectData) }, true);
       await saveProject(false);
-      safeAudioPlay("playSuccess");
     } catch (e2) {
       handleError("Forge", e2);
     } finally {
@@ -30079,11 +30062,10 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
           outputFilename = sanitizedTitle + "_OUTLINE.md";
         startLoading(path, estTime, modeLabel);
       }
-      new import_obsidian7.Notice(modeLabel);
+      new import_obsidian6.Notice(modeLabel);
       const outlineText = await $$props.cloud.generateOutline(combinedInput, useSearch);
       await safeCreateFile(outputFilename, outlineText);
-      new import_obsidian7.Notice(`Archivist Created.`);
-      safeAudioPlay("playSuccess");
+      new import_obsidian6.Notice(`Archivist Created.`);
     } catch (e2) {
       handleError("Archivist", e2);
     } finally {
@@ -30101,8 +30083,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
       const repairedText = await $$props.cloud.autoRepair(content, get(projectData).lastActionPlan);
       const outputName = get(activeFile).basename + "_REPAIRED.md";
       await safeCreateFile(outputName, repairedText);
-      new import_obsidian7.Notice(`Repaired File Created.`);
-      safeAudioPlay("playSuccess");
+      new import_obsidian6.Notice(`Repaired File Created.`);
     } catch (e2) {
       handleError("Auto-Patch", e2);
     } finally {
@@ -30114,7 +30095,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
       return;
     const chars = get(projectData).wizardState.characters;
     if (!chars || chars.length === 0) {
-      new import_obsidian7.Notice("No characters found in Wizard.");
+      new import_obsidian6.Notice("No characters found in Wizard.");
       return;
     }
     if (!confirm("RENAME CAST WARNING:\nThis will permanently update character names in your Wizard based on Deep Nomenclature logic. Undo is not supported.\n\nProceed?"))
@@ -30135,8 +30116,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
       get(projectData).wizardState.characters = newChars;
       set(projectData, { ...get(projectData) }, true);
       await saveProject(false);
-      new import_obsidian7.Notice(`Renaming Complete. ${updateCount} characters updated.`);
-      safeAudioPlay("playSuccess");
+      new import_obsidian6.Notice(`Renaming Complete. ${updateCount} characters updated.`);
     } catch (e2) {
       handleError("Deep Rename", e2);
     } finally {
@@ -30149,7 +30129,6 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
     setFileLoading(get(activeFile).path, false);
     if (!get(projectData))
       return;
-    safeAudioPlay("playClick");
     if (window.confirm("FORCE FORMAT DISC? Resets all data.")) {
       const blankState = JSON.parse(JSON.stringify(DEFAULT_WIZARD_STATE));
       get(projectData).wizardState = blankState;
@@ -30163,17 +30142,23 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
       get(projectData).repairFocus = "";
       set(projectData, { ...get(projectData) }, true);
       await saveProject(true);
-      new import_obsidian7.Notice("Disc Formatted.");
+      new import_obsidian6.Notice("Disc Formatted.");
     }
   }
-  function switchTab(tab) {
-    safeAudioPlay("playClick");
-    set(currentTab, tab, true);
+  function applyTheme(mode) {
+    const isDark = document.body.classList.contains("theme-dark");
+    if (mode === "win95")
+      set(themeClass, "theme-win95");
+    else if (mode === "msdos")
+      set(themeClass, "theme-msdos");
+    else if (mode === "invert")
+      set(themeClass, isDark ? "theme-win95" : "theme-msdos", true);
+    else
+      set(themeClass, isDark ? "theme-msdos" : "theme-win95", true);
   }
   async function runFixDialogue() {
     if (!get(activeFile))
       return;
-    safeAudioPlay("playClick");
     try {
       const content = await getActiveFileContent();
       const fixed = ForgeOps.fixDialogue(content);
@@ -30187,7 +30172,6 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
   async function runAdverbKiller(mode) {
     if (!get(activeFile))
       return;
-    safeAudioPlay("playClick");
     try {
       const content = await getActiveFileContent();
       const fixed = ForgeOps.assassinateAdverbs(content, mode);
@@ -30201,7 +30185,6 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
   async function runFilterHighlight() {
     if (!get(activeFile))
       return;
-    safeAudioPlay("playClick");
     try {
       const content = await getActiveFileContent();
       const fixed = ForgeOps.highlightFilters(content);
@@ -30215,7 +30198,6 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
   async function runGenerateReport() {
     if (!get(activeFile) || !get(projectData))
       return;
-    safeAudioPlay("playClick");
     try {
       await ReportGen.generateReport($$props.app, get(projectData), get(activeFile).basename);
     } catch (e2) {
@@ -30225,8 +30207,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
   onMount(() => {
     const f3 = $$props.app.workspace.getActiveFile();
     updateActiveFile(f3);
-    set(themeClass, getThemeClass(settings.theme), true);
-    safeAudioSetTheme(settings.theme);
+    applyTheme(settings.theme);
   });
   var $$exports = { updateActiveFile, updateTheme };
   var div = root5();
@@ -30237,7 +30218,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
   var node = sibling(div_2, 2);
   {
     var consequent = ($$anchor2) => {
-      var button = root_110();
+      var button = root_13();
       button.__click = resetCurrentDisc;
       append($$anchor2, button);
     };
@@ -30249,25 +30230,17 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
   reset(div_1);
   var div_3 = sibling(div_1, 2);
   var button_1 = child(div_3);
-  button_1.__click = () => switchTab("critic");
+  button_1.__click = () => set(currentTab, "critic");
   let classes;
-  var text_1 = child(button_1, true);
-  reset(button_1);
   var button_2 = sibling(button_1, 2);
-  button_2.__click = () => switchTab("wizard");
+  button_2.__click = () => set(currentTab, "wizard");
   let classes_1;
-  var text_2 = child(button_2, true);
-  reset(button_2);
   var button_3 = sibling(button_2, 2);
-  button_3.__click = () => switchTab("synth");
+  button_3.__click = () => set(currentTab, "synth");
   let classes_2;
-  var text_3 = child(button_3, true);
-  reset(button_3);
   var button_4 = sibling(button_3, 2);
-  button_4.__click = () => switchTab("forge");
+  button_4.__click = () => set(currentTab, "forge");
   let classes_3;
-  var text_4 = child(button_4, true);
-  reset(button_4);
   reset(div_3);
   var div_4 = sibling(div_3, 2);
   var node_1 = child(div_4);
@@ -30276,11 +30249,11 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
       var div_5 = root_24();
       append($$anchor2, div_5);
     };
-    var alternate_5 = ($$anchor2) => {
+    var alternate_4 = ($$anchor2) => {
       var fragment = comment();
       var node_2 = first_child(fragment);
       {
-        var consequent_18 = ($$anchor3) => {
+        var consequent_17 = ($$anchor3) => {
           var fragment_1 = comment();
           var node_3 = first_child(fragment_1);
           {
@@ -30289,12 +30262,10 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
               var div_7 = child(div_6);
               var button_5 = child(div_7);
               button_5.__click = () => runAnalysis();
-              var text_5 = child(button_5, true);
+              var text_1 = child(button_5);
               reset(button_5);
               var button_6 = sibling(button_5, 2);
               button_6.__click = runQuickScan;
-              var text_6 = child(button_6, true);
-              reset(button_6);
               reset(div_7);
               var node_4 = sibling(div_7, 2);
               {
@@ -30317,21 +30288,21 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                   var div_8 = root_73();
                   var div_9 = child(div_8);
                   var span = child(div_9);
-                  var text_7 = child(span, true);
+                  var text_2 = child(span, true);
                   reset(span);
                   var span_1 = sibling(span, 2);
-                  var text_8 = child(span_1, true);
+                  var text_3 = child(span_1, true);
                   reset(span_1);
                   reset(div_9);
                   var node_6 = sibling(div_9, 2);
                   {
                     var consequent_3 = ($$anchor6) => {
                       var p5 = root_82();
-                      var text_9 = sibling(child(p5));
+                      var text_4 = sibling(child(p5));
                       reset(p5);
                       template_effect(() => {
                         var _a3;
-                        return set_text(text_9, ` ${(_a3 = get(projectData).lastLightResult.synopsis) != null ? _a3 : ""}`);
+                        return set_text(text_4, ` ${(_a3 = get(projectData).lastLightResult.synopsis) != null ? _a3 : ""}`);
                       });
                       append($$anchor6, p5);
                     };
@@ -30341,18 +30312,18 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                     });
                   }
                   var p_1 = sibling(node_6, 2);
-                  var text_10 = child(p_1, true);
+                  var text_5 = child(p_1, true);
                   reset(p_1);
                   var p_2 = sibling(p_1, 2);
-                  var text_11 = child(p_2);
+                  var text_6 = child(p_2);
                   reset(p_2);
                   reset(div_8);
                   template_effect(() => {
                     var _a3;
-                    set_text(text_7, get(projectData).lastLightResult.letter_grade);
-                    set_text(text_8, get(projectData).lastLightResult.score);
-                    set_text(text_10, get(projectData).lastLightResult.summary_line);
-                    set_text(text_11, `FIX: ${(_a3 = get(projectData).lastLightResult.key_improvement) != null ? _a3 : ""}`);
+                    set_text(text_2, get(projectData).lastLightResult.letter_grade);
+                    set_text(text_3, get(projectData).lastLightResult.score);
+                    set_text(text_5, get(projectData).lastLightResult.summary_line);
+                    set_text(text_6, `FIX: ${(_a3 = get(projectData).lastLightResult.key_improvement) != null ? _a3 : ""}`);
                   });
                   append($$anchor5, div_8);
                 };
@@ -30379,16 +30350,10 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                     get settings() {
                       return settings;
                     },
-                    onRunMeta: runMeta,
-                    get isMsDos() {
-                      return get(isMsDos);
-                    }
+                    onRunMeta: runMeta
                   });
                   var button_7 = sibling(node_8, 2);
                   button_7.__click = runGenerateReport;
-                  var text_12 = child(button_7, true);
-                  reset(button_7);
-                  template_effect(() => set_text(text_12, get(isMsDos) ? "[ EXPORT REPORT ]" : "\u{1F4C4} EXPORT FORENSIC REPORT"));
                   append($$anchor5, fragment_3);
                 };
                 if_block(node_7, ($$render) => {
@@ -30398,21 +30363,19 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
               }
               reset(div_6);
               template_effect(() => {
-                set_text(text_5, get(isMsDos) ? "[ RUN DEEP SCAN ]" : `DEEP SCAN (${settings.analysisPasses} CORE)`);
-                set_text(text_6, get(isMsDos) ? "[ QUICK SCAN ]" : "QUICK SCAN");
+                var _a3;
+                return set_text(text_1, `DEEP SCAN (${(_a3 = settings.analysisPasses) != null ? _a3 : ""} CORE)`);
               });
               append($$anchor4, div_6);
             };
-            var alternate_4 = ($$anchor4) => {
+            var alternate_3 = ($$anchor4) => {
               var fragment_4 = comment();
               var node_9 = first_child(fragment_4);
               {
                 var consequent_8 = ($$anchor5) => {
-                  var div_10 = root_112();
+                  var div_10 = root_11();
                   var button_8 = child(div_10);
                   button_8.__click = runGhostwriter;
-                  var text_13 = child(button_8, true);
-                  reset(button_8);
                   var node_10 = sibling(button_8, 2);
                   {
                     var consequent_7 = ($$anchor6) => {
@@ -30454,10 +30417,9 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                     onGradeStructure: handleGradeStructure
                   });
                   reset(div_10);
-                  template_effect(() => set_text(text_13, get(isMsDos) ? "[ GENERATE FULL OUTLINE ]" : "GENERATE FULL OUTLINE"));
                   append($$anchor5, div_10);
                 };
-                var alternate_3 = ($$anchor5) => {
+                var alternate_2 = ($$anchor5) => {
                   var fragment_6 = comment();
                   var node_12 = first_child(fragment_6);
                   {
@@ -30495,16 +30457,14 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                       reset(div_11);
                       append($$anchor6, div_11);
                     };
-                    var alternate_2 = ($$anchor6) => {
+                    var alternate_1 = ($$anchor6) => {
                       var fragment_8 = comment();
                       var node_15 = first_child(fragment_8);
                       {
-                        var consequent_17 = ($$anchor7) => {
-                          var div_12 = root_172();
+                        var consequent_16 = ($$anchor7) => {
+                          var div_12 = root_17();
                           var button_9 = child(div_12);
                           button_9.__click = runForge;
-                          var text_14 = child(button_9, true);
-                          reset(button_9);
                           var node_16 = sibling(button_9, 2);
                           {
                             var consequent_11 = ($$anchor8) => {
@@ -30530,73 +30490,35 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                           }, () => get(projectData).repairFocus);
                           reset(div_13);
                           var fieldset = sibling(div_13, 2);
-                          var legend = child(fieldset);
-                          var text_15 = child(legend, true);
-                          reset(legend);
-                          var div_14 = sibling(legend, 2);
+                          var div_14 = sibling(child(fieldset), 2);
                           var button_10 = child(div_14);
                           button_10.__click = runFixDialogue;
-                          var text_16 = child(button_10, true);
-                          reset(button_10);
                           var button_11 = sibling(button_10, 2);
                           button_11.__click = () => runAdverbKiller("highlight");
-                          var text_17 = child(button_11, true);
-                          reset(button_11);
                           var button_12 = sibling(button_11, 2);
                           button_12.__click = runFilterHighlight;
-                          var text_18 = child(button_12, true);
-                          reset(button_12);
                           reset(div_14);
                           reset(fieldset);
                           var fieldset_1 = sibling(fieldset, 2);
-                          var legend_1 = child(fieldset_1);
-                          var text_19 = child(legend_1, true);
-                          reset(legend_1);
-                          var div_15 = sibling(legend_1, 2);
+                          var div_15 = sibling(child(fieldset_1), 2);
                           var div_16 = child(div_15);
                           var div_17 = child(div_16);
-                          var node_17 = child(div_17);
-                          {
-                            var consequent_12 = ($$anchor8) => {
-                              var span_2 = root_192();
-                              var text_20 = child(span_2, true);
-                              reset(span_2);
-                              template_effect(() => set_text(text_20, get(hasArchivistData) ? "[ LOADED ]" : "[ EMPTY ]"));
-                              append($$anchor8, span_2);
-                            };
-                            var alternate = ($$anchor8) => {
-                              var fragment_10 = root_202();
-                              var span_3 = first_child(fragment_10);
-                              var span_4 = sibling(span_3, 2);
-                              var text_21 = child(span_4, true);
-                              reset(span_4);
-                              template_effect(() => {
-                                set_class(span_3, 1, `led ${get(hasArchivistData) ? "on" : "off"}`);
-                                set_text(text_21, get(hasArchivistData) ? "BUFFER LOADED" : "BUFFER EMPTY");
-                              });
-                              append($$anchor8, fragment_10);
-                            };
-                            if_block(node_17, ($$render) => {
-                              if (get(isMsDos))
-                                $$render(consequent_12);
-                              else
-                                $$render(alternate, false);
-                            });
-                          }
+                          var span_2 = child(div_17);
+                          var span_3 = sibling(span_2, 2);
+                          var text_7 = child(span_3, true);
+                          reset(span_3);
                           reset(div_17);
                           var div_18 = sibling(div_17, 2);
-                          var text_22 = child(div_18);
+                          var text_8 = child(div_18);
                           reset(div_18);
                           reset(div_16);
                           var div_19 = sibling(div_16, 2);
                           var button_13 = child(div_19);
                           button_13.__click = handleUploadArchivist;
-                          var text_23 = child(button_13, true);
+                          var text_9 = child(button_13, true);
                           reset(button_13);
                           var button_14 = sibling(button_13, 2);
                           button_14.__click = handleScrubArchivist;
-                          var text_24 = child(button_14, true);
-                          reset(button_14);
                           reset(div_19);
                           reset(div_15);
                           var textarea_1 = sibling(div_15, 2);
@@ -30609,82 +30531,74 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                           var div_20 = sibling(textarea_1, 2);
                           var button_15 = child(div_20);
                           button_15.__click = runOutlineGeneration;
-                          var text_25 = child(button_15, true);
+                          var text_10 = child(button_15, true);
                           reset(button_15);
                           var button_16 = sibling(button_15, 2);
                           button_16.__click = runDeepRename;
-                          var text_26 = child(button_16, true);
-                          reset(button_16);
                           reset(div_20);
                           reset(fieldset_1);
-                          var node_18 = sibling(fieldset_1, 2);
+                          var node_17 = sibling(fieldset_1, 2);
                           {
-                            var consequent_16 = ($$anchor8) => {
-                              var div_21 = root_212();
-                              var node_19 = child(div_21);
+                            var consequent_15 = ($$anchor8) => {
+                              var div_21 = root_19();
+                              var node_18 = child(div_21);
                               {
-                                var consequent_13 = ($$anchor9) => {
-                                  var details = root_223();
-                                  var summary_1 = child(details);
-                                  var text_27 = child(summary_1, true);
-                                  reset(summary_1);
-                                  var div_22 = sibling(summary_1, 2);
-                                  var text_28 = child(div_22, true);
+                                var consequent_12 = ($$anchor9) => {
+                                  var details = root_20();
+                                  var div_22 = sibling(child(details), 2);
+                                  var text_11 = child(div_22, true);
                                   reset(div_22);
                                   reset(details);
-                                  template_effect(() => {
-                                    set_text(text_27, get(isMsDos) ? "> TRACE" : "COGNITIVE TRACE (RAW)");
-                                    set_text(text_28, get(projectData).lastActionPlan.thought_process);
-                                  });
+                                  template_effect(() => set_text(text_11, get(projectData).lastActionPlan.thought_process));
                                   append($$anchor9, details);
                                 };
-                                if_block(node_19, ($$render) => {
+                                if_block(node_18, ($$render) => {
                                   if (get(projectData).lastActionPlan.thought_process)
-                                    $$render(consequent_13);
+                                    $$render(consequent_12);
                                 });
                               }
-                              var div_23 = sibling(node_19, 2);
-                              var text_29 = child(div_23);
+                              var div_23 = sibling(node_18, 2);
+                              var text_12 = child(div_23);
                               reset(div_23);
-                              var node_20 = sibling(div_23, 2);
+                              var node_19 = sibling(div_23, 2);
                               {
-                                var consequent_14 = ($$anchor9) => {
-                                  var div_24 = root_233();
+                                var consequent_13 = ($$anchor9) => {
+                                  var div_24 = root_21();
                                   each(div_24, 21, () => get(projectData).lastActionPlan.repairs, index, ($$anchor10, repair, i3) => {
-                                    var div_25 = root_242();
+                                    var div_25 = root_222();
                                     var div_26 = child(div_25);
-                                    var text_30 = child(div_26);
+                                    var text_13 = child(div_26);
                                     reset(div_26);
                                     var div_27 = sibling(div_26, 2);
-                                    var text_31 = child(div_27, true);
+                                    var text_14 = child(div_27, true);
                                     reset(div_27);
                                     var div_28 = sibling(div_27, 2);
-                                    var text_32 = child(div_28);
+                                    var text_15 = child(div_28);
                                     reset(div_28);
                                     reset(div_25);
                                     template_effect(() => {
                                       var _a3, _b3;
-                                      set_text(text_30, `ISSUE ${i3 + 1}: ${(_a3 = get(repair).issue) != null ? _a3 : ""}`);
-                                      set_text(text_31, get(repair).instruction);
-                                      set_text(text_32, `RATIONALE: ${(_b3 = get(repair).why) != null ? _b3 : ""}`);
+                                      set_text(text_13, `ISSUE ${i3 + 1}: ${(_a3 = get(repair).issue) != null ? _a3 : ""}`);
+                                      set_text(text_14, get(repair).instruction);
+                                      set_text(text_15, `RATIONALE: ${(_b3 = get(repair).why) != null ? _b3 : ""}`);
                                     });
                                     append($$anchor10, div_25);
                                   });
                                   reset(div_24);
                                   append($$anchor9, div_24);
                                 };
-                                var alternate_1 = ($$anchor9) => {
-                                  var fragment_11 = comment();
-                                  var node_21 = first_child(fragment_11);
+                                var alternate = ($$anchor9) => {
+                                  var fragment_10 = comment();
+                                  var node_20 = first_child(fragment_10);
                                   {
-                                    var consequent_15 = ($$anchor10) => {
-                                      var div_29 = root_26();
+                                    var consequent_14 = ($$anchor10) => {
+                                      var div_29 = root_242();
                                       var ol = sibling(child(div_29), 2);
                                       each(ol, 21, () => get(projectData).lastActionPlan.steps, index, ($$anchor11, step) => {
-                                        var li = root_272();
-                                        var text_33 = child(li, true);
+                                        var li = root_25();
+                                        var text_16 = child(li, true);
                                         reset(li);
-                                        template_effect(() => set_text(text_33, get(step)));
+                                        template_effect(() => set_text(text_16, get(step)));
                                         append($$anchor11, li);
                                       });
                                       reset(ol);
@@ -30692,57 +30606,48 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                                       append($$anchor10, div_29);
                                     };
                                     if_block(
-                                      node_21,
+                                      node_20,
                                       ($$render) => {
                                         if (get(projectData).lastActionPlan.steps)
-                                          $$render(consequent_15);
+                                          $$render(consequent_14);
                                       },
                                       true
                                     );
                                   }
-                                  append($$anchor9, fragment_11);
+                                  append($$anchor9, fragment_10);
                                 };
-                                if_block(node_20, ($$render) => {
+                                if_block(node_19, ($$render) => {
                                   if (get(projectData).lastActionPlan.repairs)
-                                    $$render(consequent_14);
+                                    $$render(consequent_13);
                                   else
-                                    $$render(alternate_1, false);
+                                    $$render(alternate, false);
                                 });
                               }
-                              var button_17 = sibling(node_20, 2);
+                              var button_17 = sibling(node_19, 2);
                               button_17.__click = runAutoRepair;
-                              var text_34 = child(button_17, true);
-                              reset(button_17);
                               reset(div_21);
                               template_effect(() => {
                                 var _a3;
-                                set_text(text_29, `WEAK LINK: ${(_a3 = get(projectData).lastActionPlan.weakest_link) != null ? _a3 : ""}`);
-                                set_text(text_34, get(isMsDos) ? "[ AUTO-PATCH ]" : "EXECUTE REPAIR PROTOCOL (AUTO-PATCH)");
+                                return set_text(text_12, `WEAK LINK: ${(_a3 = get(projectData).lastActionPlan.weakest_link) != null ? _a3 : ""}`);
                               });
                               append($$anchor8, div_21);
                             };
-                            if_block(node_18, ($$render) => {
+                            if_block(node_17, ($$render) => {
                               if (get(projectData).lastActionPlan)
-                                $$render(consequent_16);
+                                $$render(consequent_15);
                             });
                           }
                           reset(div_12);
                           template_effect(() => {
                             var _a3;
-                            set_text(text_14, get(isMsDos) ? "[ GENERATE REPAIR PLAN ]" : "GENERATE REPAIR PLAN");
-                            set_text(text_15, get(isMsDos) ? "[ PROSE TOOLS ]" : "PROSE TOOLS");
-                            set_text(text_16, get(isMsDos) ? "[ FIX PUNCTUATION ]" : "FIX DIALOGUE PUNCTUATION");
-                            set_text(text_17, get(isMsDos) ? "[ HIGHLIGHT ADVERBS ]" : "HIGHLIGHT ADVERBS (RED)");
-                            set_text(text_18, get(isMsDos) ? "[ HIGHLIGHT FILTER WORDS ]" : "HIGHLIGHT FILTER WORDS (YELLOW)");
-                            set_text(text_19, get(isMsDos) ? "[ ARCHIVIST ]" : "STRUCTURAL ARCHIVIST");
-                            set_text(text_22, `${(_a3 = get(archivistLength)) != null ? _a3 : ""} CHARS`);
-                            set_class(button_13, 1, `upload-btn ${get(isArchivistSynced) ? "synced" : ""}`);
+                            set_class(span_2, 1, `led ${get(hasArchivistData) ? "on" : "off"}`, "svelte-1ykavxi");
+                            set_text(text_7, get(hasArchivistData) ? "BUFFER LOADED" : "BUFFER EMPTY");
+                            set_text(text_8, `${(_a3 = get(archivistLength)) != null ? _a3 : ""} CHARS`);
+                            set_class(button_13, 1, `upload-btn ${get(isArchivistSynced) ? "synced" : ""}`, "svelte-1ykavxi");
                             button_13.disabled = get(isArchivistSynced);
-                            set_text(text_23, get(isArchivistSynced) ? get(isMsDos) ? "[ SYNCED ]" : "\u2705 SYNCED" : get(isMsDos) ? "[ LOAD ]" : "\u{1F4E5} LOAD BUFFER");
+                            set_text(text_9, get(isArchivistSynced) ? "\u2705 SYNCED" : "\u{1F4E5} LOAD BUFFER");
                             button_14.disabled = !get(hasArchivistData);
-                            set_text(text_24, get(isMsDos) ? "[ DEL ]" : "\u{1F5D1}\uFE0F");
-                            set_text(text_25, get(hasArchivistData) ? get(isMsDos) ? "[ ANALYZE ]" : "ANALYZE BUFFER" : get(isMsDos) ? "[ GEN FROM TITLE ]" : "GENERATE FROM TITLE");
-                            set_text(text_26, get(isMsDos) ? "[ RENAME CAST ]" : "\u{1F3F7}\uFE0F RENAME CAST (DEEP)");
+                            set_text(text_10, get(hasArchivistData) ? "ANALYZE BUFFER" : "GENERATE FROM TITLE");
                           });
                           append($$anchor7, div_12);
                         };
@@ -30750,7 +30655,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                           node_15,
                           ($$render) => {
                             if (get(currentTab) === "forge")
-                              $$render(consequent_17);
+                              $$render(consequent_16);
                           },
                           true
                         );
@@ -30763,7 +30668,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                         if (get(currentTab) === "synth")
                           $$render(consequent_10);
                         else
-                          $$render(alternate_2, false);
+                          $$render(alternate_1, false);
                       },
                       true
                     );
@@ -30776,7 +30681,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                     if (get(currentTab) === "wizard")
                       $$render(consequent_8);
                     else
-                      $$render(alternate_3, false);
+                      $$render(alternate_2, false);
                   },
                   true
                 );
@@ -30787,7 +30692,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
               if (get(currentTab) === "critic")
                 $$render(consequent_6);
               else
-                $$render(alternate_4, false);
+                $$render(alternate_3, false);
             });
           }
           append($$anchor3, fragment_1);
@@ -30796,7 +30701,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
           node_2,
           ($$render) => {
             if (get(projectData))
-              $$render(consequent_18);
+              $$render(consequent_17);
           },
           true
         );
@@ -30807,37 +30712,30 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
       if (!get(activeFile))
         $$render(consequent_1);
       else
-        $$render(alternate_5, false);
+        $$render(alternate_4, false);
     });
   }
   reset(div_4);
   var div_30 = sibling(div_4, 2);
-  var span_5 = child(div_30);
-  var text_35 = child(span_5);
-  reset(span_5);
-  var span_6 = sibling(span_5, 4);
+  var span_4 = child(div_30);
+  var text_17 = child(span_4);
+  reset(span_4);
+  var span_5 = sibling(span_4, 4);
   let classes_4;
-  var text_36 = child(span_6, true);
-  reset(span_6);
   reset(div_30);
   reset(div);
   template_effect(
     ($0) => {
       var _a3, _b3, _c2, _d;
-      set_class(div, 1, `compu-container ${(_a3 = get(themeClass)) != null ? _a3 : ""}`);
+      set_class(div, 1, `compu-container ${(_a3 = get(themeClass)) != null ? _a3 : ""}`, "svelte-1ykavxi");
       set_style(div, `--cj-user-color: ${(_b3 = settings.msDosColor || "#00FF00") != null ? _b3 : ""}; --cj-grade-masterpiece: ${(_c2 = settings.gradingColors.masterpiece) != null ? _c2 : ""}`);
       set_text(text2, `Compu-Judge 98 ${$0 != null ? $0 : ""}`);
-      classes = set_class(button_1, 1, "", null, classes, { active: get(currentTab) === "critic" });
-      set_text(text_1, get(isMsDos) ? "[ CRITIC ]" : "CRITIC");
-      classes_1 = set_class(button_2, 1, "", null, classes_1, { active: get(currentTab) === "wizard" });
-      set_text(text_2, get(isMsDos) ? "[ WIZARD ]" : "WIZARD");
-      classes_2 = set_class(button_3, 1, "", null, classes_2, { active: get(currentTab) === "synth" });
-      set_text(text_3, get(isMsDos) ? "[ SYNTH ]" : "SYNTH");
-      classes_3 = set_class(button_4, 1, "", null, classes_3, { active: get(currentTab) === "forge" });
-      set_text(text_4, get(isMsDos) ? "[ FORGE ]" : "FORGE");
-      set_text(text_35, `STATUS: ${(_d = get(activeFileStatus)) != null ? _d : ""}`);
-      classes_4 = set_class(span_6, 1, "disk-led", null, classes_4, { "active-led": get(isSaving) });
-      set_text(text_36, get(isMsDos) ? "[DISK]" : "DISK ACT");
+      classes = set_class(button_1, 1, "svelte-1ykavxi", null, classes, { active: get(currentTab) === "critic" });
+      classes_1 = set_class(button_2, 1, "svelte-1ykavxi", null, classes_1, { active: get(currentTab) === "wizard" });
+      classes_2 = set_class(button_3, 1, "svelte-1ykavxi", null, classes_2, { active: get(currentTab) === "synth" });
+      classes_3 = set_class(button_4, 1, "svelte-1ykavxi", null, classes_3, { active: get(currentTab) === "forge" });
+      set_text(text_17, `STATUS: ${(_d = get(activeFileStatus)) != null ? _d : ""}`);
+      classes_4 = set_class(span_5, 1, "disk-led svelte-1ykavxi", null, classes_4, { "active-led": get(isSaving) });
     },
     [
       () => get(activeFile) ? `[${get(activeFile).basename.toUpperCase()}]` : "[NO DISC]"
@@ -30852,15 +30750,14 @@ delegate(["click"]);
 
 // CompuJudgeView.ts
 var VIEW_TYPE_COMPU_JUDGE = "compu-judge-view";
-var CompuJudgeView = class extends import_obsidian8.ItemView {
-  // NEW
-  constructor(leaf, app, settings, cloud, plugin5, audio) {
+var CompuJudgeView = class extends import_obsidian7.ItemView {
+  // ADDED: Needs reference to plugin to save settings
+  constructor(leaf, app, settings, cloud, plugin5) {
     super(leaf);
     this.app = app;
     this.settings = settings;
     this.cloud = cloud;
     this.plugin = plugin5;
-    this.audio = audio;
   }
   getViewType() {
     return VIEW_TYPE_COMPU_JUDGE;
@@ -30880,8 +30777,6 @@ var CompuJudgeView = class extends import_obsidian8.ItemView {
         app: this.app,
         cloud: this.cloud,
         settings: this.settings,
-        audio: this.audio,
-        // NEW: Pass AudioEngine
         onUpdateSettings: async (newSettings) => {
           Object.assign(this.settings, newSettings);
           Object.assign(this.plugin.settings, newSettings);
@@ -30965,21 +30860,16 @@ var compuJudgeHud = import_view.ViewPlugin.fromClass(class {
 });
 
 // main.ts
-var CompuJudgePlugin = class extends import_obsidian9.Plugin {
-  // NEW
+var CompuJudgePlugin = class extends import_obsidian8.Plugin {
   async onload() {
     await this.loadSettings();
     db.connect(this);
     await db.init();
-    this.audio = new AudioEngine();
-    this.audio.setEnabled(this.settings.enableAudio);
-    this.audio.setVolume(this.settings.audioVolume);
-    this.audio.setTheme(this.settings.theme);
     this.registerEditorExtension(compuJudgeHud);
     this.cloud = new CloudGenService(this.app, this.settings);
     this.registerView(
       VIEW_TYPE_COMPU_JUDGE,
-      (leaf) => new CompuJudgeView(leaf, this.app, this.settings, this.cloud, this, this.audio)
+      (leaf) => new CompuJudgeView(leaf, this.app, this.settings, this.cloud, this)
     );
     this.addRibbonIcon("bot", "Compu-Judge 98", () => this.activateView());
     this.addCommand({
@@ -30993,7 +30883,7 @@ var CompuJudgePlugin = class extends import_obsidian9.Plugin {
       callback: async () => {
         if (window.confirm("Delete all saved scan data? This cannot be undone.")) {
           await db.deleteDatabase();
-          new import_obsidian9.Notice("Database Purged. Please Restart Obsidian.");
+          new import_obsidian8.Notice("Database Purged. Please Restart Obsidian.");
         }
       }
     });
@@ -31015,7 +30905,6 @@ var CompuJudgePlugin = class extends import_obsidian9.Plugin {
     }
     if (leaf)
       workspace.revealLeaf(leaf);
-    this.audio.playStartup();
   }
   updateViewFile(file) {
     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_COMPU_JUDGE);
@@ -31041,20 +30930,11 @@ var CompuJudgePlugin = class extends import_obsidian9.Plugin {
       this.settings.namePool = "";
     if (this.settings.negativeNamePool === void 0)
       this.settings.negativeNamePool = "";
-    if (this.settings.enableAudio === void 0)
-      this.settings.enableAudio = true;
-    if (this.settings.audioVolume === void 0)
-      this.settings.audioVolume = 0.5;
   }
   async saveSettings() {
     const cleanSettings = { ...this.settings };
     cleanSettings.projects = {};
     await this.saveData(cleanSettings);
-    if (this.audio) {
-      this.audio.setEnabled(this.settings.enableAudio);
-      this.audio.setVolume(this.settings.audioVolume);
-      this.audio.setTheme(this.settings.theme);
-    }
     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_COMPU_JUDGE);
     leaves.forEach((leaf) => {
       if (leaf.view instanceof CompuJudgeView) {
@@ -31064,7 +30944,7 @@ var CompuJudgePlugin = class extends import_obsidian9.Plugin {
     });
   }
 };
-var NigsSettingTab = class extends import_obsidian9.PluginSettingTab {
+var NigsSettingTab = class extends import_obsidian8.PluginSettingTab {
   constructor(app, plugin5) {
     super(app, plugin5);
     this.plugin = plugin5;
@@ -31073,160 +30953,151 @@ var NigsSettingTab = class extends import_obsidian9.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.createEl("h2", { text: "BIOS SETUP" });
-    new import_obsidian9.Setting(containerEl).setName("AI Provider").setDesc("Select your intelligence engine.").addDropdown((drop) => drop.addOption("gemini", "Google Gemini").addOption("openai", "OpenAI (ChatGPT)").addOption("anthropic", "Anthropic (Claude)").setValue(this.plugin.settings.aiProvider).onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName("AI Provider").setDesc("Select your intelligence engine.").addDropdown((drop) => drop.addOption("gemini", "Google Gemini").addOption("openai", "OpenAI (ChatGPT)").addOption("anthropic", "Anthropic (Claude)").setValue(this.plugin.settings.aiProvider).onChange(async (val) => {
       this.plugin.settings.aiProvider = val;
       await this.plugin.saveSettings();
       this.display();
     }));
     containerEl.createEl("h4", { text: "Connection Settings" });
     if (this.plugin.settings.aiProvider === "gemini") {
-      new import_obsidian9.Setting(containerEl).setName("Gemini API Key").addText((text2) => text2.setPlaceholder("AIzaSy...").setValue(this.plugin.settings.apiKey).onChange(async (val) => {
+      new import_obsidian8.Setting(containerEl).setName("Gemini API Key").addText((text2) => text2.setPlaceholder("AIzaSy...").setValue(this.plugin.settings.apiKey).onChange(async (val) => {
         this.plugin.settings.apiKey = val;
         await this.plugin.saveSettings();
       }));
-      new import_obsidian9.Setting(containerEl).setName("Model ID").addText((text2) => text2.setPlaceholder("gemini-2.0-flash").setValue(this.plugin.settings.modelId).onChange(async (val) => {
+      new import_obsidian8.Setting(containerEl).setName("Model ID").addText((text2) => text2.setPlaceholder("gemini-2.0-flash").setValue(this.plugin.settings.modelId).onChange(async (val) => {
         this.plugin.settings.modelId = val;
         await this.plugin.saveSettings();
       }));
     }
     if (this.plugin.settings.aiProvider === "openai") {
-      new import_obsidian9.Setting(containerEl).setName("OpenAI API Key").addText((text2) => text2.setPlaceholder("sk-...").setValue(this.plugin.settings.openaiKey).onChange(async (val) => {
+      new import_obsidian8.Setting(containerEl).setName("OpenAI API Key").addText((text2) => text2.setPlaceholder("sk-...").setValue(this.plugin.settings.openaiKey).onChange(async (val) => {
         this.plugin.settings.openaiKey = val;
         await this.plugin.saveSettings();
       }));
-      new import_obsidian9.Setting(containerEl).setName("Model ID").addText((text2) => text2.setPlaceholder("gpt-4o").setValue(this.plugin.settings.openaiModel).onChange(async (val) => {
+      new import_obsidian8.Setting(containerEl).setName("Model ID").addText((text2) => text2.setPlaceholder("gpt-4o").setValue(this.plugin.settings.openaiModel).onChange(async (val) => {
         this.plugin.settings.openaiModel = val;
         await this.plugin.saveSettings();
       }));
     }
     if (this.plugin.settings.aiProvider === "anthropic") {
-      new import_obsidian9.Setting(containerEl).setName("Anthropic API Key").addText((text2) => text2.setPlaceholder("sk-ant-...").setValue(this.plugin.settings.anthropicKey).onChange(async (val) => {
+      new import_obsidian8.Setting(containerEl).setName("Anthropic API Key").addText((text2) => text2.setPlaceholder("sk-ant-...").setValue(this.plugin.settings.anthropicKey).onChange(async (val) => {
         this.plugin.settings.anthropicKey = val;
         await this.plugin.saveSettings();
       }));
-      new import_obsidian9.Setting(containerEl).setName("Model ID").addText((text2) => text2.setPlaceholder("claude-3-7-sonnet-20250219").setValue(this.plugin.settings.anthropicModel).onChange(async (val) => {
+      new import_obsidian8.Setting(containerEl).setName("Model ID").addText((text2) => text2.setPlaceholder("claude-3-7-sonnet-20250219").setValue(this.plugin.settings.anthropicModel).onChange(async (val) => {
         this.plugin.settings.anthropicModel = val;
         await this.plugin.saveSettings();
       }));
     }
     containerEl.createEl("h4", { text: "Intelligence & Quality Control" });
-    new import_obsidian9.Setting(containerEl).setName("AI Intelligence Level (Thinking)").setDesc("1 (Fast/Shallow) to 5 (Deep Thought/Slow). Modulates the amount of reasoning the AI performs.").addSlider((slider) => slider.setLimits(1, 5, 1).setValue(this.plugin.settings.aiThinkingLevel).setDynamicTooltip().onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName("AI Intelligence Level (Thinking)").setDesc("1 (Fast/Shallow) to 5 (Deep Thought/Slow). Modulates the amount of reasoning the AI performs.").addSlider((slider) => slider.setLimits(1, 5, 1).setValue(this.plugin.settings.aiThinkingLevel).setDynamicTooltip().onChange(async (val) => {
       this.plugin.settings.aiThinkingLevel = val;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian9.Setting(containerEl).setName("Default Target Quality").setDesc("The score (0-100) the AI should aim for when generating content (Wizard/Synthesizer default).").addSlider((slider) => slider.setLimits(0, 100, 5).setValue(this.plugin.settings.defaultTargetQuality).setDynamicTooltip().onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName("Default Target Quality").setDesc("The score (0-100) the AI should aim for when generating content (Wizard/Synthesizer default).").addSlider((slider) => slider.setLimits(0, 100, 5).setValue(this.plugin.settings.defaultTargetQuality).setDynamicTooltip().onChange(async (val) => {
       this.plugin.settings.defaultTargetQuality = val;
       await this.plugin.saveSettings();
     }));
     containerEl.createEl("h4", { text: "Creativity Matrix (Temperature)" });
     const mult = this.plugin.settings.tempMultiplier;
-    new import_obsidian9.Setting(containerEl).setName('Global Multiplier (The "Vibe" Slider)').setDesc("Multiplies all settings below. < 1.0 = Rigid, > 1.0 = Chaos.").addSlider((slider) => slider.setLimits(0.5, 2, 0.1).setValue(this.plugin.settings.tempMultiplier).setDynamicTooltip().onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName('Global Multiplier (The "Vibe" Slider)').setDesc("Multiplies all settings below. < 1.0 = Rigid, > 1.0 = Chaos.").addSlider((slider) => slider.setLimits(0.5, 2, 0.1).setValue(this.plugin.settings.tempMultiplier).setDynamicTooltip().onChange(async (val) => {
       this.plugin.settings.tempMultiplier = val;
       await this.plugin.saveSettings();
       this.display();
     }));
     containerEl.createEl("strong", { text: "Task-Specific Fine Tuning" });
-    new import_obsidian9.Setting(containerEl).setName(`Critic (Analysis) - Effective: ${(this.plugin.settings.tempCritic * mult).toFixed(2)}`).setDesc("Low = Objective/Harsh. High = Creative Interpretation.").addSlider((slider) => slider.setLimits(0, 1, 0.05).setValue(this.plugin.settings.tempCritic).setDynamicTooltip().onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName(`Critic (Analysis) - Effective: ${(this.plugin.settings.tempCritic * mult).toFixed(2)}`).setDesc("Low = Objective/Harsh. High = Creative Interpretation.").addSlider((slider) => slider.setLimits(0, 1, 0.05).setValue(this.plugin.settings.tempCritic).setDynamicTooltip().onChange(async (val) => {
       this.plugin.settings.tempCritic = val;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian9.Setting(containerEl).setName(`Wizard (Brainstorming) - Effective: ${(this.plugin.settings.tempWizard * mult).toFixed(2)}`).setDesc("High recommended for original ideas.").addSlider((slider) => slider.setLimits(0, 1.5, 0.05).setValue(this.plugin.settings.tempWizard).setDynamicTooltip().onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName(`Wizard (Brainstorming) - Effective: ${(this.plugin.settings.tempWizard * mult).toFixed(2)}`).setDesc("High recommended for original ideas.").addSlider((slider) => slider.setLimits(0, 1.5, 0.05).setValue(this.plugin.settings.tempWizard).setDynamicTooltip().onChange(async (val) => {
       this.plugin.settings.tempWizard = val;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian9.Setting(containerEl).setName(`Synthesizer (Fusion) - Effective: ${(this.plugin.settings.tempSynth * mult).toFixed(2)}`).setDesc("Controls how aggressively the AI merges conflicting drives.").addSlider((slider) => slider.setLimits(0, 1.5, 0.05).setValue(this.plugin.settings.tempSynth).setDynamicTooltip().onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName(`Synthesizer (Fusion) - Effective: ${(this.plugin.settings.tempSynth * mult).toFixed(2)}`).setDesc("Controls how aggressively the AI merges conflicting drives.").addSlider((slider) => slider.setLimits(0, 1.5, 0.05).setValue(this.plugin.settings.tempSynth).setDynamicTooltip().onChange(async (val) => {
       this.plugin.settings.tempSynth = val;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian9.Setting(containerEl).setName(`Architect (Structure) - Effective: ${(this.plugin.settings.tempArchitect * mult).toFixed(2)}`).setDesc("Balance between rigid structure and creative flow.").addSlider((slider) => slider.setLimits(0, 1.2, 0.05).setValue(this.plugin.settings.tempArchitect).setDynamicTooltip().onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName(`Architect (Structure) - Effective: ${(this.plugin.settings.tempArchitect * mult).toFixed(2)}`).setDesc("Balance between rigid structure and creative flow.").addSlider((slider) => slider.setLimits(0, 1.2, 0.05).setValue(this.plugin.settings.tempArchitect).setDynamicTooltip().onChange(async (val) => {
       this.plugin.settings.tempArchitect = val;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian9.Setting(containerEl).setName(`Repair (Editing) - Effective: ${(this.plugin.settings.tempRepair * mult).toFixed(2)}`).setDesc("Low recommended to preserve your voice.").addSlider((slider) => slider.setLimits(0, 1, 0.05).setValue(this.plugin.settings.tempRepair).setDynamicTooltip().onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName(`Repair (Editing) - Effective: ${(this.plugin.settings.tempRepair * mult).toFixed(2)}`).setDesc("Low recommended to preserve your voice.").addSlider((slider) => slider.setLimits(0, 1, 0.05).setValue(this.plugin.settings.tempRepair).setDynamicTooltip().onChange(async (val) => {
       this.plugin.settings.tempRepair = val;
       await this.plugin.saveSettings();
     }));
     containerEl.createEl("h4", { text: "Name Pools (Character Generation)" });
-    new import_obsidian9.Setting(containerEl).setName("Name Pool (Preferred Names)").setDesc("Comma-separated list of names the AI should prioritize when generating characters.").addTextArea((text2) => text2.setPlaceholder("e.g. Kael, Elara, Thorne, ...").setValue(this.plugin.settings.namePool).onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName("Name Pool (Preferred Names)").setDesc("Comma-separated list of names the AI should prioritize when generating characters.").addTextArea((text2) => text2.setPlaceholder("e.g. Kael, Elara, Thorne, ...").setValue(this.plugin.settings.namePool).onChange(async (val) => {
       this.plugin.settings.namePool = val;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian9.Setting(containerEl).setName("Negative Name Pool (Banned Names)").setDesc("Comma-separated list of names the AI must NEVER use.").addTextArea((text2) => text2.setPlaceholder("e.g. Dave, Bob, ...").setValue(this.plugin.settings.negativeNamePool).onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName("Negative Name Pool (Banned Names)").setDesc("Comma-separated list of names the AI must NEVER use.").addTextArea((text2) => text2.setPlaceholder("e.g. Dave, Bob, ...").setValue(this.plugin.settings.negativeNamePool).onChange(async (val) => {
       this.plugin.settings.negativeNamePool = val;
       await this.plugin.saveSettings();
     }));
     containerEl.createEl("h4", { text: "Safety & Constraints" });
-    new import_obsidian9.Setting(containerEl).setName("Wizard Negative Constraints").setDesc("What should the AI explicitly AVOID generating? (Anti-Tropes)").addTextArea((text2) => text2.setPlaceholder("e.g. Talking Animals, Time Travel, Deus Ex Machina...").setValue(this.plugin.settings.wizardNegativeConstraints).onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName("Wizard Negative Constraints").setDesc("What should the AI explicitly AVOID generating? (Anti-Tropes)").addTextArea((text2) => text2.setPlaceholder("e.g. Talking Animals, Time Travel, Deus Ex Machina...").setValue(this.plugin.settings.wizardNegativeConstraints).onChange(async (val) => {
       this.plugin.settings.wizardNegativeConstraints = val;
       await this.plugin.saveSettings();
     }));
     containerEl.createEl("h4", { text: "Hardware Settings" });
-    new import_obsidian9.Setting(containerEl).setName("Max Output Tokens").setDesc("Limit the length of the AI response.").addText((text2) => text2.setValue(String(this.plugin.settings.maxOutputTokens)).onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName("Max Output Tokens").setDesc("Limit the length of the AI response.").addText((text2) => text2.setValue(String(this.plugin.settings.maxOutputTokens)).onChange(async (val) => {
       const num = parseInt(val);
       if (!isNaN(num)) {
         this.plugin.settings.maxOutputTokens = num;
         await this.plugin.saveSettings();
       }
     }));
-    new import_obsidian9.Setting(containerEl).setName("Analysis Cores (Critic)").setDesc("Parallel passes (1-10). Higher = Slower but more accurate averaging.").addSlider((slider) => slider.setLimits(1, 10, 1).setValue(this.plugin.settings.analysisPasses).setDynamicTooltip().onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName("Analysis Cores (Critic)").setDesc("Parallel passes (1-10). Higher = Slower but more accurate averaging.").addSlider((slider) => slider.setLimits(1, 10, 1).setValue(this.plugin.settings.analysisPasses).setDynamicTooltip().onChange(async (val) => {
       this.plugin.settings.analysisPasses = val;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian9.Setting(containerEl).setName("Enable Tribunal (Multi-Agent Consensus)").setDesc("Uses 3 specialized agents (Market, Logic, Lit) instead of brute-force averaging. (More tokens, better quality).").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableTribunal).onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName("Enable Tribunal (Multi-Agent Consensus)").setDesc("Uses 3 specialized agents (Market, Logic, Lit) instead of brute-force averaging. (More tokens, better quality).").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableTribunal).onChange(async (val) => {
       this.plugin.settings.enableTribunal = val;
       await this.plugin.saveSettings();
     }));
     containerEl.createEl("h4", { text: "Grading Palette (Gradient Map)" });
     const colors2 = this.plugin.settings.gradingColors;
-    new import_obsidian9.Setting(containerEl).setName("Critical (0-20%)").addColorPicker((col) => col.setValue(colors2.critical).onChange(async (v2) => {
+    new import_obsidian8.Setting(containerEl).setName("Critical (0-20%)").addColorPicker((col) => col.setValue(colors2.critical).onChange(async (v2) => {
       colors2.critical = v2;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian9.Setting(containerEl).setName("Poor (20-40%)").addColorPicker((col) => col.setValue(colors2.poor).onChange(async (v2) => {
+    new import_obsidian8.Setting(containerEl).setName("Poor (20-40%)").addColorPicker((col) => col.setValue(colors2.poor).onChange(async (v2) => {
       colors2.poor = v2;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian9.Setting(containerEl).setName("Average (40-60%)").addColorPicker((col) => col.setValue(colors2.average).onChange(async (v2) => {
+    new import_obsidian8.Setting(containerEl).setName("Average (40-60%)").addColorPicker((col) => col.setValue(colors2.average).onChange(async (v2) => {
       colors2.average = v2;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian9.Setting(containerEl).setName("Good (60-80%)").addColorPicker((col) => col.setValue(colors2.good).onChange(async (v2) => {
+    new import_obsidian8.Setting(containerEl).setName("Good (60-80%)").addColorPicker((col) => col.setValue(colors2.good).onChange(async (v2) => {
       colors2.good = v2;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian9.Setting(containerEl).setName("Excellent (80-90%)").addColorPicker((col) => col.setValue(colors2.excellent).onChange(async (v2) => {
+    new import_obsidian8.Setting(containerEl).setName("Excellent (80-90%)").addColorPicker((col) => col.setValue(colors2.excellent).onChange(async (v2) => {
       colors2.excellent = v2;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian9.Setting(containerEl).setName("Masterpiece (90%+)").setDesc("Also defines the 'God Mode' glow color.").addColorPicker((col) => col.setValue(colors2.masterpiece).onChange(async (v2) => {
+    new import_obsidian8.Setting(containerEl).setName("Masterpiece (90%+)").setDesc("Also defines the 'God Mode' glow color.").addColorPicker((col) => col.setValue(colors2.masterpiece).onChange(async (v2) => {
       colors2.masterpiece = v2;
       await this.plugin.saveSettings();
     }));
     containerEl.createEl("h4", { text: "System Override" });
-    new import_obsidian9.Setting(containerEl).setName("Custom Critic Prompt").addTextArea((text2) => text2.setPlaceholder("You are a harsh literary critic...").setValue(this.plugin.settings.customSystemPrompt).onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName("Custom Critic Prompt").addTextArea((text2) => text2.setPlaceholder("You are a harsh literary critic...").setValue(this.plugin.settings.customSystemPrompt).onChange(async (val) => {
       this.plugin.settings.customSystemPrompt = val;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian9.Setting(containerEl).setName("Custom Archivist Prompt").addTextArea((text2) => text2.setValue(this.plugin.settings.customOutlinePrompt).onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName("Custom Archivist Prompt").addTextArea((text2) => text2.setValue(this.plugin.settings.customOutlinePrompt).onChange(async (val) => {
       this.plugin.settings.customOutlinePrompt = val;
       await this.plugin.saveSettings();
     }));
     containerEl.createEl("h4", { text: "Visual Aesthetics" });
-    new import_obsidian9.Setting(containerEl).setName("Theme").addDropdown((drop) => drop.addOption("win95", "Windows 95").addOption("msdos", "MS-DOS").addOption("auto", "Auto (System)").setValue(this.plugin.settings.theme).onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName("Theme").addDropdown((drop) => drop.addOption("win95", "Windows 95").addOption("msdos", "MS-DOS").addOption("auto", "Auto (System)").setValue(this.plugin.settings.theme).onChange(async (val) => {
       this.plugin.settings.theme = val;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian9.Setting(containerEl).setName("MS-DOS Text Color").addColorPicker((col) => col.setValue(this.plugin.settings.msDosColor).onChange(async (val) => {
+    new import_obsidian8.Setting(containerEl).setName("MS-DOS Text Color").addColorPicker((col) => col.setValue(this.plugin.settings.msDosColor).onChange(async (val) => {
       this.plugin.settings.msDosColor = val;
-      await this.plugin.saveSettings();
-    }));
-    containerEl.createEl("h4", { text: "Audio Subsystem" });
-    new import_obsidian9.Setting(containerEl).setName("Enable Audio Engine").setDesc("Plays startup sounds and UI feedback.").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableAudio).onChange(async (val) => {
-      this.plugin.settings.enableAudio = val;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian9.Setting(containerEl).setName("Audio Volume").addSlider((slider) => slider.setLimits(0, 1, 0.1).setValue(this.plugin.settings.audioVolume).setDynamicTooltip().onChange(async (val) => {
-      this.plugin.settings.audioVolume = val;
       await this.plugin.saveSettings();
     }));
   }

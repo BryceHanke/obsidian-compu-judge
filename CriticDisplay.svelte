@@ -10,50 +10,47 @@
         isProcessing: boolean;
         settings: NigsSettings;
         onRunMeta: () => void;
-        isMsDos?: boolean; // NEW
     }
 
-    let { data, meta, isProcessing, settings, onRunMeta, isMsDos = false }: Props = $props();
+    let { data, meta, isProcessing, settings, onRunMeta }: Props = $props();
     let showRaw = $state(false);
 
     // --- UTILS ---
     
     // Zero-Based Color Map
     function getBarColor(val: number): string {
-        if (isMsDos) return settings.msDosColor || '#00FF00';
-        if (val >= 75) return settings.gradingColors.masterpiece;
-        if (val >= 50) return settings.gradingColors.excellent;
-        if (val > 0) return settings.gradingColors.good;
-        if (val === 0) return settings.gradingColors.average;
-        if (val >= -25) return settings.gradingColors.poor;
-        return settings.gradingColors.critical;
+        if (val >= 30) return settings.gradingColors.masterpiece; // White/Rainbow
+        if (val >= 10) return settings.gradingColors.excellent;   // Gold/Blue
+        if (val > 0) return settings.gradingColors.good;          // Green
+        if (val === 0) return settings.gradingColors.average;     // Gray
+        if (val >= -10) return settings.gradingColors.poor;       // Orange/Rust
+        return settings.gradingColors.critical;                   // Red/Black
     }
 
     // [UPDATED] Universal Masterpiece Check: Matches the Masterpiece Color
     function isMasterpieceEffect(val: number): boolean { 
-        if (isMsDos) return false;
         return getBarColor(val) === settings.gradingColors.masterpiece;
     }
 
     // New Logic: Critical Failure is significantly negative
     function isCritical(val: number): boolean {
-        if (isMsDos) return false;
-        return val <= -50;
+        return val <= -20; // Threshold for Cracked Effect
     }
     
     // Helper to get the correct container class
     function getContainerClass(val: number): string {
-        if (isMsDos) return 'score-container no-border';
         if (isMasterpieceEffect(val)) return 'score-container bevel-down masterpiece-border pattern-mesh-dark';
         if (isCritical(val)) return 'score-container bevel-down critical-crack pattern-mesh-critical';
         return 'score-container bevel-down';
     }
 
     // Diverging Bar Logic (0 Center)
+    // Returns a width percentage (0-50%) and a direction ('left' or 'right')
     function getBarMetrics(val: number) {
-        const cap = 100; // Increased to 100 for Quantum Scale
+        // Cap visual representation at +/- 50 for readability, though score is uncapped
+        const cap = 50; 
         const clamped = Math.max(-cap, Math.min(cap, val));
-        const width = Math.abs(clamped) / cap * 50;
+        const width = Math.abs(clamped) / cap * 50; // Max width is 50% (half the bar)
         const isNegative = val < 0;
         return { width, isNegative };
     }
@@ -66,6 +63,7 @@
 
     function formatScoreDisplay(val: number): string {
         if (typeof val !== 'number') return "0";
+        // Force signed display (+5, -10, 0)
         return (val > 0 ? "+" : "") + val.toFixed(0);
     }
     
@@ -75,13 +73,13 @@
     }
 
     function getVerdict(val: number): string {
-        if (val >= 90) return "GOD TIER";
-        if (val >= 75) return "MASTERPIECE";
-        if (val >= 50) return "EXCELLENT";
+        if (val >= 50) return "GOD TIER";
+        if (val >= 30) return "MASTERPIECE";
+        if (val >= 10) return "EXCELLENT";
         if (val > 0) return "GOOD";
         if (val === 0) return "COMPETENT";
-        if (val >= -25) return "FLAWED";
-        if (val >= -50) return "BROKEN";
+        if (val >= -10) return "FLAWED";
+        if (val >= -30) return "BROKEN";
         return "CRITICAL FAILURE";
     }
 
@@ -98,6 +96,7 @@
         const c = data.commercial_score || 0;
         const n = data.niche_score || 0;
         const co = data.cohesion_score || 0;
+        // Simple Average of Signed Integers
         return Math.round((c + n + co) / 3);
     });
 
@@ -106,6 +105,7 @@
 
     let chartData = $derived.by(() => {
         if (!isUniversalOutline) {
+            // [UPDATED] Use full dynamic length of tension_arc if available
             const legacyArc = data.tension_arc || [0, 10, 5, 20, 15, 30]; 
             return legacyArc.map((val, i) => ({
                 tension: val,
@@ -130,16 +130,28 @@
         });
     });
 
+    // Interpolate Ideal Path
     let idealPathD = $derived.by(() => {
         if (!chartData || chartData.length === 0) return "";
+        
         const idealPoints = IDEAL_ARCS[selectedArc].points;
         const numBeats = chartData.length;
+        
+        // Map points: X is percent (0-100), Y is tension (-50 to +100 approx) mapped to chart height
+        // Chart height: let's assume 100 units. Center (0 tension) is at Y=50.
+        // Positive tension goes UP (lower Y). Negative goes DOWN (higher Y).
+        
         let path = "";
         let currentX = 0;
 
         chartData.forEach((beat, i) => {
             const centerX = currentX + (beat.widthPerc / 2);
+            
+            // Linear Interpolation of Ideal Curve
+            // Progress from 0 to 1
             const progress = i / (numBeats - 1 || 1); 
+            
+            // Find index in idealPoints array
             const idealIndex = progress * (idealPoints.length - 1);
             const lowerIdx = Math.floor(idealIndex);
             const upperIdx = Math.ceil(idealIndex);
@@ -149,100 +161,87 @@
             const val2 = idealPoints[upperIdx];
             const idealVal = val1 + (val2 - val1) * weight;
             
-            // Map: +100 -> 0%, 0 -> 50%, -100 -> 100%
+            // Map Ideal Value (0 to 100 usually) to Visual Y
+            // Visual Scale: 0 tension = 50% height. +100 tension = 0% height. -100 tension = 100% height.
+            // Factor: 1 unit tension = 0.5% height?
+            // Let's match the bar scaling.
+            // Bar: height = width% (e.g. 50 tension = 50% height).
+            
+            // Actually, let's normalize simply:
+            // Center is 50.
+            // +100 => 0.
+            // -100 => 100.
             const yPos = 50 - (idealVal / 2); 
 
             if (i === 0) path += `M ${centerX} ${yPos}`;
             else path += ` L ${centerX} ${yPos}`;
+            
             currentX += beat.widthPerc;
         });
+
         return path;
     });
-
-    // MS-DOS ASCII Chart Generator
-    function generateAsciiChart(data: any[]) {
-        const rows = 10;
-        const cols = 40;
-        let grid = Array(rows).fill(null).map(() => Array(cols).fill(' '));
-
-        // Center line
-        const mid = Math.floor(rows / 2);
-        for(let c=0; c<cols; c++) grid[mid][c] = '-';
-
-        data.forEach((beat, i) => {
-            const x = Math.floor((i / data.length) * cols);
-            // Map tension -100 to 100 -> rows
-            // 100 -> 0, -100 -> rows
-            const norm = Math.max(-100, Math.min(100, beat.tension));
-            const y = Math.floor(mid - (norm / 100) * (rows/2));
-            const safeY = Math.max(0, Math.min(rows-1, y));
-
-            grid[safeY][x] = '*';
-            // Fill to center
-            if (safeY < mid) {
-                for(let k=safeY+1; k<mid; k++) grid[k][x] = '|';
-            } else {
-                for(let k=mid+1; k<safeY; k++) grid[k][x] = '|';
-            }
-        });
-
-        return grid.map(r => r.join('')).join('\n');
-    }
 </script>
 
 <div class="critic-display">
     
     <div class="{getContainerClass(averageScore)}">
+        
         <div class="main-score-row">
             <div class="score-block main">
-                <div class="score-title" style="color: {isMsDos ? 'var(--cj-dim)' : (isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#999' : '#555')}">OVERALL SCORE</div>
+                <div class="score-title" style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#999' : '#555'}">OVERALL SCORE</div>
                 <!-- Main score display -->
                 <div class="score-main {isMasterpieceEffect(averageScore) ? 'masterpiece-text' : ''} 
                             {isCritical(averageScore) ? 'critical-text' : ''}" 
-                     style="color: {isMsDos ? 'var(--cj-text)' : (isMasterpieceEffect(averageScore) ? '' : (isCritical(averageScore) ? '#000' : getBarColor(averageScore)))}">
+                     style="color: {isMasterpieceEffect(averageScore) ? '' : (isCritical(averageScore) ? '#000' : getBarColor(averageScore))}">
                     {formatScoreDisplay(averageScore)}
                 </div>
+                <!-- Verdict Text: Masterpiece (Rainbow) or Critical (Dark) -->
                 <div class="score-verdict {isMasterpieceEffect(averageScore) ? 'masterpiece-text' : ''} {isCritical(averageScore) ? 'critical-text' : ''}" 
-                     style="color: {isMsDos ? 'var(--cj-text)' : (isMasterpieceEffect(averageScore) ? '' : (isCritical(averageScore) ? '#000' : getBarColor(averageScore)))}">
+                     style="color: {isMasterpieceEffect(averageScore) ? '' : (isCritical(averageScore) ? '#000' : getBarColor(averageScore))}">
                     {getVerdict(averageScore)}
                 </div>
             </div>
         </div>
 
-        {#if !isMsDos} <div class="score-divider-horizontal"></div> {/if}
+        <div class="score-divider-horizontal"></div>
 
         <div class="sub-score-row">
             <div class="sub-score-block tooltip-container">
-                <div class="sub-title">COMMERCIAL</div>
-                <div class="sub-val" style="color: {getBarColor(data.commercial_score)}">
+                <div class="sub-title" style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#aaa' : '#555'}">COMMERCIAL</div>
+                <!-- Force color white for dark backgrounds -->
+                <div class="sub-val {isMasterpieceEffect(data.commercial_score) ? 'masterpiece-text' : ''}" 
+                     style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#fff' : getBarColor(data.commercial_score)}">
                     {formatScoreDisplay(data.commercial_score)}
                 </div>
-                {#if !isMsDos}<div class="tooltip bottom">{data.commercial_reason}</div>{/if}
+                <div class="tooltip bottom">{data.commercial_reason || "No reasoning available."}</div>
             </div>
             
-            {#if !isMsDos}<div class="sub-divider"></div>{/if}
+            <div class="sub-divider"></div>
             
             <div class="sub-score-block tooltip-container">
-                <div class="sub-title">LITERARY</div>
-                <div class="sub-val" style="color: {getBarColor(data.niche_score)}">
+                <div class="sub-title" style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#aaa' : '#555'}">LITERARY</div>
+                <div class="sub-val {isMasterpieceEffect(data.niche_score) ? 'masterpiece-text' : ''}" 
+                     style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#fff' : getBarColor(data.niche_score)}">
                     {formatScoreDisplay(data.niche_score)}
                 </div>
-                {#if !isMsDos}<div class="tooltip bottom">{data.niche_reason}</div>{/if}
+                <div class="tooltip bottom">{data.niche_reason || "No reasoning available."}</div>
             </div>
             
-            {#if !isMsDos}<div class="sub-divider"></div>{/if}
+            <div class="sub-divider"></div>
             
             <div class="sub-score-block tooltip-container">
-                <div class="sub-title">COHESION</div>
-                <div class="sub-val" style="color: {getBarColor(data.cohesion_score)}">
+                <div class="sub-title" style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#aaa' : '#555'}">COHESION</div>
+                <div class="sub-val {isMasterpieceEffect(data.cohesion_score) ? 'masterpiece-text' : ''}" 
+                     style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#fff' : getBarColor(data.cohesion_score)}">
                     {formatScoreDisplay(data.cohesion_score)}
                 </div>
-                {#if !isMsDos}<div class="tooltip bottom">{data.cohesion_reason}</div>{/if}
+                <div class="tooltip bottom">{data.cohesion_reason || "No reasoning available."}</div>
             </div>
         </div>
         
         {#if warning && warning.length > 5 && warning !== 'None'}
-        <div class="warning-box warning-stripe" style="margin-top: 15px; {isMsDos ? 'background:transparent; color:red; border:1px solid red;' : ''}">
+        <div class="warning-box warning-stripe" style="margin-top: 15px;">
             <span class="warning-icon">⚠</span>
             <span class="warning-text">{warning}</span>
         </div>
@@ -250,12 +249,14 @@
 
         <div class="log-section" style="margin-top: 10px;">
             <span class="log-label">LOGLINE: </span>
-            <span class="log-text-blue" style="{isMsDos ? 'color:var(--cj-text); font-style:normal;' : ''}">"{data.log_line || 'Analysis pending...'}"</span>
+            <span class="log-text-blue">"{data.log_line || 'Analysis pending...'}"</span>
         </div>
     </div>
 
     <div class="section-header">SANDERSON ENGINE METRICS</div>
     <div class="modules-grid bevel-down">
+        
+        <!-- PROTAGONIST SLIDERS (0-100) -->
         {#if sanderson.competence !== undefined}
         <div class="slider-group">
             <div class="slider-label">PROTAGONIST SCALE</div>
@@ -269,13 +270,9 @@
                         <span class="s-label">{s.label}</span>
                         <span class="s-val">{formatUnsignedScore(s.val)}%</span>
                     </div>
-                    {#if isMsDos}
-                        <div class="ascii-bar">[{'|'.repeat(Math.round(s.val/5)).padEnd(20, '.')}]</div>
-                    {:else}
-                        <div class="slider-track">
-                            <div class="slider-fill" style="width: {getSliderMetrics(s.val)}%;"></div>
-                        </div>
-                    {/if}
+                    <div class="slider-track">
+                        <div class="slider-fill" style="width: {getSliderMetrics(s.val)}%;"></div>
+                    </div>
                 </div>
             {/each}
         </div>
@@ -283,6 +280,7 @@
 
         <div class="divider-line"></div>
 
+        <!-- CORE LAWS (Zero-Based) -->
         {#each [
             { label: 'PROMISE/PAYOFF', val: sanderson.promise_payoff },
             { label: 'LAWS OF MAGIC', val: sanderson.laws_of_magic },
@@ -291,24 +289,22 @@
             {@const bar = getBarMetrics(m.val)}
             <div class="module-item">
                 <span class="mod-label">{m.label}</span>
-                {#if isMsDos}
-                     <span class="mod-score">{formatScoreDisplay(m.val)}</span>
-                {:else}
-                    <div class="diverging-bar-container">
-                        <div class="center-line"></div>
-                        <div class="fill {isMasterpieceEffect(m.val) ? 'glow-bar' : ''}"
-                             style="
-                                width: {bar.width}%;
-                                left: {bar.isNegative ? (50 - bar.width) + '%' : '50%'};
-                                background: {getBarColor(m.val)}
-                             ">
-                        </div>
+                <!-- Diverging Bar Container -->
+                <div class="diverging-bar-container">
+                    <div class="center-line"></div>
+                    <!-- The Bar itself -->
+                    <div class="fill {isMasterpieceEffect(m.val) ? 'glow-bar' : ''}" 
+                         style="
+                            width: {bar.width}%; 
+                            left: {bar.isNegative ? (50 - bar.width) + '%' : '50%'};
+                            background: {getBarColor(m.val)}
+                         ">
                     </div>
-                    <span class="mod-score {isMasterpieceEffect(m.val) ? 'masterpiece-text' : ''}"
-                          style="color: {isMasterpieceEffect(m.val) ? '' : getBarColor(m.val)}">
-                        {formatScoreDisplay(m.val)}
-                    </span>
-                {/if}
+                </div>
+                <span class="mod-score {isMasterpieceEffect(m.val) ? 'masterpiece-text' : ''}" 
+                      style="color: {isMasterpieceEffect(m.val) ? '' : getBarColor(m.val)}">
+                    {formatScoreDisplay(m.val)}
+                </span>
             </div>
         {/each}
     </div>
@@ -337,7 +333,7 @@
                                 </span>
                             </div>
                             
-                            {#if !isMsDos}
+                            <!-- Diverging Metric Bar -->
                             <div class="metric-bar-container diverging-bar-container">
                                 <div class="center-line"></div>
                                 <div class="metric-bar {isMasterpieceEffect(item.score) ? 'glow-bar' : ''}" 
@@ -348,7 +344,6 @@
                                      ">
                                 </div>
                             </div>
-                            {/if}
                             
                             <div class="metric-diagnosis">
                                 <span class="diag-label">DIAGNOSIS:</span> 
@@ -362,49 +357,94 @@
     </div>
     {/if}
 
+        {#if data.tribunal_breakdown}
+        <div class="section-header">TRIBUNAL CONSENSUS</div>
+        <div class="tribunal-grid">
+            <!-- MARKET -->
+            <div class="agent-card">
+                <div class="agent-header agent-market">MARKET ANALYST</div>
+                <div class="agent-verdict {isMasterpieceEffect(data.tribunal_breakdown.market.commercial_score) ? 'masterpiece-text' : ''}">
+                    SCORE: {formatScoreDisplay(data.tribunal_breakdown.market.commercial_score)}
+                </div>
+                <div class="agent-list">{data.tribunal_breakdown.market.log_line || "N/A"}</div>
+                <div class="agent-list" style="margin-top:4px;">
+                    <i>"{data.tribunal_breakdown.market.commercial_reason || ""}"</i>
+                </div>
+            </div>
+            
+            <!-- LOGIC -->
+            <div class="agent-card">
+                <div class="agent-header agent-logic">LOGIC ENGINE</div>
+                <div class="agent-verdict {isMasterpieceEffect(data.tribunal_breakdown.logic.cohesion_score) ? 'masterpiece-text' : ''}">
+                    SCORE: {formatScoreDisplay(data.tribunal_breakdown.logic.cohesion_score)}
+                </div>
+                <div class="agent-list" style="color:#800000;">{data.tribunal_breakdown.logic.content_warning || "No Logic Holes Detected."}</div>
+                <div class="agent-list" style="margin-top:4px;">
+                    <i>"{data.tribunal_breakdown.logic.cohesion_reason || ""}"</i>
+                </div>
+            </div>
+
+            <!-- LIT -->
+            <div class="agent-card">
+                <div class="agent-header agent-lit">LITERARY CRITIC</div>
+                <div class="agent-verdict {isMasterpieceEffect(data.tribunal_breakdown.lit.novelty_score) ? 'masterpiece-text' : ''}">
+                    NOVELTY: {formatScoreDisplay(data.tribunal_breakdown.lit.novelty_score)}
+                </div>
+                <div class="agent-list">Theme: {formatScoreDisplay(data.tribunal_breakdown.lit.niche_score)}</div>
+                <div class="agent-list" style="margin-top:4px;">
+                    <i>"{data.tribunal_breakdown.lit.niche_reason || ""}"</i>
+                </div>
+            </div>
+        </div>
+    {/if}
+
 <div class="section-header">
     <span>NARRATIVE TENSION ARC</span>
-    {#if !isMsDos}
     <select class="retro-select" bind:value={selectedArc}>
         {#each Object.entries(IDEAL_ARCS) as [key, arc]}
             <option value={key}>{arc.label}</option>
         {/each}
     </select>
-    {/if}
 </div>
     <div class="chart-box bevel-down">
-        {#if isMsDos}
-            <pre style="font-size:10px; line-height:10px; color:var(--cj-text); overflow-x:auto;">
-{generateAsciiChart(chartData)}
-            </pre>
-        {:else}
-            <div class="chart-area zero-center">
-                <div class="chart-center-line"></div>
-                <svg class="chart-overlay" preserveAspectRatio="none" viewBox="0 0 100 100">
-                    <path d={idealPathD} fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6" />
-                </svg>
-                {#each chartData as beat, i}
-                    {@const bar = getBarMetrics(beat.tension)}
-                    <div class="bar-col tooltip-container" style="flex-grow: {beat.widthPerc};">
-                        <div class="bar-fill {isMasterpieceEffect(beat.tension) ? 'glow-bar' : ''}"
-                             style="
-                                height: {bar.width}%;
-                                background-color: {getBarColor(beat.tension)};
-                                position: absolute;
-                                bottom: {bar.isNegative ? 'auto' : '50%'};
-                                top: {bar.isNegative ? '50%' : 'auto'};
-                                left: 1px; right: 1px;
-                             ">
-                        </div>
-                        <div class="tooltip chart-tooltip">
-                            <strong>{i+1}. {beat.title}</strong><br/>
-                            Tension: {formatScoreDisplay(beat.tension)}<br/>
-                            <span style="font-size:0.8em; opacity:0.8">Duration: {Math.round(beat.widthPerc)}%</span>
-                        </div>
+        <div class="chart-area zero-center">
+            <div class="chart-center-line"></div>
+            
+            <!-- SVG OVERLAY FOR IDEAL PATH -->
+            <svg class="chart-overlay" preserveAspectRatio="none" viewBox="0 0 100 100">
+                <path d={idealPathD} fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6" />
+            </svg>
+
+            {#each chartData as beat, i}
+                {@const bar = getBarMetrics(beat.tension)}
+                <div class="bar-col tooltip-container" style="flex-grow: {beat.widthPerc};">
+                    <!-- Column Flex Logic for Diverging Vertical Bars -->
+                    <div class="bar-fill {isMasterpieceEffect(beat.tension) ? 'glow-bar' : ''}" 
+                         style="
+                            height: {bar.width}%; 
+                            background-color: {getBarColor(beat.tension)};
+                            position: absolute;
+                            bottom: {bar.isNegative ? 'auto' : '50%'};
+                            top: {bar.isNegative ? '50%' : 'auto'};
+                            left: 1px; right: 1px;
+                         ">
                     </div>
-                {/each}
+                    <div class="tooltip chart-tooltip">
+                        <strong>{i+1}. {beat.title}</strong><br/>
+                        Tension: {formatScoreDisplay(beat.tension)}<br/>
+                        <span style="font-size:0.8em; opacity:0.8">Duration: {Math.round(beat.widthPerc)}%</span>
+                    </div>
+                </div>
+            {/each}
+        </div>
+        <div class="chart-axis">
+            <span>START</span>
+            <div style="display:flex; align-items:center; gap:5px;">
+                <span class="legend-box" style="border:1px dashed #000080;"></span>
+                <span style="font-size:9px; color:#000080;">IDEAL ({IDEAL_ARCS[selectedArc].label})</span>
             </div>
-        {/if}
+            <span>END</span>
+        </div>
     </div>
 
     <div class="section-header">UNIVERSAL OUTLINE</div>
@@ -445,14 +485,13 @@
     {/if}
 
     <button class="action-btn secondary" onclick={onRunMeta} disabled={isProcessing}>
-        {isMsDos ? '[ RUN META-ANALYSIS ]' : 'RUN DEEP META-ANALYSIS'}
+        RUN DEEP META-ANALYSIS
     </button>
 </div>
 
 <style>
     .critic-display { display: flex; flex-direction: column; gap: 15px; font-family: 'Courier New', monospace; color: #000; font-weight: bold; }
     .bevel-down { border: 2px solid #808080; border-bottom-color: #fff; border-right-color: #fff; background: #c0c0c0; padding: 10px; }
-    .no-border { border: none; background: transparent; padding: 0; }
     
     /* SCORES */
     .score-container { 

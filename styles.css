@@ -1,4 +1,4 @@
-/* COMPU-JUDGE 98 GLOBAL STYLES (v9.0.0 - REFINED) */
+/* COMPU-JUDGE 98 GLOBAL STYLES (v8.0.0 - REFINED) */
 
 :root {
   /* Default Win95 (Light) Values */
@@ -41,28 +41,46 @@
     position: relative; /* Anchor for CRT/BSOD overlays */
 }
 
-/* ==========================================================================
-   WIN95 THEME SPECIFICS
-   ========================================================================== */
+/* --- VISUAL POLISH: CLEANER BEVELS --- */
+.bevel-up {
+    border: 2px solid #fff;
+    border-right-color: #404040;
+    border-bottom-color: #404040;
+    background: var(--cj-bg);
+}
 
-/* Buttons */
-.theme-win95 .win95-btn {
+.bevel-down {
+    border: 2px solid #404040;
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+    background: #fff; /* Input fields usually white */
+}
+
+.bevel-groove {
+    border: 2px solid var(--cj-dim);
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+    background: transparent;
+}
+
+/* --- BUTTONS (Win95 Authentic) --- */
+.win95-btn {
     background: var(--cj-bg);
     color: #000;
     border: 2px solid #fff;
     border-right-color: #404040;
     border-bottom-color: #404040;
-    font-family: 'MS Sans Serif', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Authentic font */
-    font-weight: normal;
+    font-family: 'Courier New', monospace;
+    font-weight: 900;
     cursor: pointer;
     padding: 4px 10px;
-    text-transform: none; /* Win95 is usually sentence case */
-    font-size: 11px;
+    text-transform: uppercase;
+    font-size: 12px;
     box-shadow: 1px 1px 0 #000; /* Subtle shadow */
-    transition: none;
+    transition: none; /* Instant feedback */
 }
 
-.theme-win95 .win95-btn:active {
+.win95-btn:active {
     border: 2px solid #404040;
     border-right-color: #fff;
     border-bottom-color: #fff;
@@ -70,115 +88,151 @@
     box-shadow: none;
 }
 
-/* Bevels */
-.theme-win95 .bevel-up {
-    border: 2px solid #fff;
-    border-right-color: #404040;
-    border-bottom-color: #404040;
-    background: var(--cj-bg);
+.win95-btn:disabled {
+    color: #808080;
+    text-shadow: 1px 1px 0 #fff;
+    cursor: default;
 }
 
-.theme-win95 .bevel-down {
-    border: 2px solid #404040;
-    border-right-color: #fff;
-    border-bottom-color: #fff;
-    background: #fff;
+.win95-btn.primary {
+    font-weight: bold;
+    padding: 8px 12px;
 }
 
-/* Inputs */
-.theme-win95 .retro-input {
+.win95-btn.dashed-btn {
+    border: 2px dashed #808080;
+    background: transparent;
+    color: #555;
+    box-shadow: none;
+}
+.win95-btn.dashed-btn:hover {
+    border: 2px solid #000;
+    color: #000;
+    background: rgba(255,255,255,0.2);
+}
+
+/* --- GLOBAL INPUT OVERRIDES --- */
+.retro-input {
     width: 100%;
     background-color: #fff !important;
     color: #000 !important;
     border: 2px solid #404040 !important;
     border-right-color: #fff !important;
     border-bottom-color: #fff !important;
-    padding: 2px 4px;
-    font-family: 'MS Sans Serif', sans-serif;
-    font-size: 12px;
-}
-
-/* ==========================================================================
-   MS-DOS THEME SPECIFICS (NO GUI)
-   ========================================================================== */
-
-.theme-msdos {
-    --cj-bg: #000000;
-    --cj-text: var(--cj-user-color); /* Green or Amber */
-    --cj-dim: color-mix(in srgb, var(--cj-user-color), #000 40%);
-    --cj-accent: var(--cj-user-color);
-    font-family: 'Courier New', 'Consolas', monospace;
-    text-transform: uppercase;
-}
-
-/* Remove all borders/bevels in DOS mode */
-.theme-msdos .bevel-up,
-.theme-msdos .bevel-down,
-.theme-msdos .bevel-groove,
-.theme-msdos .window-body {
-    border: none !important;
-    background: #000 !important;
-    color: var(--cj-text) !important;
-    box-shadow: none !important;
-}
-
-/* Text-Only Buttons */
-.theme-msdos .win95-btn,
-.theme-msdos .action-btn {
-    background: transparent !important;
-    color: var(--cj-text) !important;
-    border: none !important;
-    box-shadow: none !important;
-    text-align: left;
-    padding: 2px 0;
-    font-family: inherit;
+    padding: 4px 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
     font-weight: bold;
-    cursor: pointer;
-    text-transform: uppercase;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    resize: none;
+    line-height: 1.4;
 }
 
-.theme-msdos .win95-btn:hover,
-.theme-msdos .action-btn:hover {
-    background: var(--cj-text) !important;
-    color: #000 !important; /* Invert on hover */
+.retro-input:focus {
+    outline: 1px dotted #000;
+    background-color: #fff !important;
 }
 
-/* DOS Inputs */
-.theme-msdos .retro-input {
-    background: #000 !important;
-    color: var(--cj-text) !important;
-    border: none !important;
-    border-bottom: 1px dashed var(--cj-dim) !important;
-    font-family: inherit;
+/* --- SCROLLBARS --- */
+.window-body::-webkit-scrollbar { width: 16px; background: #dfdfdf; }
+
+.window-body::-webkit-scrollbar-thumb { 
+    background: var(--cj-bg); 
+    border: 2px solid #fff;
+    border-right-color: #404040;
+    border-bottom-color: #404040;
+}
+
+.window-body::-webkit-scrollbar-track {
+    background: repeating-linear-gradient(45deg, #ddd, #ddd 2px, #fff 2px, #fff 4px);
+}
+
+/* --- TRIBUNAL DASHBOARD (POLISHED) --- */
+.tribunal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.agent-card {
+    border: 2px solid var(--cj-dim);
+    border-right-color: #fff;
+    border-bottom-color: #fff; /* Bevel Down */
+    background: #e0e0e0;
     padding: 0;
-}
-.theme-msdos .retro-input:focus {
-    outline: none;
-    border-bottom: 1px solid var(--cj-text) !important;
+    display: flex;
+    flex-direction: column;
+    font-size: 11px;
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.1);
 }
 
-/* Tab Strip for DOS */
-.theme-msdos .tab-strip button {
-    background: transparent;
-    color: var(--cj-dim);
-    border: none;
+.agent-header {
+    color: white;
     padding: 4px;
-}
-.theme-msdos .tab-strip button.active {
-    color: var(--cj-text);
     font-weight: 900;
-    text-decoration: underline;
+    text-transform: uppercase;
+    font-size: 11px;
+    text-align: center;
+    border-bottom: 2px solid rgba(0,0,0,0.2);
+    letter-spacing: 1px;
 }
 
-/* Scrollbars DOS */
-.theme-msdos .window-body::-webkit-scrollbar { width: 10px; background: #000; }
-.theme-msdos .window-body::-webkit-scrollbar-thumb { background: var(--cj-dim); border: 1px solid #000; }
-.theme-msdos .window-body::-webkit-scrollbar-track { background: #000; }
+/* Specific Agent Colors */
+.agent-market { background: linear-gradient(180deg, #008000, #006400); }
+.agent-logic { background: linear-gradient(180deg, #000080, #000060); }
+.agent-lit { background: linear-gradient(180deg, #800080, #600060); }
 
-/* ==========================================================================
-   SHARED UTILS
-   ========================================================================== */
+.agent-verdict {
+    font-weight: 900;
+    background: #000;
+    color: #0f0;
+    padding: 4px;
+    text-align: center;
+    font-family: 'Consolas', monospace;
+    border-bottom: 1px solid #999;
+}
 
+.agent-list {
+    padding: 8px;
+    font-size: 11px;
+    line-height: 1.3;
+    font-weight: bold;
+    color: #333;
+}
+
+/* --- DRIVES (Physical Cartridge Look) --- */
+.drive-block {
+    margin-bottom: 8px;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+}
+
+.drive-header {
+    background: linear-gradient(90deg, #000080, #1084d0);
+    padding: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.3);
+}
+
+.drive-id-badge {
+    background: #000;
+    color: #0f0;
+    padding: 1px 4px;
+    font-family: 'Consolas', monospace;
+    font-size: 10px;
+    border: 1px solid #555;
+    margin-right: 5px;
+}
+
+.lib-item {
+    padding: 6px;
+    border-bottom: 1px solid #ccc;
+    background: #f8f8f8;
+    transition: background 0.1s;
+}
+.lib-item:hover { background: #e8e8ff; }
+
+/* --- MASTERPIECE & CRITICAL (Retained) --- */
 .masterpiece-text {
     background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
     background-size: 200% auto;
@@ -186,11 +240,55 @@
     background-clip: text;
     color: transparent;
     animation: rainbow-text-scroll 3s linear infinite;
+    filter: drop-shadow(1px 1px 0px rgba(0,0,0,0.5));
 }
 
 @keyframes rainbow-text-scroll { to { background-position: 200% center; } }
 
-/* Fix Obsidian Leaf Override for MS-DOS */
-.workspace-leaf-content[data-type="compu-judge-view"] .view-content.theme-msdos {
-    background-color: #000 !important;
+.critical-crack {
+    border: 4px double #550000 !important;
+    animation: shake-hard 0.5s cubic-bezier(.36,.07,.19,.97) both;
 }
+
+@keyframes shake-hard {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(3px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
+  40%, 60% { transform: translate3d(5px, 0, 0); }
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 600px) {
+    .tribunal-grid { grid-template-columns: 1fr; }
+    .score-main { font-size: 42px !important; }
+}
+
+/* --- SCORE CONTAINER Z-INDEX FIX --- */
+.score-container { 
+    background: #d4d4d4; 
+    padding-bottom: 25px; 
+    position: relative; 
+    z-index: 100; /* Ensure tooltips are above following sections */
+}
+
+.sub-score-row {
+    position: relative;
+    z-index: 101; /* Ensure sub-scores are even higher */
+    display: flex; 
+    justify-content: space-around; 
+    align-items: center; 
+    padding-top: 5px; 
+}
+
+/* Ensure tooltips break out of any potential clipping */
+.tooltip-container { 
+    position: relative; 
+    overflow: visible; 
+}
+
+/* --- CHART BOX Z-INDEX FIX --- */
+.chart-box {
+    position: relative;
+    z-index: 50; /* Lower than score but above normal flow if needed */
+}
+</style>
