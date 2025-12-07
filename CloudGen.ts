@@ -368,6 +368,17 @@ ${forensicRaw}
             };
         } catch(e) { console.warn("Agent raw data parse error", e); }
 
+        // [VETO PROTOCOL] - Enforce Capping if Tribunal Fails
+        if (finalRes.tribunal_breakdown) {
+            // Logic Veto: If Logic score is too low, cap market score
+            if (finalRes.tribunal_breakdown.logic.cohesion_score <= -10) {
+                if (finalRes.commercial_score > 50) {
+                    finalRes.commercial_score = 50;
+                    finalRes.commercial_reason += " [CAPPED BY LOGIC VETO]";
+                }
+            }
+        }
+
         return finalRes;
     }
 
@@ -503,6 +514,9 @@ Only score positive if it is innovative.
         
         let diagnosticBlock = "";
         
+        // [PHASE 2 UPDATE]: Format Specific Complaints for Forge
+        let specificComplaints = "";
+
         if (deepScan) {
             diagnosticBlock += `
 [DIAGNOSTIC TELEMETRY - DEEP SCAN]:
@@ -525,6 +539,15 @@ Only score positive if it is innovative.
                     }
                 }
             }
+
+            // [PHASE 2]: Extract Tribunal Breakdown
+            if (deepScan.tribunal_breakdown) {
+                specificComplaints = `
+[PRIORITY FIXES REQUIRED BY TRIBUNAL]:
+1. LOGIC ENGINE DEMANDS: ${deepScan.tribunal_breakdown.logic.content_warning}
+2. MARKET ANALYST DEMANDS: ${deepScan.tribunal_breakdown.market.commercial_reason}
+`;
+            }
         }
 
         if (quickScan) {
@@ -539,6 +562,11 @@ Only score positive if it is innovative.
         
         if (diagnosticBlock) {
             inputBlock = `${diagnosticBlock}\n\n${inputBlock}`;
+        }
+
+        // Append specific complaints if they exist
+        if (specificComplaints) {
+            inputBlock = `${specificComplaints}\n\n${inputBlock}`;
         }
 
         if (focus && focus.trim().length > 0) inputBlock = `USER DIRECTIVE: Focus on "${focus}".\n\n${inputBlock}`;

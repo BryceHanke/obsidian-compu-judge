@@ -490,8 +490,17 @@
 </div>
 
 <style>
-    .critic-display { display: flex; flex-direction: column; gap: 15px; font-family: 'Courier New', monospace; color: #000; font-weight: bold; }
-    .bevel-down { border: 2px solid #808080; border-bottom-color: #fff; border-right-color: #fff; background: #c0c0c0; padding: 10px; }
+    .critic-display { display: flex; flex-direction: column; gap: 15px; font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif; color: #000; font-weight: normal; }
+    .bevel-down {
+        border-top: 1px solid #000;
+        border-left: 1px solid #000;
+        border-right: 1px solid #fff;
+        border-bottom: 1px solid #fff;
+        box-shadow: inset 1px 1px 0 #808080;
+        background: #fff;  /* Typically input backgrounds, but for panels might need grey */
+        background: #c0c0c0; /* Keeping original logic but with Win95 bevels */
+        padding: 10px;
+    }
     
     /* SCORES */
     .score-container { 
@@ -504,7 +513,7 @@
     /* NEW LAYOUT */
     .main-score-row { display: flex; justify-content: center; padding: 15px 0; }
     .score-block.main { display: flex; flex-direction: column; align-items: center; }
-    .score-title { font-size: 14px; color: #555; font-weight: 900; letter-spacing: 2px; margin-bottom: 5px; }
+    .score-title { font-size: 11px; color: #555; font-weight: 900; letter-spacing: 2px; margin-bottom: 5px; }
     .score-main { font-size: 64px; font-weight: 900; line-height: 0.9; text-shadow: 2px 2px 0px rgba(255,255,255,0.5); }
     .score-verdict { font-size: 16px; font-weight: 900; margin-top: 5px; text-shadow: 1px 1px 0px #000; letter-spacing: 3px; }
 
@@ -534,13 +543,13 @@
         opacity: 0;
         background-color: #FFFFE0; color: #000; 
         text-align: center; 
-        border: 2px solid #000;
+        border: 1px solid #000;
         padding: 5px 8px; 
         position: absolute; 
         z-index: 10000; /* FORCE TOP LAYER */
         font-size: 11px;
         width: 140px;
-        box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+        box-shadow: 2px 2px 0px rgba(0,0,0,0.2);
         transition: opacity 0.2s;
         pointer-events: none;
     }
@@ -569,11 +578,11 @@
     .glow-bar { background-color: var(--cj-grade-masterpiece) !important; box-shadow: 0 0 10px var(--cj-grade-masterpiece), 0 0 15px var(--cj-grade-masterpiece); animation: pulse-bar 0.8s infinite alternate; }
 
     /* SANDERSON METRICS (Updated for Diverging Bars) */
-    .modules-grid { padding: 10px; }
+    .modules-grid { padding: 10px; z-index: 1; position: relative; }
     .module-item { display: flex; align-items: center; gap: 8px; font-size: 10px; margin-bottom: 8px; }
     .mod-label { width: 110px; text-align: right; color: #444; font-weight: 900; }
     
-    .diverging-bar-container { flex: 1; height: 16px; background: #ddd; border: 2px solid #808080; position: relative; overflow: hidden; }
+    .diverging-bar-container { flex: 1; height: 16px; background: #ddd; border: 1px solid #808080; box-shadow: inset 1px 1px 0 #000; position: relative; overflow: hidden; }
     .center-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: #555; z-index: 2; opacity: 0.5; }
     .fill { height: 100%; transition: width 0.5s ease; position: absolute; z-index: 1; }
     
@@ -584,7 +593,7 @@
     .slider-label { font-size: 11px; font-weight: 900; color: #000080; border-bottom: 1px dashed #888; margin-bottom: 6px; }
     .slider-item { margin-bottom: 6px; }
     .slider-text-row { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-bottom: 2px; }
-    .slider-track { height: 10px; background: #fff; border: 1px inset #fff; border-top-color: #888; border-left-color: #888; }
+    .slider-track { height: 10px; background: #fff; border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #fff; border-bottom: 1px solid #fff; box-shadow: inset 1px 1px 0 #808080; }
     .slider-fill { height: 100%; background: #008080; /* Teal for sliders */ }
     .divider-line { height: 1px; background: #808080; margin: 10px 0; }
 
@@ -594,7 +603,7 @@
     .cat-header { display: flex; justify-content: space-between; font-weight: 900; font-size: 12px; color: #000080; margin-bottom: 8px; border-bottom: 2px dotted #808080; padding-bottom: 4px; }
     .cat-items { display: flex; flex-direction: column; gap: 8px; }
     
-    .metric-card { background: #f0f0f0; border: 2px solid #aaa; padding: 6px; }
+    .metric-card { background: #f0f0f0; border: 1px solid #808080; padding: 6px; }
     .metric-top { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
     .metric-name { font-weight: bold; color: #222; }
     .metric-val { font-weight: 900; }
@@ -627,7 +636,7 @@
 
     /* STRUCTURE NODES */
     .structure-box { padding: 12px; background: #d4d4d4; }
-    .structure-node { background: #e0e0e0; border: 2px inset #fff; padding: 8px; margin-bottom: 8px; }
+    .structure-node { background: #e0e0e0; border: 1px solid #fff; border-top: 1px solid #808080; border-left: 1px solid #808080; padding: 8px; margin-bottom: 8px; }
     .structure-node.promise { border-left: 4px solid #000080; }
     .structure-node.payoff { border-left: 4px solid #800000; }
     .structure-node.progress { border-left: 4px solid #008000; }

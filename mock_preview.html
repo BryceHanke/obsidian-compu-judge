@@ -1,32 +1,8 @@
-
 <!DOCTYPE html>
 <html>
 <head>
     <style>
-        /* Mock Variables */
-        :root {
-            --cj-accent: #000080;
-            --cj-bg: #c0c0c0;
-            --cj-text: #000000;
-            --cj-dim: #808080;
-            --cj-light: #ffffff;
-            --cj-user-color: #00FF00;
-            --cj-grade-masterpiece: #FFFFFF;
-            --cj-bsod-blue: #0000AA;
-            --cj-adverb: #ff0000;
-            --cj-filter: #ffd700;
-            --cj-weak: #a9a9a9;
-            --cj-agent-market: #008000;
-            --cj-agent-logic: #000080;
-            --cj-agent-lit: #800080;
-        }
-        
-        body { background: #222; padding: 20px; font-family: 'Courier New', monospace; }
-        .wrapper { max-width: 600px; margin: 0 auto; background: var(--cj-bg); padding: 20px; }
-        
-        /* Insert styles.css content below */
-/* COMPU-JUDGE 98 GLOBAL STYLES (v7.2.0) */
-
+/* PASTE STYLES.CSS HERE */
 :root {
   /* Default Win95 (Light) Values */
   --cj-accent: #000080;
@@ -36,13 +12,15 @@
   --cj-light: #ffffff;
   
   /* Dynamic Variables */
-  --cj-user-color: #00FF00; 
+  --cj-user-color: #000080;
   --cj-grade-masterpiece: #FFFFFF; 
   --cj-bsod-blue: #0000AA;
+
   /* --- PALETTE: TACTICAL HUD --- */
   --cj-adverb: #ff0000;
   --cj-filter: #ffd700;
   --cj-weak: #a9a9a9;
+
   /* --- PALETTE: TRIBUNAL AGENTS --- */
   --cj-agent-market: #008000;
   --cj-agent-logic: #000080;
@@ -57,449 +35,168 @@
 }
 
 .compu-container {
-    font-family: 'Courier New', monospace;
-    font-weight: bold; /* GLOBAL CHUNKINESS */
+    /* Typography Standardization */
+    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
+    font-size: 11px; /* Authenticity */
+    font-weight: normal;
     color: var(--cj-text);
     height: 100%;
     display: flex;
     flex-direction: column;
-    position: relative; /* Anchor for CRT/BSOD overlays */
-}
-
-/* --- CRT SCANLINE EFFECT --- */
-.crt-overlay {
-    background: linear-gradient(
-        rgba(18, 16, 16, 0) 50%, 
-        rgba(0, 0, 0, 0.1) 50%
-    );
-    background-size: 100% 4px; /* Scanline spacing */
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    pointer-events: none; /* Let clicks pass through */
-    z-index: 999;
-    opacity: 0.15;
-    mix-blend-mode: multiply;
-}
-
-/* --- BLUE SCREEN OF DEATH (BSOD) --- */
-.bsod-container {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background-color: var(--cj-bsod-blue);
-    color: #FFFFFF;
-    font-family: 'Courier New', monospace;
-    padding: 40px;
-    z-index: 2000;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    font-weight: bold;
-}
-
-.bsod-title {
-    background-color: #AAAAAA;
-    color: var(--cj-bsod-blue);
-    padding: 2px 8px;
-    margin-bottom: 20px;
-    font-size: 1.2em;
-}
-
-.bsod-details {
-    font-size: 0.9em;
-    margin-bottom: 30px;
-    max-width: 80%;
-    white-space: pre-wrap;
-}
-
-.bsod-blink {
-    animation: blink-text 1s infinite;
-}
-
-@keyframes blink-text {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
-}
-
-/* --- GOD MODE (CHAOS) --- */
-.god-mode-container {
-    animation: rainbow-border 5s linear infinite;
-    border: 4px solid red;
-}
-
-@keyframes rainbow-border {
-    0% { border-color: red; }
-    20% { border-color: yellow; }
-    40% { border-color: lime; }
-    60% { border-color: cyan; }
-    80% { border-color: magenta; }
-    100% { border-color: red; }
-}
-
-/* --- BACKGROUND PATTERNS (Mesh/Diamond) --- */
-.pattern-mesh-dark {
-    background-color: #111 !important;
-    background-image: 
-        linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000),
-        linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000) !important;
-    background-position: 0 0, 10px 10px;
-    background-size: 20px 20px;
-    box-shadow: inset 0 0 50px #000;
-    color: #ccc;
-    border: 2px solid #555;
-}
-
-.pattern-mesh-critical {
-    background-color: #2a0000 !important;
-    background-image: 
-        repeating-linear-gradient(45deg, #1a0000, #1a0000 10px, #2a0000 10px, #2a0000 20px) !important;
-    box-shadow: inset 0 0 50px #000;
-    color: #ffcccc;
-    border: 2px solid #800000;
-}
-
-/* --- MASTERPIECE ANIMATIONS (Updated) --- */
-.masterpiece-border {
     position: relative;
-    border: 4px solid transparent !important;
-    animation: rainbow-border-pulse 2s linear infinite;
-    background-clip: padding-box; /* Ensures content background stays solid */
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
 }
 
-/* Simulated border gradient via box-shadow or border-color animation */
-@keyframes rainbow-border-pulse {
-    0% { border-color: #ff0000; box-shadow: 0 0 10px #ff0000; }
-    20% { border-color: #ffff00; box-shadow: 0 0 10px #ffff00; }
-    40% { border-color: #00ff00; box-shadow: 0 0 10px #00ff00; }
-    60% { border-color: #00ffff; box-shadow: 0 0 10px #00ffff; }
-    80% { border-color: #ff00ff; box-shadow: 0 0 10px #ff00ff; }
-    100% { border-color: #ff0000; box-shadow: 0 0 10px #ff0000; }
+/* --- VISUAL POLISH: CLEANER BEVELS --- */
+.bevel-up {
+    /* TRUE WIN95 BORDER LOGIC */
+    border-top: 1px solid #fff;
+    border-left: 1px solid #fff;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
+    box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
+    background: var(--cj-bg);
 }
 
-.masterpiece-text {
-    /* Rainbow Gradient Text */
-    background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: rainbow-text-scroll 3s linear infinite;
-    text-shadow: none !important; /* Clip requires no shadow on the element itself usually, but we can try filter */
-    filter: drop-shadow(2px 2px 0px rgba(0,0,0,0.5));
+.bevel-down {
+    border-top: 1px solid #000;
+    border-left: 1px solid #000;
+    border-right: 1px solid #fff;
+    border-bottom: 1px solid #fff;
+    box-shadow: inset 1px 1px 0 #808080;
+    background: #fff;
 }
 
-@keyframes rainbow-text-scroll {
-    to { background-position: 200% center; }
+.bevel-groove {
+    border: 2px solid var(--cj-dim);
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+    background: transparent;
 }
 
-/* --- CRITICAL FAILURE ANIMATIONS (Broken/Cracked) --- */
-.critical-crack {
-    position: relative;
-    border: 4px double #550000 !important;
-    /* background-color: #2a0000 !important;  Handled by pattern-mesh-critical now */
-    color: #ff0000 !important;
-    animation: shake-hard 0.5s cubic-bezier(.36,.07,.19,.97) both;
-    overflow: hidden;
-}
+/* --- BUTTONS (Win95 Authentic) --- */
+.win95-btn {
+    /* TRUE WIN95 BUTTON OUTLINE */
+    border-top: 1px solid #fff;
+    border-left: 1px solid #fff;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
+    box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
+    background: #c0c0c0;
 
-.critical-crack::before {
-    content: "CRITICAL FAILURE";
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%) rotate(-15deg);
-    font-size: 60px;
-    opacity: 0.1;
-    white-space: nowrap;
-    pointer-events: none;
     color: #000;
+    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 4px 10px;
+    text-transform: uppercase;
+    font-size: 11px;
+    transition: none;
 }
 
-.critical-text {
-    display: inline-block;
-    color: #000 !important; /* Dark text as requested */
-    text-shadow: 1px 1px 0 #550000, -1px -1px 0 #fff; /* Embossed look */
-    letter-spacing: 2px;
+.win95-btn:active {
+    border-top: 1px solid #000;
+    border-left: 1px solid #000;
+    border-right: 1px solid #fff;
+    border-bottom: 1px solid #fff;
+    box-shadow: inset 1px 1px 0 #808080;
+    padding: 5px 9px 3px 11px; /* The physical text shift */
 }
 
-@keyframes shake-hard {
-  10%, 90% { transform: translate3d(-2px, 0, 0) rotate(-1deg); }
-  20%, 80% { transform: translate3d(3px, 0, 0) rotate(2deg); }
-  30%, 50%, 70% { transform: translate3d(-5px, 0, 0) rotate(-2deg); }
-  40%, 60% { transform: translate3d(5px, 0, 0) rotate(1deg); }
+.win95-btn:disabled {
+    color: #808080;
+    text-shadow: 1px 1px 0 #fff;
+    cursor: default;
 }
 
-@keyframes shake-hard {
-  10%, 90% { transform: translate3d(-2px, 0, 0) rotate(-1deg); }
-  20%, 80% { transform: translate3d(3px, 0, 0) rotate(2deg); }
-  30%, 50%, 70% { transform: translate3d(-5px, 0, 0) rotate(-2deg); }
-  40%, 60% { transform: translate3d(5px, 0, 0) rotate(1deg); }
+.win95-btn.primary {
+    font-weight: bold;
+    padding: 6px 12px;
 }
 
-@keyframes glitch-text {
-  0% { transform: skew(0deg); opacity: 1; }
-  20% { transform: skew(-10deg); opacity: 0.8; }
-  40% { transform: skew(5deg); opacity: 1; }
-  60% { transform: skew(-5deg); opacity: 0.9; }
-  80% { transform: skew(2deg); opacity: 1; }
-  100% { transform: skew(0deg); opacity: 1; }
+.win95-btn.dashed-btn {
+    border: 1px dashed #808080;
+    background: transparent;
+    color: #555;
+    box-shadow: none;
 }
-
-@keyframes pulse-bar {
-    from { 
-        opacity: 0.8; 
-        box-shadow: 0 0 5px var(--cj-grade-masterpiece); 
-        background-color: var(--cj-grade-masterpiece) !important; 
-    }
-    to { 
-        opacity: 1; 
-        box-shadow: 0 0 15px var(--cj-grade-masterpiece), 0 0 10px #FFF; 
-        background-color: #FFF !important; 
-    }
-}
-
-@keyframes spin { 
-    from { transform: rotate(0deg); } 
-    to { transform: rotate(360deg); } 
+.win95-btn.dashed-btn:hover {
+    border: 1px solid #000;
+    color: #000;
+    background: rgba(255,255,255,0.2);
 }
 
 /* --- GLOBAL INPUT OVERRIDES --- */
 .retro-input {
     width: 100%;
-    background-color: var(--cj-light) !important;
-    color: var(--cj-text) !important;
-    border: 2px inset var(--cj-dim) !important;
-    padding: 6px;
-    font-family: 'Courier New', monospace;
+    background-color: #fff !important;
+    color: #000 !important;
+
+    /* Input Areas need to be Courier New/Consolas */
+    font-family: 'Courier New', 'Consolas', monospace;
+
+    border-top: 1px solid #000 !important;
+    border-left: 1px solid #000 !important;
+    border-right: 1px solid #fff !important;
+    border-bottom: 1px solid #fff !important;
+    box-shadow: inset 1px 1px 0 #808080 !important;
+
+    padding: 4px 6px;
     font-size: 13px;
-    font-weight: bold;
+    font-weight: normal;
     border-radius: 0 !important;
-    box-shadow: none !important;
     resize: none;
-    overflow: hidden;
     line-height: 1.4;
 }
 
 .retro-input:focus {
-    outline: 2px dotted var(--cj-text);
+    outline: 1px dotted #000;
+    background-color: #fff !important;
 }
 
-.retro-input:disabled {
-    opacity: 0.6;
-    background-color: #eee !important;
-    cursor: wait;
+/* --- TITLE BAR --- */
+.title-bar {
+    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+    color: #fff;
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
+    font-size: 11px;
 }
 
 /* --- SCROLLBARS --- */
-.window-body::-webkit-scrollbar { width: 14px; background: var(--cj-bg); }
+.window-body::-webkit-scrollbar { width: 16px; background: #dfdfdf; }
 
 .window-body::-webkit-scrollbar-thumb { 
     background: var(--cj-bg); 
-    border: 2px outset var(--cj-light);
-    border-right-color: var(--cj-dim);
-    border-bottom-color: var(--cj-dim);
-}
-
-.theme-msdos .window-body::-webkit-scrollbar-thumb {
-    border: 2px solid var(--cj-text);
-    background: var(--cj-dim);
+    border-top: 1px solid #fff;
+    border-left: 1px solid #fff;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
 }
 
 .window-body::-webkit-scrollbar-track {
-    background: var(--cj-bg);
+    background: repeating-linear-gradient(45deg, #ddd, #ddd 2px, #fff 2px, #fff 4px);
 }
 
-/* --- GLOSSARY TOOLTIPS --- */
-.glossary-tooltip {
-    position: fixed;
-    background: #FFFFE0; /* Pale Yellow Post-it */
-    color: #000;
-    padding: 8px;
-    font-size: 11px;
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-    z-index: 10000;
-    max-width: 250px;
-    box-shadow: 4px 4px 0px rgba(0,0,0,0.5);
-    pointer-events: none;
-    border: 1px solid #000;
-}
-
-.help-icon {
-    cursor: help;
-    color: var(--cj-accent);
-    font-size: 0.9em;
-    margin-left: 4px;
-}
-
-/* --- FORGE STYLES --- */
-.button-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
-    margin-bottom: 15px;
-}
-
-.dashed {
-    border: 0;
-    border-top: 2px dashed var(--cj-dim);
-    margin: 15px 0;
-    opacity: 0.5;
-}
-
-/* --- WIZARD STYLES --- */
-.theme-row .tiny-input {
-    font-size: 11px !important;
-    padding: 2px 4px !important;
-    height: 24px !important;
-    flex: 1;
-}
-
-.label-tiny {
-    font-size: 9px;
-    font-weight: 900;
-    color: var(--cj-dim);
-    white-space: nowrap;
-}
-
-.template-row {
-    display: flex;
-    gap: 5px;
-    margin-bottom: 15px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.template-label {
-    font-size: 10px;
-    font-weight: bold;
-    color: var(--cj-dim);
-}
-
-.template-btn {
-    font-size: 10px;
-    padding: 4px 8px;
-    background: var(--cj-bg);
-    border: 1px solid var(--cj-dim);
-    cursor: pointer;
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-}
-
-.template-btn:hover {
-    background: var(--cj-accent);
-    color: white;
-}
-
-/* --- MOBILE OPTIMIZATIONS --- */
-@media (max-width: 600px) {
-    .compu-container { font-size: 14px; }
-    
-    .grid-3-p, .grid-2, .score-grid { 
-        grid-template-columns: 1fr !important; 
-        gap: 15px !important;
-    }
-    
-    .dual-score-row { 
-        flex-direction: column; 
-        gap: 15px; 
-        padding-bottom: 15px;
-    }
-    
-    .score-divider {
-        width: 80%;
-        height: 2px;
-        margin: 5px auto;
-    }
-    
-    .score-main { 
-        font-size: 42px !important; 
-    }
-    
-    .button-row { 
-        flex-direction: column; 
-        gap: 8px; 
-    }
-    
-    .action-btn { 
-        padding: 12px; 
-        margin-bottom: 5px; 
-    }
-    
-    .chart-area {
-        height: 60px;
-    }
-    
-    .metric-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 2px;
-    }
-}
-/* ============================================================================
-   EDITOR EXTENSION OVERLAY (Restored)
-   ============================================================================ */
-
-/* ADVERBS: Wavy Red Underline + Red Background Tint */
-.cj-highlight-adverb {
-    text-decoration: underline wavy var(--cj-adverb);
-    text-decoration-thickness: 2px;
-    background-color: rgba(255, 0, 0, 0.08);
-    border-radius: 2px;
-    cursor: help;
-}
-
-/* FILTER WORDS: Yellow Highlight + Bottom Border */
-.cj-highlight-filter {
-    background-color: rgba(255, 215, 0, 0.2);
-    border-bottom: 2px solid var(--cj-filter);
-    cursor: help;
-}
-
-/* WEAK VERBS: Dotted Gray Underline */
-.cj-highlight-weak {
-    border-bottom: 2px dotted var(--cj-weak);
-    opacity: 0.8;
-    cursor: help;
-}
-
-/* HUD TOOLTIP (Appears on Hover via Pure CSS) */
-.cj-highlight-adverb:hover::after,
-.cj-highlight-filter:hover::after,
-.cj-highlight-weak:hover::after {
-    content: attr(data-cj-type);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #000000;
-    color: #00FF00;
-    font-family: 'Courier New', monospace;
-    font-size: 10px;
-    font-weight: bold;
-    padding: 4px 8px;
-    border: 1px solid #00FF00;
-    z-index: 9999;
-    white-space: nowrap;
-    pointer-events: none;
-    box-shadow: 4px 4px 0px rgba(0,0,0,0.5);
-    margin-bottom: 4px;
-}
-/*   3. TRIBUNAL DASHBOARD (MULTI-AGENT LAYOUT)
-   ============================================================================ */
-
+/* --- TRIBUNAL DASHBOARD (POLISHED) --- */
 .tribunal-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
+    gap: 10px;
     margin-bottom: 15px;
 }
 
 .agent-card {
-    border: 2px inset var(--cj-dim);
-    background: var(--cj-light);
-    padding: 4px;
+    border-top: 1px solid #fff;
+    border-left: 1px solid #fff;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
+    box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
+    background: #c0c0c0;
+
+    padding: 0;
     display: flex;
     flex-direction: column;
     font-size: 11px;
@@ -507,160 +204,215 @@
 
 .agent-header {
     color: white;
-    padding: 2px 4px;
-    font-weight: bold;
+    padding: 4px;
+    font-weight: 900;
     text-transform: uppercase;
-    font-size: 10px;
-    margin-bottom: 4px;
+    font-size: 11px;
     text-align: center;
-    border: 1px solid rgba(0,0,0,0.2);
+    border-bottom: 1px solid #808080;
+    letter-spacing: 1px;
 }
 
 /* Specific Agent Colors */
-.agent-market { background-color: var(--cj-agent-market); }
-.agent-logic { background-color: var(--cj-agent-logic); }
-.agent-lit { background-color: var(--cj-agent-lit); }
+.agent-market { background: linear-gradient(180deg, #008000, #006400); }
+.agent-logic { background: linear-gradient(180deg, #000080, #000060); }
+.agent-lit { background: linear-gradient(180deg, #800080, #600060); }
 
 .agent-verdict {
-    font-weight: bold;
-    margin-bottom: 4px;
-    border-bottom: 1px dashed var(--cj-dim);
-    padding-bottom: 4px;
+    font-weight: 900;
+    background: #000;
+    color: #0f0;
+    padding: 4px;
     text-align: center;
+    font-family: 'Consolas', monospace;
+    border-bottom: 1px solid #999;
 }
 
 .agent-list {
-    list-style-type: square;
-    padding-left: 12px;
-    margin: 0;
-    font-size: 10px;
-}
-
-/* --- WARNING STRIPE --- */
-.warning-stripe {
-    background: repeating-linear-gradient(
-        45deg,
-        #FFFF00,
-        #FFFF00 10px,
-        #FFD700 10px,
-        #FFD700 20px
-    );
-    border: 2px solid #000;
-    color: #000;
-    font-weight: 900;
-    text-shadow: 1px 1px 0 #FFF;
-}
-
-.log-text-blue {
-    color: #0000AA;
+    padding: 8px;
+    font-size: 11px;
+    line-height: 1.3;
     font-weight: bold;
-    font-style: italic;
-    font-family: 'Courier New', monospace;
+    color: #333;
 }
 
-        /* Mock Svelte Scoped Styles (simplified for verification) */
-        .critic-display { display: flex; flex-direction: column; gap: 15px; font-family: 'Courier New', monospace; color: #000; font-weight: bold; }
-        .bevel-down { border: 2px solid #808080; border-bottom-color: #fff; border-right-color: #fff; background: #c0c0c0; padding: 10px; }
-        .score-container { padding-bottom: 25px; }
-        .main-score-row { display: flex; justify-content: center; padding: 15px 0; }
-        .score-block.main { display: flex; flex-direction: column; align-items: center; }
-        .score-title { font-size: 14px; color: #555; font-weight: 900; letter-spacing: 2px; margin-bottom: 5px; }
-        .score-main { font-size: 64px; font-weight: 900; line-height: 0.9; text-shadow: 2px 2px 0px rgba(255,255,255,0.5); }
-        .score-verdict { font-size: 16px; font-weight: 900; margin-top: 5px; text-shadow: 1px 1px 0px #000; letter-spacing: 3px; }
-        .score-divider-horizontal { height: 2px; background: #808080; width: 80%; margin: 10px auto; }
-        .sub-score-row { display: flex; justify-content: space-around; align-items: center; padding-top: 5px; }
-        .sub-score-block { text-align: center; flex: 1; position: relative; }
-        .sub-title { font-size: 10px; font-weight: bold; margin-bottom: 2px; }
-        .sub-val { font-size: 18px; font-weight: 900; }
-        .sub-divider { width: 1px; height: 20px; background: #999; }
-        .warning-box { background: #FFFF00; border: 2px solid #000; padding: 8px; font-size: 11px; font-weight: 900; display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; }
-        .log-section { width: 100%; text-align: left; font-size: 12px; line-height: 1.4; }
-        .log-label { color: #000080; font-weight: 900; }
+/* --- DRIVES (Physical Cartridge Look) --- */
+.drive-block {
+    margin-bottom: 8px;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+}
+
+.drive-header {
+    background: linear-gradient(90deg, #000080, #1084d0);
+    padding: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.3);
+}
+
+.drive-id-badge {
+    background: #000;
+    color: #0f0;
+    padding: 1px 4px;
+    font-family: 'Consolas', monospace;
+    font-size: 10px;
+    border: 1px solid #555;
+    margin-right: 5px;
+}
+
+.lib-item {
+    padding: 6px;
+    border-bottom: 1px solid #ccc;
+    background: #f8f8f8;
+    transition: background 0.1s;
+}
+.lib-item:hover { background: #e8e8ff; }
+
+/* --- MASTERPIECE & CRITICAL (Retained) --- */
+.masterpiece-text {
+    background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: rainbow-text-scroll 3s linear infinite;
+    filter: drop-shadow(1px 1px 0px rgba(0,0,0,0.5));
+}
+
+@keyframes rainbow-text-scroll { to { background-position: 200% center; } }
+
+.critical-crack {
+    border: 4px double #550000 !important;
+    animation: shake-hard 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake-hard {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(3px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
+  40%, 60% { transform: translate3d(5px, 0, 0); }
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 600px) {
+    .tribunal-grid { grid-template-columns: 1fr; }
+    .score-main { font-size: 42px !important; }
+}
+
+/* --- SCORE CONTAINER Z-INDEX FIX --- */
+.score-container {
+    background: #d4d4d4;
+    padding-bottom: 25px;
+    position: relative;
+    z-index: 100; /* Ensure tooltips are above following sections */
+}
+
+.sub-score-row {
+    position: relative;
+    z-index: 101; /* Ensure sub-scores are even higher */
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding-top: 5px;
+}
+
+/* Ensure tooltips break out of any potential clipping */
+.tooltip-container {
+    position: relative;
+    overflow: visible;
+}
+
+/* --- CHART BOX Z-INDEX FIX --- */
+.chart-box {
+    position: relative;
+    z-index: 50; /* Lower than score but above normal flow if needed */
+}
+
+/* MOCK PREVIEW SPECIFIC OVERRIDES */
+body {
+    background: #222;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.wrapper {
+    width: 600px;
+    background: var(--cj-bg);
+}
+
+.critic-display { display: flex; flex-direction: column; gap: 15px; font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif; color: #000; font-weight: bold; }
+.main-score-row { display: flex; justify-content: center; padding: 15px 0; }
+.score-block.main { display: flex; flex-direction: column; align-items: center; }
+.score-title { font-size: 14px; color: #555; font-weight: 900; letter-spacing: 2px; margin-bottom: 5px; }
+.score-main { font-size: 64px; font-weight: 900; line-height: 0.9; text-shadow: 2px 2px 0px rgba(255,255,255,0.5); }
+.score-verdict { font-size: 16px; font-weight: 900; margin-top: 5px; text-shadow: 1px 1px 0px #000; letter-spacing: 3px; }
+.score-divider-horizontal { height: 2px; background: #808080; width: 80%; margin: 10px auto; }
+.sub-score-row { display: flex; justify-content: space-around; align-items: center; padding-top: 5px; }
+.sub-score-block { text-align: center; flex: 1; position: relative; }
+.sub-title { font-size: 10px; font-weight: bold; margin-bottom: 2px; }
+.sub-val { font-size: 18px; font-weight: 900; }
+.sub-divider { width: 1px; height: 20px; background: #999; }
+.log-section { margin-top: 10px; font-family: 'Courier New', monospace; }
+.log-label { color: #000080; font-weight: 900; }
+.log-text-blue { color: #0000AA; font-weight: bold; font-style: italic; }
+
     </style>
 </head>
 <body>
 
 <div class="wrapper">
-    <h1>1. MASTERPIECE (+50)</h1>
-    <!-- Masterpiece Markup -->
-    <div class="critic-display">
-        <div class="score-container bevel-down masterpiece-border pattern-mesh-dark">
-            <div class="main-score-row">
-                <div class="score-block main">
-                    <div class="score-title" style="color: #999">OVERALL SCORE</div>
-                    <div class="score-main masterpiece-text" style="">+50</div>
-                    <div class="score-verdict masterpiece-text" style="">GOD TIER</div>
-                </div>
-            </div>
+    <!-- Main App Container -->
+    <div class="compu-container bevel-up"> <!-- Bevel Up on Container -->
 
-            <div class="score-divider-horizontal"></div>
-
-            <div class="sub-score-row">
-                <div class="sub-score-block">
-                    <div class="sub-title" style="color: #aaa">COMMERCIAL</div>
-                    <div class="sub-val" style="color: #fff">+50</div>
-                </div>
-                <div class="sub-divider"></div>
-                <div class="sub-score-block">
-                    <div class="sub-title" style="color: #aaa">LITERARY</div>
-                    <div class="sub-val" style="color: #fff">+50</div>
-                </div>
-                <div class="sub-divider"></div>
-                <div class="sub-score-block">
-                    <div class="sub-title" style="color: #aaa">COHESION</div>
-                    <div class="sub-val" style="color: #fff">+50</div>
-                </div>
-            </div>
-            
-            <div class="log-section" style="margin-top: 10px;">
-                <span class="log-label">LOGLINE: </span>
-                <span class="log-text-blue">"A visually stunning masterpiece that defies the gods."</span>
-            </div>
+        <!-- TITLE BAR -->
+        <div class="title-bar">
+            <div class="title-bar-text">Compu-Judge 98 [DEMO.MD]</div>
+            <button class="win95-btn" style="padding: 0 4px;">X</button>
         </div>
-    </div>
 
-    <br/><br/>
+        <div style="padding: 10px;">
+            <!-- BUTTON TEST -->
+            <div style="margin-bottom: 20px;">
+                <button class="win95-btn">Standard Button</button>
+                <button class="win95-btn" style="border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #fff; border-bottom: 1px solid #fff; box-shadow: inset 1px 1px 0 #808080; padding: 5px 9px 3px 11px;">Pressed Button</button>
+            </div>
 
-    <h1>2. CRITICAL FAILURE (-37)</h1>
-    <!-- Critical Failure Markup -->
-    <div class="critic-display">
-        <div class="score-container bevel-down critical-crack pattern-mesh-critical">
-            <div class="main-score-row">
-                <div class="score-block main">
-                    <div class="score-title" style="color: #999">OVERALL SCORE</div>
-                    <div class="score-main critical-text" style="color: #000">-37</div>
-                    <div class="score-verdict critical-text" style="color: #000">CRITICAL FAILURE</div>
+            <!-- SCORE CARD -->
+            <div class="critic-display">
+                <div class="score-container bevel-down" style="background: #d4d4d4;">
+                    <div class="main-score-row">
+                        <div class="score-block main">
+                            <div class="score-title" style="color: #555">OVERALL SCORE</div>
+                            <div class="score-main" style="color: #008000">+50</div>
+                            <div class="score-verdict" style="color: #008000">GOD TIER</div>
+                        </div>
+                    </div>
+
+                    <div class="score-divider-horizontal"></div>
+
+                    <div class="sub-score-row">
+                        <div class="sub-score-block">
+                            <div class="sub-title">COMMERCIAL</div>
+                            <div class="sub-val">+50</div>
+                        </div>
+                        <div class="sub-divider"></div>
+                        <div class="sub-score-block">
+                            <div class="sub-title">LITERARY</div>
+                            <div class="sub-val">+50</div>
+                        </div>
+                        <div class="sub-divider"></div>
+                        <div class="sub-score-block">
+                            <div class="sub-title">COHESION</div>
+                            <div class="sub-val">+50</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="score-divider-horizontal"></div>
+            <br/>
 
-            <div class="sub-score-row">
-                <div class="sub-score-block">
-                    <div class="sub-title" style="color: #aaa">COMMERCIAL</div>
-                    <div class="sub-val" style="color: #fff">-50</div>
-                </div>
-                <div class="sub-divider"></div>
-                <div class="sub-score-block">
-                    <div class="sub-title" style="color: #aaa">LITERARY</div>
-                    <div class="sub-val" style="color: #fff">-10</div>
-                </div>
-                <div class="sub-divider"></div>
-                <div class="sub-score-block">
-                    <div class="sub-title" style="color: #aaa">COHESION</div>
-                    <div class="sub-val" style="color: #fff">-50</div>
-                </div>
-            </div>
+            <!-- INPUT TEST -->
+            <textarea class="retro-input" rows="2">Input Text (Consolas/Courier New)</textarea>
 
-            <div class="warning-box warning-stripe" style="margin-top: 15px;">
-                <span class="warning-icon">⚠</span>
-                <span class="warning-text">No specific warnings detected.</span>
-            </div>
-
-            <div class="log-section" style="margin-top: 10px;">
-                <span class="log-label">LOGLINE: </span>
-                <span class="log-text-blue">"A benevolent banker's reality collapses..."</span>
-            </div>
         </div>
     </div>
 </div>

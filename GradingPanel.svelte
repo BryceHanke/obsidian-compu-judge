@@ -27,7 +27,6 @@
     let activeFile: TFile | null = $state(null);
     let projectData: ProjectData | null = $state(null);
     let currentTab = $state('critic');
-    let themeClass = $state('');
     let isSaving = $state(false);
     let estimatedDuration = $state(4000);
     let wizardLoadingField: string | null = $state(null);
@@ -78,7 +77,7 @@
         if (file) await loadProjectData(file);
     };
 
-    export const updateTheme = (theme: string) => applyTheme(theme);
+    // Removed updateTheme as theme is constant now
 
     async function loadProjectData(file: TFile) {
         try { 
@@ -532,6 +531,14 @@
             });
             
             projectData.wizardState.characters = newChars;
+
+            // [PHASE 2 - UPDATE 4]: Add note to archivistContext
+            if (updateCount > 0) {
+                 const renameLog = `\n[SYSTEM NOTE - RENAMED CHARACTERS]:\n` +
+                    Object.entries(nameMap).map(([oldN, newN]) => `- ${oldN} is now ${newN}`).join('\n');
+                 projectData.archivistContext = (projectData.archivistContext || "") + renameLog;
+            }
+
             projectData = { ...projectData };
             await saveProject(false);
             
@@ -560,14 +567,6 @@
             await saveProject(true); 
             new Notice("Disc Formatted.");
         } 
-    }
-
-    function applyTheme(mode: string) { 
-        const isDark = document.body.classList.contains('theme-dark');
-        if (mode === 'win95') themeClass = 'theme-win95';
-        else if (mode === 'msdos') themeClass = 'theme-msdos';
-        else if (mode === 'invert') themeClass = isDark ? 'theme-win95' : 'theme-msdos';
-        else themeClass = isDark ? 'theme-msdos' : 'theme-win95';
     }
 
     // --- FORGE OPS HOOKS ---
@@ -615,12 +614,11 @@
     onMount(() => { 
         const f = app.workspace.getActiveFile(); 
         updateActiveFile(f); 
-        applyTheme(settings.theme); 
     });
 </script>
 
-<div class="compu-container {themeClass}" 
-     style="--cj-user-color: {settings.msDosColor || '#00FF00'}; --cj-grade-masterpiece: {settings.gradingColors.masterpiece}">
+<div class="compu-container theme-win95"
+     style="--cj-grade-masterpiece: {settings.gradingColors.masterpiece}">
     
     <div class="title-bar">
         <div class="title-bar-text">
@@ -834,24 +832,22 @@
    <div class="status-bar">
         <span>STATUS: {activeFileStatus}</span>
         <span class="spacer"></span>
-        <span class:active-led={isSaving} class="disk-led">DISK ACT</span>
+        <span class="disk-led" class:active-led={isSaving}>DISK ACT</span>
     </div>
 </div>
 
 <style>
     :root { --cj-accent: #000080; --cj-bg: #c0c0c0; --cj-text: #000000; --cj-dim: #808080; }
-    .compu-container { height: 100%; display: flex; flex-direction: column; font-family: 'Courier New', monospace; font-size: 15px; font-weight: bold; }
-    .window-body { flex: 1; overflow-y: auto; padding: 12px; background: var(--cj-bg); border: 2px inset #dfdfdf; }
-    .theme-msdos { --cj-bg: #000000; --cj-text: var(--cj-user-color); --cj-accent: var(--cj-user-color); --cj-dim: color-mix(in srgb, var(--cj-user-color), #000 60%); }
-    .theme-win95 { --cj-bg: #c0c0c0; --cj-text: #000000; --cj-accent: #000080; --cj-dim: #808080; }
-    .title-bar { background: var(--cj-accent); color: #fff; padding: 4px 8px; display: flex; justify-content: space-between; font-weight: bold; }
+    .compu-container { height: 100%; display: flex; flex-direction: column; font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif; font-size: 11px; font-weight: normal; }
+    .window-body { flex: 1; overflow-y: auto; padding: 12px; background: var(--cj-bg); border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #fff; border-bottom: 1px solid #fff; box-shadow: inset 1px 1px 0 #808080; }
+    .title-bar { background: linear-gradient(90deg, #000080 0%, #1084d0 100%); color: #fff; padding: 4px 8px; display: flex; justify-content: space-between; font-weight: bold; }
     
     .tab-strip { display: flex; padding: 6px 4px 0 4px; gap: 2px; }
-    .tab-strip button { background: var(--cj-bg); color: var(--cj-text); border: 2px outset #fff; border-bottom: none; padding: 6px 14px; font-weight: bold; cursor: pointer; }
-    .tab-strip button.active { padding-bottom: 8px; margin-top: -4px; z-index: 10; border-top: 2px solid var(--cj-accent); }
+    .tab-strip button { background: var(--cj-bg); color: var(--cj-text); border-top: 1px solid #fff; border-left: 1px solid #fff; border-right: 1px solid #000; border-bottom: 1px solid #000; box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf; padding: 4px 10px; font-weight: bold; cursor: pointer; border-bottom: none; font-size: 11px; }
+    .tab-strip button.active { padding-bottom: 6px; margin-top: -2px; z-index: 10; border-top: 2px solid #dfdfdf; }
     
-    .action-btn { width: 100%; padding: 10px; font-weight: bold; cursor: pointer; border: 2px outset #fff; background: var(--cj-bg); color: var(--cj-text); margin-bottom: 8px; }
-    .action-btn:active { border-style: inset; }
+    .action-btn { width: 100%; padding: 6px; font-weight: bold; cursor: pointer; border-top: 1px solid #fff; border-left: 1px solid #fff; border-right: 1px solid #000; border-bottom: 1px solid #000; box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf; background: var(--cj-bg); color: var(--cj-text); margin-bottom: 8px; font-size: 11px; }
+    .action-btn:active { border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #fff; border-bottom: 1px solid #fff; box-shadow: inset 1px 1px 0 #808080; padding: 7px 5px 5px 7px; }
     
     .outline-fieldset { margin-bottom: 20px; border: 2px groove var(--cj-dim); padding: 10px; }
     .repair-focus-area { margin-bottom: 15px; }
@@ -896,14 +892,6 @@
     .empty-state { padding: 40px; text-align: center; opacity: 0.5; font-weight: 900; }
     .reset-btn { font-size: 10px; padding: 0 4px; background: #ff0000; color: white; border: 2px outset #ffaaaa; cursor: pointer; }
     .reset-btn:active { border-style: inset; }
-
-    .theme-msdos .action-btn { background: #000; color: var(--cj-text); border: 1px solid var(--cj-text); box-shadow: none; }
-    .theme-msdos .action-btn:active, .theme-msdos .action-btn:hover { background: var(--cj-text); color: #000; border-style: solid; }
-    .theme-msdos :global(.bevel-groove), .theme-msdos :global(.bevel-down), .theme-msdos .window-body { border-style: solid !important; border-width: 1px !important; border-color: var(--cj-dim) !important; }
-    .theme-msdos .tab-strip button { background: #000; color: var(--cj-dim); border: 1px solid var(--cj-dim); border-bottom: none; }
-    .theme-msdos .tab-strip button.active { color: var(--cj-text); border-color: var(--cj-text); border-bottom: 1px solid #000; margin-bottom: -1px; }
-    .theme-msdos :global(.upload-btn), .theme-msdos :global(.scrub-btn) { background: transparent !important; color: var(--cj-text) !important; border: 1px solid var(--cj-dim) !important; }
-    .theme-msdos :global(.upload-btn:hover), .theme-msdos :global(.scrub-btn:hover) { background: var(--cj-text) !important; color: #000 !important; }
 
     @media (max-width: 600px) {
         .button-row { flex-direction: column; gap: 5px; }

@@ -1,7 +1,6 @@
 // --- TYPES DEFINITION FOR COMPU-JUDGE (SANDERSON ENGINE v7.5.0) ---
 
 export type AIProvider = 'gemini' | 'openai' | 'anthropic';
-export type ThemeMode = 'msdos' | 'win95' | 'invert' | 'auto';
 
 export interface GradingColors {
     critical: string;    // 0-20
@@ -58,8 +57,6 @@ export interface NigsSettings {
     customRepairPrompt: string;      
     
     // --- VISUALS ---
-    msDosColor: string;
-    theme: ThemeMode;
     gradingColors: GradingColors;
     
     // --- DATA STORE ---
@@ -100,8 +97,6 @@ export const DEFAULT_SETTINGS: NigsSettings = {
     customSystemPrompt: "",
     customOutlinePrompt: "",
     customRepairPrompt: "",
-    msDosColor: '#00FF00',
-    theme: 'msdos',
     gradingColors: {
         critical: '#000000',
         poor: '#FF0000',
