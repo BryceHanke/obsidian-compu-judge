@@ -86,8 +86,6 @@ var DEFAULT_SETTINGS = {
   customSystemPrompt: "",
   customOutlinePrompt: "",
   customRepairPrompt: "",
-  msDosColor: "#00FF00",
-  theme: "msdos",
   gradingColors: {
     critical: "#000000",
     poor: "#FF0000",
@@ -136,10 +134,16 @@ var import_obsidian = require("obsidian");
 // prompts.ts
 var NIGS_SYSTEM_PROMPT = `
 [SYSTEM OVERRIDE: NARRATIVE GRANDMASTER ENGINE v21.0]
-[MODE]: HIGH-RESOLUTION STRUCTURAL & THEMATIC PHYSICS
+[MODE]: RUTHLESS EDITOR MODE (BRUTAL HONESTY)
 [OBJECTIVE]: UNBIASED MERITOCRATIC ASSESSMENT.
 
 You are not a copy editor. You are a **MASTER STORYTELLER** (Sanderson/McKee Level). Your job is to ignore the "window dressing" and judge the **FOUNDATION** (Structure, Psychology, Theme, and Logic).
+
+**CRITICAL INSTRUCTION: DO NOT BE POLITE.**
+- If a sentence is boring, say it is boring.
+- If the plot makes no sense, call it a hallucination.
+- If the character is a Mary Sue, flag it immediately.
+- Sugarcoating is disabled.
 
 ### THE ZERO-BASED SCORING PROTOCOL:
 **THE BASELINE IS 0.**
@@ -671,6 +675,7 @@ var EAGER_EFFECT = 1 << 17;
 var HEAD_EFFECT = 1 << 18;
 var EFFECT_PRESERVED = 1 << 19;
 var USER_EFFECT = 1 << 20;
+var EFFECT_OFFSCREEN = 1 << 25;
 var WAS_MARKED = 1 << 15;
 var REACTION_IS_UPDATING = 1 << 21;
 var ASYNC = 1 << 22;
@@ -1145,10 +1150,7 @@ function set_hydrate_node(node) {
   return hydrate_node = node;
 }
 function hydrate_next() {
-  return set_hydrate_node(
-    /** @type {TemplateNode} */
-    get_next_sibling(hydrate_node)
-  );
+  return set_hydrate_node(get_next_sibling(hydrate_node));
 }
 function reset(node) {
   if (!hydrating)
@@ -1586,20 +1588,23 @@ function create_text(value = "") {
 }
 // @__NO_SIDE_EFFECTS__
 function get_first_child(node) {
-  return first_child_getter.call(node);
+  return (
+    /** @type {TemplateNode | null} */
+    first_child_getter.call(node)
+  );
 }
 // @__NO_SIDE_EFFECTS__
 function get_next_sibling(node) {
-  return next_sibling_getter.call(node);
+  return (
+    /** @type {TemplateNode | null} */
+    next_sibling_getter.call(node)
+  );
 }
 function child(node, is_text) {
   if (!hydrating) {
     return /* @__PURE__ */ get_first_child(node);
   }
-  var child2 = (
-    /** @type {TemplateNode} */
-    /* @__PURE__ */ get_first_child(hydrate_node)
-  );
+  var child2 = /* @__PURE__ */ get_first_child(hydrate_node);
   if (child2 === null) {
     child2 = hydrate_node.appendChild(create_text());
   } else if (is_text && child2.nodeType !== TEXT_NODE) {
@@ -1611,16 +1616,10 @@ function child(node, is_text) {
   set_hydrate_node(child2);
   return child2;
 }
-function first_child(fragment, is_text = false) {
+function first_child(node, is_text = false) {
   var _a3, _b3;
   if (!hydrating) {
-    var first = (
-      /** @type {DocumentFragment} */
-      /* @__PURE__ */ get_first_child(
-        /** @type {Node} */
-        fragment
-      )
-    );
+    var first = /* @__PURE__ */ get_first_child(node);
     if (first instanceof Comment && first.data === "")
       return /* @__PURE__ */ get_next_sibling(first);
     return first;
@@ -1655,10 +1654,7 @@ function sibling(node, count = 1, is_text = false) {
     return text2;
   }
   set_hydrate_node(next_sibling);
-  return (
-    /** @type {TemplateNode} */
-    next_sibling
-  );
+  return next_sibling;
 }
 function clear_text_content(node) {
   node.textContent = "";
@@ -4040,10 +4036,7 @@ function destroy_effect(effect2, remove_dom = true) {
 }
 function remove_effect_dom(node, end2) {
   while (node !== null) {
-    var next2 = node === end2 ? null : (
-      /** @type {TemplateNode} */
-      get_next_sibling(node)
-    );
+    var next2 = node === end2 ? null : get_next_sibling(node);
     node.remove();
     node = next2;
   }
@@ -4066,14 +4059,12 @@ function unlink_effect(effect2) {
 function pause_effect(effect2, callback, destroy = true) {
   var transitions = [];
   pause_children(effect2, transitions, true);
-  run_out_transitions(transitions, () => {
+  var fn = () => {
     if (destroy)
       destroy_effect(effect2);
     if (callback)
       callback();
-  });
-}
-function run_out_transitions(transitions, fn) {
+  };
   var remaining = transitions.length;
   if (remaining > 0) {
     var check = () => --remaining || fn();
@@ -4140,10 +4131,7 @@ function move_effect(effect2, fragment) {
   var node = effect2.nodes.start;
   var end2 = effect2.nodes.end;
   while (node !== null) {
-    var next2 = node === end2 ? null : (
-      /** @type {TemplateNode} */
-      get_next_sibling(node)
-    );
+    var next2 = node === end2 ? null : get_next_sibling(node);
     fragment.append(node);
     node = next2;
   }
@@ -4404,7 +4392,7 @@ function from_html(content, flags2) {
     if (node === void 0) {
       node = create_fragment_from_html(has_start ? content : "<!>" + content);
       if (!is_fragment)
-        node = /** @type {Node} */
+        node = /** @type {TemplateNode} */
         get_first_child(node);
     }
     var clone = (
@@ -4481,14 +4469,10 @@ function hydrate(component2, options) {
   const was_hydrating = hydrating;
   const previous_hydrate_node = hydrate_node;
   try {
-    var anchor = (
-      /** @type {TemplateNode} */
-      get_first_child(target)
-    );
+    var anchor = get_first_child(target);
     while (anchor && (anchor.nodeType !== COMMENT_NODE || /** @type {Comment} */
     anchor.data !== HYDRATION_START)) {
-      anchor = /** @type {TemplateNode} */
-      get_next_sibling(anchor);
+      anchor = get_next_sibling(anchor);
     }
     if (!anchor) {
       throw HYDRATION_ERROR;
@@ -4851,12 +4835,38 @@ function index(_2, i3) {
   return i3;
 }
 function pause_effects(state2, to_destroy, controlled_anchor) {
+  var _a3;
   var transitions = [];
   var length2 = to_destroy.length;
+  var group;
+  var remaining = to_destroy.length;
   for (var i3 = 0; i3 < length2; i3++) {
-    pause_children(to_destroy[i3].e, transitions, true);
+    let effect2 = to_destroy[i3];
+    pause_effect(
+      effect2,
+      () => {
+        if (group) {
+          group.pending.delete(effect2);
+          group.done.add(effect2);
+          if (group.pending.size === 0) {
+            var groups = (
+              /** @type {Set<EachOutroGroup>} */
+              state2.outrogroups
+            );
+            destroy_effects(array_from(group.done));
+            groups.delete(group);
+            if (groups.size === 0) {
+              state2.outrogroups = null;
+            }
+          }
+        } else {
+          remaining -= 1;
+        }
+      },
+      false
+    );
   }
-  run_out_transitions(transitions, () => {
+  if (remaining === 0) {
     var fast_path = transitions.length === 0 && controlled_anchor !== null;
     if (fast_path) {
       var anchor = (
@@ -4870,37 +4880,32 @@ function pause_effects(state2, to_destroy, controlled_anchor) {
       clear_text_content(parent_node);
       parent_node.append(anchor);
       state2.items.clear();
-      link(state2, to_destroy[0].prev, to_destroy[length2 - 1].next);
     }
-    for (var i4 = 0; i4 < length2; i4++) {
-      var item = to_destroy[i4];
-      if (!fast_path) {
-        state2.items.delete(item.k);
-        link(state2, item.prev, item.next);
-      }
-      destroy_effect(item.e, !fast_path);
-    }
-    if (state2.first === to_destroy[0]) {
-      state2.first = to_destroy[0].prev;
-    }
-  });
+    destroy_effects(to_destroy, !fast_path);
+  } else {
+    group = {
+      pending: new Set(to_destroy),
+      done: /* @__PURE__ */ new Set()
+    };
+    ((_a3 = state2.outrogroups) != null ? _a3 : state2.outrogroups = /* @__PURE__ */ new Set()).add(group);
+  }
 }
+function destroy_effects(to_destroy, remove_dom = true) {
+  for (var i3 = 0; i3 < to_destroy.length; i3++) {
+    destroy_effect(to_destroy[i3], remove_dom);
+  }
+}
+var offscreen_anchor;
 function each(node, flags2, get_collection, get_key, render_fn, fallback_fn = null) {
   var anchor = node;
   var items = /* @__PURE__ */ new Map();
-  var first = null;
   var is_controlled = (flags2 & EACH_IS_CONTROLLED) !== 0;
-  var is_reactive_value = (flags2 & EACH_ITEM_REACTIVE) !== 0;
-  var is_reactive_index = (flags2 & EACH_INDEX_REACTIVE) !== 0;
   if (is_controlled) {
     var parent_node = (
       /** @type {Element} */
       node
     );
-    anchor = hydrating ? set_hydrate_node(
-      /** @type {Comment | Text} */
-      get_first_child(parent_node)
-    ) : parent_node.appendChild(create_text());
+    anchor = hydrating ? set_hydrate_node(get_first_child(parent_node)) : parent_node.appendChild(create_text());
   }
   if (hydrating) {
     hydrate_next();
@@ -4913,18 +4918,18 @@ function each(node, flags2, get_collection, get_key, render_fn, fallback_fn = nu
   var array;
   var first_run = true;
   function commit() {
+    state2.fallback = fallback3;
     reconcile(state2, array, anchor, flags2, get_key);
     if (fallback3 !== null) {
       if (array.length === 0) {
-        if (fallback3.fragment) {
-          anchor.before(fallback3.fragment);
-          fallback3.fragment = null;
+        if ((fallback3.f & EFFECT_OFFSCREEN) === 0) {
+          resume_effect(fallback3);
         } else {
-          resume_effect(fallback3.effect);
+          fallback3.f ^= EFFECT_OFFSCREEN;
+          move(fallback3, null, anchor);
         }
-        effect2.first = fallback3.effect;
       } else {
-        pause_effect(fallback3.effect, () => {
+        pause_effect(fallback3, () => {
           fallback3 = null;
         });
       }
@@ -4949,9 +4954,8 @@ function each(node, flags2, get_collection, get_key, render_fn, fallback_fn = nu
       /** @type {Batch} */
       current_batch
     );
-    var prev = null;
     var defer = should_defer_append();
-    for (var i3 = 0; i3 < length2; i3 += 1) {
+    for (var index4 = 0; index4 < length2; index4 += 1) {
       if (hydrating && hydrate_node.nodeType === COMMENT_NODE && /** @type {Comment} */
       hydrate_node.data === HYDRATION_END) {
         anchor = /** @type {Comment} */
@@ -4959,42 +4963,30 @@ function each(node, flags2, get_collection, get_key, render_fn, fallback_fn = nu
         mismatch = true;
         set_hydrating(false);
       }
-      var value = array[i3];
-      var key2 = get_key(value, i3);
+      var value = array[index4];
+      var key2 = get_key(value, index4);
       var item = first_run ? null : items.get(key2);
       if (item) {
-        if (is_reactive_value) {
+        if (item.v)
           internal_set(item.v, value);
-        }
-        if (is_reactive_index) {
-          internal_set(
-            /** @type {Value<number>} */
-            item.i,
-            i3
-          );
-        }
+        if (item.i)
+          internal_set(item.i, index4);
         if (defer) {
           batch.skipped_effects.delete(item.e);
         }
       } else {
         item = create_item(
-          first_run ? anchor : null,
-          prev,
+          items,
+          first_run ? anchor : offscreen_anchor != null ? offscreen_anchor : offscreen_anchor = create_text(),
           value,
           key2,
-          i3,
+          index4,
           render_fn,
           flags2,
           get_collection
         );
-        if (first_run) {
-          item.o = true;
-          if (prev === null) {
-            first = item;
-          } else {
-            prev.next = item;
-          }
-          prev = item;
+        if (!first_run) {
+          item.e.f |= EFFECT_OFFSCREEN;
         }
         items.set(key2, item);
       }
@@ -5002,18 +4994,10 @@ function each(node, flags2, get_collection, get_key, render_fn, fallback_fn = nu
     }
     if (length2 === 0 && fallback_fn && !fallback3) {
       if (first_run) {
-        fallback3 = {
-          fragment: null,
-          effect: branch(() => fallback_fn(anchor))
-        };
+        fallback3 = branch(() => fallback_fn(anchor));
       } else {
-        var fragment = document.createDocumentFragment();
-        var target = create_text();
-        fragment.append(target);
-        fallback3 = {
-          fragment,
-          effect: branch(() => fallback_fn(target))
-        };
+        fallback3 = branch(() => fallback_fn(offscreen_anchor != null ? offscreen_anchor : offscreen_anchor = create_text()));
+        fallback3.f |= EFFECT_OFFSCREEN;
       }
     }
     if (hydrating && length2 > 0) {
@@ -5038,7 +5022,7 @@ function each(node, flags2, get_collection, get_key, render_fn, fallback_fn = nu
     }
     get(each_array);
   });
-  var state2 = { effect: effect2, flags: flags2, items, first };
+  var state2 = { effect: effect2, flags: flags2, items, outrogroups: null, fallback: fallback3 };
   first_run = false;
   if (hydrating) {
     anchor = hydrate_node;
@@ -5049,7 +5033,7 @@ function reconcile(state2, array, anchor, flags2, get_key) {
   var is_animated = (flags2 & EACH_IS_ANIMATED) !== 0;
   var length2 = array.length;
   var items = state2.items;
-  var current = state2.first;
+  var current = state2.effect.first;
   var seen;
   var prev = null;
   var to_animate;
@@ -5057,47 +5041,63 @@ function reconcile(state2, array, anchor, flags2, get_key) {
   var stashed = [];
   var value;
   var key2;
-  var item;
+  var effect2;
   var i3;
   if (is_animated) {
     for (i3 = 0; i3 < length2; i3 += 1) {
       value = array[i3];
       key2 = get_key(value, i3);
-      item = /** @type {EachItem} */
-      items.get(key2);
-      if (item.o) {
-        (_b3 = (_a3 = item.e.nodes) == null ? void 0 : _a3.a) == null ? void 0 : _b3.measure();
-        (to_animate != null ? to_animate : to_animate = /* @__PURE__ */ new Set()).add(item);
+      effect2 = /** @type {EachItem} */
+      items.get(key2).e;
+      if ((effect2.f & EFFECT_OFFSCREEN) === 0) {
+        (_b3 = (_a3 = effect2.nodes) == null ? void 0 : _a3.a) == null ? void 0 : _b3.measure();
+        (to_animate != null ? to_animate : to_animate = /* @__PURE__ */ new Set()).add(effect2);
       }
     }
   }
   for (i3 = 0; i3 < length2; i3 += 1) {
     value = array[i3];
     key2 = get_key(value, i3);
-    item = /** @type {EachItem} */
-    items.get(key2);
-    (_c2 = state2.first) != null ? _c2 : state2.first = item;
-    if (!item.o) {
-      item.o = true;
-      var next2 = prev ? prev.next : current;
-      link(state2, prev, item);
-      link(state2, item, next2);
-      move(item, next2, anchor);
-      prev = item;
-      matched = [];
-      stashed = [];
-      current = prev.next;
-      continue;
-    }
-    if ((item.e.f & INERT) !== 0) {
-      resume_effect(item.e);
-      if (is_animated) {
-        (_e = (_d = item.e.nodes) == null ? void 0 : _d.a) == null ? void 0 : _e.unfix();
-        (to_animate != null ? to_animate : to_animate = /* @__PURE__ */ new Set()).delete(item);
+    effect2 = /** @type {EachItem} */
+    items.get(key2).e;
+    if (state2.outrogroups !== null) {
+      for (const group of state2.outrogroups) {
+        group.pending.delete(effect2);
+        group.done.delete(effect2);
       }
     }
-    if (item !== current) {
-      if (seen !== void 0 && seen.has(item)) {
+    if ((effect2.f & EFFECT_OFFSCREEN) !== 0) {
+      effect2.f ^= EFFECT_OFFSCREEN;
+      if (effect2 === current) {
+        move(effect2, null, anchor);
+      } else {
+        var next2 = prev ? prev.next : current;
+        if (effect2 === state2.effect.last) {
+          state2.effect.last = effect2.prev;
+        }
+        if (effect2.prev)
+          effect2.prev.next = effect2.next;
+        if (effect2.next)
+          effect2.next.prev = effect2.prev;
+        link(state2, prev, effect2);
+        link(state2, effect2, next2);
+        move(effect2, next2, anchor);
+        prev = effect2;
+        matched = [];
+        stashed = [];
+        current = prev.next;
+        continue;
+      }
+    }
+    if ((effect2.f & INERT) !== 0) {
+      resume_effect(effect2);
+      if (is_animated) {
+        (_d = (_c2 = effect2.nodes) == null ? void 0 : _c2.a) == null ? void 0 : _d.unfix();
+        (to_animate != null ? to_animate : to_animate = /* @__PURE__ */ new Set()).delete(effect2);
+      }
+    }
+    if (effect2 !== current) {
+      if (seen !== void 0 && seen.has(effect2)) {
         if (matched.length < stashed.length) {
           var start2 = stashed[0];
           var j2;
@@ -5119,155 +5119,134 @@ function reconcile(state2, array, anchor, flags2, get_key) {
           matched = [];
           stashed = [];
         } else {
-          seen.delete(item);
-          move(item, current, anchor);
-          link(state2, item.prev, item.next);
-          link(state2, item, prev === null ? state2.first : prev.next);
-          link(state2, prev, item);
-          prev = item;
+          seen.delete(effect2);
+          move(effect2, current, anchor);
+          link(state2, effect2.prev, effect2.next);
+          link(state2, effect2, prev === null ? state2.effect.first : prev.next);
+          link(state2, prev, effect2);
+          prev = effect2;
         }
         continue;
       }
       matched = [];
       stashed = [];
-      while (current !== null && current !== item) {
-        if ((current.e.f & INERT) === 0) {
-          (seen != null ? seen : seen = /* @__PURE__ */ new Set()).add(current);
-        }
+      while (current !== null && current !== effect2) {
+        (seen != null ? seen : seen = /* @__PURE__ */ new Set()).add(current);
         stashed.push(current);
         current = current.next;
       }
       if (current === null) {
         continue;
       }
-      item = current;
     }
-    matched.push(item);
-    prev = item;
-    current = item.next;
+    if ((effect2.f & EFFECT_OFFSCREEN) === 0) {
+      matched.push(effect2);
+    }
+    prev = effect2;
+    current = effect2.next;
   }
-  let has_offscreen_items = items.size > length2;
+  if (state2.outrogroups !== null) {
+    for (const group of state2.outrogroups) {
+      if (group.pending.size === 0) {
+        destroy_effects(array_from(group.done));
+        (_e = state2.outrogroups) == null ? void 0 : _e.delete(group);
+      }
+    }
+    if (state2.outrogroups.size === 0) {
+      state2.outrogroups = null;
+    }
+  }
   if (current !== null || seen !== void 0) {
-    var to_destroy = seen === void 0 ? [] : array_from(seen);
+    var to_destroy = [];
+    if (seen !== void 0) {
+      for (effect2 of seen) {
+        if ((effect2.f & INERT) === 0) {
+          to_destroy.push(effect2);
+        }
+      }
+    }
     while (current !== null) {
-      if ((current.e.f & INERT) === 0) {
+      if ((current.f & INERT) === 0 && current !== state2.fallback) {
         to_destroy.push(current);
       }
       current = current.next;
     }
     var destroy_length = to_destroy.length;
-    has_offscreen_items = items.size - destroy_length > length2;
     if (destroy_length > 0) {
       var controlled_anchor = (flags2 & EACH_IS_CONTROLLED) !== 0 && length2 === 0 ? anchor : null;
       if (is_animated) {
         for (i3 = 0; i3 < destroy_length; i3 += 1) {
-          (_g = (_f = to_destroy[i3].e.nodes) == null ? void 0 : _f.a) == null ? void 0 : _g.measure();
+          (_g = (_f = to_destroy[i3].nodes) == null ? void 0 : _f.a) == null ? void 0 : _g.measure();
         }
         for (i3 = 0; i3 < destroy_length; i3 += 1) {
-          (_i = (_h = to_destroy[i3].e.nodes) == null ? void 0 : _h.a) == null ? void 0 : _i.fix();
+          (_i = (_h = to_destroy[i3].nodes) == null ? void 0 : _h.a) == null ? void 0 : _i.fix();
         }
       }
       pause_effects(state2, to_destroy, controlled_anchor);
     }
   }
-  if (has_offscreen_items) {
-    for (const item2 of items.values()) {
-      if (!item2.o) {
-        link(state2, prev, item2);
-        prev = item2;
-      }
-    }
-  }
-  state2.effect.last = prev && prev.e;
   if (is_animated) {
     queue_micro_task(() => {
       var _a4, _b4;
       if (to_animate === void 0)
         return;
-      for (item of to_animate) {
-        (_b4 = (_a4 = item.e.nodes) == null ? void 0 : _a4.a) == null ? void 0 : _b4.apply();
+      for (effect2 of to_animate) {
+        (_b4 = (_a4 = effect2.nodes) == null ? void 0 : _a4.a) == null ? void 0 : _b4.apply();
       }
     });
   }
 }
-function create_item(anchor, prev, value, key2, index4, render_fn, flags2, get_collection) {
-  var reactive = (flags2 & EACH_ITEM_REACTIVE) !== 0;
-  var mutable = (flags2 & EACH_ITEM_IMMUTABLE) === 0;
-  var v2 = reactive ? mutable ? mutable_source(value, false, false) : source(value) : value;
-  var i3 = (flags2 & EACH_INDEX_REACTIVE) === 0 ? index4 : source(index4);
-  if (dev_fallback_default && reactive) {
+function create_item(items, anchor, value, key2, index4, render_fn, flags2, get_collection) {
+  var v2 = (flags2 & EACH_ITEM_REACTIVE) !== 0 ? (flags2 & EACH_ITEM_IMMUTABLE) === 0 ? mutable_source(value, false, false) : source(value) : null;
+  var i3 = (flags2 & EACH_INDEX_REACTIVE) !== 0 ? source(index4) : null;
+  if (dev_fallback_default && v2) {
     v2.trace = () => {
-      var collection_index = typeof i3 === "number" ? index4 : i3.v;
-      get_collection()[collection_index];
+      var _a3;
+      get_collection()[(_a3 = i3 == null ? void 0 : i3.v) != null ? _a3 : index4];
     };
   }
-  var item = {
-    i: i3,
+  return {
     v: v2,
-    k: key2,
-    // @ts-expect-error
-    e: null,
-    o: false,
-    prev,
-    next: null
+    i: i3,
+    e: branch(() => {
+      render_fn(anchor, v2 != null ? v2 : value, i3 != null ? i3 : index4, get_collection);
+      return () => {
+        items.delete(key2);
+      };
+    })
   };
-  if (anchor === null) {
-    var fragment = document.createDocumentFragment();
-    fragment.append(anchor = create_text());
-  }
-  item.e = branch(() => render_fn(
-    /** @type {Node} */
-    anchor,
-    v2,
-    i3,
-    get_collection
-  ));
-  if (prev !== null) {
-    prev.next = item;
-  }
-  return item;
 }
-function move(item, next2, anchor) {
-  if (!item.e.nodes)
+function move(effect2, next2, anchor) {
+  if (!effect2.nodes)
     return;
-  var end2 = item.next ? (
+  var node = effect2.nodes.start;
+  var end2 = effect2.nodes.end;
+  var dest = next2 && (next2.f & EFFECT_OFFSCREEN) === 0 ? (
     /** @type {EffectNodes} */
-    item.next.e.nodes.start
+    next2.nodes.start
   ) : anchor;
-  var dest = next2 ? (
-    /** @type {EffectNodes} */
-    next2.e.nodes.start
-  ) : anchor;
-  var node = (
-    /** @type {TemplateNode} */
-    item.e.nodes.start
-  );
-  while (node !== null && node !== end2) {
+  while (node !== null) {
     var next_node = (
       /** @type {TemplateNode} */
       get_next_sibling(node)
     );
     dest.before(node);
+    if (node === end2) {
+      return;
+    }
     node = next_node;
   }
 }
 function link(state2, prev, next2) {
   if (prev === null) {
-    state2.first = next2;
-    state2.effect.first = next2 && next2.e;
+    state2.effect.first = next2;
   } else {
-    if (prev.e.next) {
-      prev.e.next.prev = null;
-    }
     prev.next = next2;
-    prev.e.next = next2 && next2.e;
   }
-  if (next2 !== null) {
-    if (next2.e.prev) {
-      next2.e.prev.next = null;
-    }
+  if (next2 === null) {
+    state2.effect.last = prev;
+  } else {
     next2.prev = prev;
-    next2.e.prev = prev && prev.e;
   }
 }
 
@@ -7092,6 +7071,14 @@ ${forensicRaw}
       } catch (e2) {
         console.warn("Agent raw data parse error", e2);
       }
+      if (finalRes.tribunal_breakdown) {
+        if (finalRes.tribunal_breakdown.logic.cohesion_score <= -10) {
+          if (finalRes.commercial_score > 50) {
+            finalRes.commercial_score = 50;
+            finalRes.commercial_reason += " [CAPPED BY LOGIC VETO]";
+          }
+        }
+      }
       return finalRes;
     };
     this.gradeContentLegacy = async (text2, context, nlpStats) => {
@@ -7150,6 +7137,7 @@ ${instructionBlock}`;
     this.getActionPlan = async (text2, focus, deepScan, quickScan) => {
       setStatus("ANALYZING WEAKNESSES...");
       let diagnosticBlock = "";
+      let specificComplaints = "";
       if (deepScan) {
         diagnosticBlock += `
 [DIAGNOSTIC TELEMETRY - DEEP SCAN]:
@@ -7173,6 +7161,13 @@ ${instructionBlock}`;
             }
           }
         }
+        if (deepScan.tribunal_breakdown) {
+          specificComplaints = `
+[PRIORITY FIXES REQUIRED BY TRIBUNAL]:
+1. LOGIC ENGINE DEMANDS: ${deepScan.tribunal_breakdown.logic.content_warning}
+2. MARKET ANALYST DEMANDS: ${deepScan.tribunal_breakdown.market.commercial_reason}
+`;
+        }
       }
       if (quickScan) {
         diagnosticBlock += `
@@ -7185,6 +7180,11 @@ ${instructionBlock}`;
 ${text2}`;
       if (diagnosticBlock) {
         inputBlock = `${diagnosticBlock}
+
+${inputBlock}`;
+      }
+      if (specificComplaints) {
+        inputBlock = `${specificComplaints}
 
 ${inputBlock}`;
       }
@@ -29588,10 +29588,10 @@ var root_25 = from_html(`<li> </li>`);
 var root_242 = from_html(`<div class="repair-list legacy-mode svelte-1ykavxi"><p class="legacy-note svelte-1ykavxi">[LEGACY REPORT DETECTED - RE-RUN FOR DETAILS]</p> <ol class="forge-steps"></ol></div>`);
 var root_19 = from_html(`<div class="forge-report svelte-1ykavxi"><!> <div class="weakness-alert svelte-1ykavxi"> </div> <!> <button class="action-btn secondary svelte-1ykavxi">EXECUTE REPAIR PROTOCOL (AUTO-PATCH)</button></div>`);
 var root_17 = from_html(`<div class="panel-forge"><button class="action-btn primary svelte-1ykavxi">GENERATE REPAIR PLAN</button> <!> <div class="repair-focus-area svelte-1ykavxi"><label for="repairFocus" class="input-label svelte-1ykavxi">REPAIR FOCUS (OPTIONAL):</label> <textarea id="repairFocus" class="retro-input" rows="2" placeholder="E.g., 'Fix the pacing in Act 2' or 'Make the villain scarier'"></textarea></div> <fieldset class="outline-fieldset svelte-1ykavxi"><legend>PROSE TOOLS</legend> <div class="button-grid"><button class="action-btn secondary svelte-1ykavxi">FIX DIALOGUE PUNCTUATION</button> <button class="action-btn secondary svelte-1ykavxi">HIGHLIGHT ADVERBS (RED)</button> <button class="action-btn secondary svelte-1ykavxi">HIGHLIGHT FILTER WORDS (YELLOW)</button></div></fieldset> <fieldset class="outline-fieldset svelte-1ykavxi"><legend>STRUCTURAL ARCHIVIST</legend> <div class="memory-core bevel-down svelte-1ykavxi"><div class="memory-status svelte-1ykavxi"><div class="status-indicator svelte-1ykavxi"><span></span> <span> </span></div> <div class="status-details"> </div></div> <div class="context-controls svelte-1ykavxi"><button title="Load active file into buffer"> </button> <button class="scrub-btn svelte-1ykavxi">\u{1F5D1}\uFE0F</button></div></div> <textarea class="retro-input archivist-prompt svelte-1ykavxi" rows="2" placeholder="INSTRUCTIONS: Focus area OR Story Title (e.g. 'The Matrix')"></textarea> <div class="grid-2 svelte-1ykavxi"><button class="action-btn tertiary outline-btn svelte-1ykavxi"> </button> <button class="action-btn secondary outline-btn svelte-1ykavxi">\u{1F3F7}\uFE0F RENAME CAST (DEEP)</button></div></fieldset> <!></div>`);
-var root5 = from_html(`<div><div class="title-bar svelte-1ykavxi"><div class="title-bar-text"> </div> <!></div> <div class="tab-strip svelte-1ykavxi"><button>CRITIC</button> <button>WIZARD</button> <button>SYNTH</button> <button>FORGE</button></div> <div class="window-body svelte-1ykavxi"><!></div> <div class="status-bar svelte-1ykavxi"><span> </span> <span class="spacer svelte-1ykavxi"></span> <span>DISK ACT</span></div></div>`);
+var root5 = from_html(`<div class="compu-container theme-win95 svelte-1ykavxi"><div class="title-bar svelte-1ykavxi"><div class="title-bar-text"> </div> <!></div> <div class="tab-strip svelte-1ykavxi"><button>CRITIC</button> <button>WIZARD</button> <button>SYNTH</button> <button>FORGE</button></div> <div class="window-body svelte-1ykavxi"><!></div> <div class="status-bar svelte-1ykavxi"><span> </span> <span class="spacer svelte-1ykavxi"></span> <span>DISK ACT</span></div></div>`);
 var $$css5 = {
   hash: "svelte-1ykavxi",
-  code: ":root {--cj-accent: #000080;--cj-bg: #c0c0c0;--cj-text: #000000;--cj-dim: #808080;}.compu-container.svelte-1ykavxi {height:100%;display:flex;flex-direction:column;font-family:'Courier New', monospace;font-size:15px;font-weight:bold;}.window-body.svelte-1ykavxi {flex:1;overflow-y:auto;padding:12px;background:var(--cj-bg);border:2px inset #dfdfdf;}.theme-msdos.svelte-1ykavxi {--cj-bg: #000000;--cj-text: var(--cj-user-color);--cj-accent: var(--cj-user-color);--cj-dim: color-mix(in srgb, var(--cj-user-color), #000 60%);}.theme-win95.svelte-1ykavxi {--cj-bg: #c0c0c0;--cj-text: #000000;--cj-accent: #000080;--cj-dim: #808080;}.title-bar.svelte-1ykavxi {background:var(--cj-accent);color:#fff;padding:4px 8px;display:flex;justify-content:space-between;font-weight:bold;}.tab-strip.svelte-1ykavxi {display:flex;padding:6px 4px 0 4px;gap:2px;}.tab-strip.svelte-1ykavxi button:where(.svelte-1ykavxi) {background:var(--cj-bg);color:var(--cj-text);border:2px outset #fff;border-bottom:none;padding:6px 14px;font-weight:bold;cursor:pointer;}.tab-strip.svelte-1ykavxi button.active:where(.svelte-1ykavxi) {padding-bottom:8px;margin-top:-4px;z-index:10;border-top:2px solid var(--cj-accent);}.action-btn.svelte-1ykavxi {width:100%;padding:10px;font-weight:bold;cursor:pointer;border:2px outset #fff;background:var(--cj-bg);color:var(--cj-text);margin-bottom:8px;}.action-btn.svelte-1ykavxi:active {border-style:inset;}.outline-fieldset.svelte-1ykavxi {margin-bottom:20px;border:2px groove var(--cj-dim);padding:10px;}.repair-focus-area.svelte-1ykavxi {margin-bottom:15px;}.input-label.svelte-1ykavxi {display:block;font-weight:900;margin-bottom:4px;color:var(--cj-dim);font-size:0.9em;}.archivist-prompt.svelte-1ykavxi {margin-bottom:8px;}.forge-report.svelte-1ykavxi {margin-top:20px;color:var(--cj-text);font-weight:bold;}.weakness-alert.svelte-1ykavxi {background:var(--cj-text);color:var(--cj-bg);padding:8px;font-weight:900;text-align:center;margin-bottom:10px;border:2px solid #fff;}.repair-item.svelte-1ykavxi {margin-bottom:15px;border-bottom:2px dashed var(--cj-dim);padding-bottom:10px;}.repair-header.svelte-1ykavxi {font-weight:900;color:var(--cj-accent);text-transform:uppercase;margin-bottom:4px;}.repair-body.svelte-1ykavxi {margin-bottom:4px;line-height:1.4;font-weight:bold;}.repair-why.svelte-1ykavxi {font-size:0.9em;font-style:italic;color:var(--cj-dim);font-weight:bold;}.legacy-mode.svelte-1ykavxi {opacity:0.7;border:1px dashed red;padding:10px;}.legacy-note.svelte-1ykavxi {color:red;font-weight:bold;font-size:10px;margin-bottom:5px;}.quick-result.svelte-1ykavxi {margin:15px 0;padding:12px;border:2px dotted var(--cj-text);color:var(--cj-text);display:flex;flex-direction:column;gap:10px;background:rgba(255,255,255,0.05);}.quick-header.svelte-1ykavxi {display:flex;justify-content:space-between;align-items:center;width:100%;border-bottom:2px dashed var(--cj-dim);padding-bottom:5px;}.quick-grade.svelte-1ykavxi {font-size:2.5em;font-weight:900;}.quick-score.svelte-1ykavxi {font-size:1.5em;opacity:0.8;font-weight:900;}.quick-summary.svelte-1ykavxi {font-style:italic;font-weight:bold;}.quick-fix.svelte-1ykavxi {background:var(--cj-accent);color:#fff;padding:4px;font-weight:900;width:100%;text-align:center;}.memory-core.svelte-1ykavxi {margin-bottom:10px;background:rgba(0,0,0,0.05);padding:5px;border:2px solid var(--cj-dim);}.memory-status.svelte-1ykavxi {display:flex;justify-content:space-between;align-items:center;background:#000;color:#00ff00;padding:5px 8px;font-size:12px;border:2px inset #808080;margin-bottom:5px;font-weight:bold;}.status-indicator.svelte-1ykavxi {display:flex;gap:8px;align-items:center;font-weight:900;}.led.svelte-1ykavxi {width:8px;height:8px;border-radius:50%;background:#004400;border:1px solid #00ff00;}.led.on.svelte-1ykavxi {background:#00ff00;box-shadow:0 0 5px #00ff00;}.context-controls.svelte-1ykavxi {display:flex;gap:5px;}.upload-btn.svelte-1ykavxi {flex:1;padding:4px;font-size:11px;background:var(--cj-bg);border:2px outset #fff;cursor:pointer;font-weight:bold;}.upload-btn.svelte-1ykavxi:active {border-style:inset;}.upload-btn.synced.svelte-1ykavxi {opacity:0.6;cursor:default;}.scrub-btn.svelte-1ykavxi {width:30px;padding:0;background:var(--cj-bg);border:2px outset #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;}.thought-trace.svelte-1ykavxi {margin-bottom:8px;border:1px dashed var(--cj-dim);padding:2px;}.thought-header.svelte-1ykavxi {cursor:pointer;font-weight:bold;font-size:11px;padding:4px;color:var(--cj-dim);list-style:none;}.thought-content.svelte-1ykavxi {padding:8px;font-family:'Courier New', monospace;font-size:11px;white-space:pre-wrap;max-height:200px;overflow-y:auto;border-top:1px dashed var(--cj-dim);background:var(--cj-bg);color:var(--cj-text);opacity:0.8;font-weight:bold;}.status-bar.svelte-1ykavxi {border-top:2px solid var(--cj-dim);padding:4px 8px;background:var(--cj-bg);color:var(--cj-text);display:flex;gap:15px;font-size:12px;align-items:center;font-weight:900;}.spacer.svelte-1ykavxi {flex:1;}.disk-led.svelte-1ykavxi {font-weight:900;color:#808080;border:2px inset #808080;padding:0 4px;background:#c0c0c0;transition:all 0.1s;}.active-led.svelte-1ykavxi {background:#ff0000;color:#fff;border-color:#ff0000;box-shadow:0 0 5px #ff0000;}.empty-state.svelte-1ykavxi {padding:40px;text-align:center;opacity:0.5;font-weight:900;}.reset-btn.svelte-1ykavxi {font-size:10px;padding:0 4px;background:#ff0000;color:white;border:2px outset #ffaaaa;cursor:pointer;}.reset-btn.svelte-1ykavxi:active {border-style:inset;}.theme-msdos.svelte-1ykavxi .action-btn:where(.svelte-1ykavxi) {background:#000;color:var(--cj-text);border:1px solid var(--cj-text);box-shadow:none;}.theme-msdos.svelte-1ykavxi .action-btn:where(.svelte-1ykavxi):active, .theme-msdos.svelte-1ykavxi .action-btn:where(.svelte-1ykavxi):hover {background:var(--cj-text);color:#000;border-style:solid;}.theme-msdos.svelte-1ykavxi .bevel-groove, .theme-msdos.svelte-1ykavxi .bevel-down, .theme-msdos.svelte-1ykavxi .window-body:where(.svelte-1ykavxi) {border-style:solid !important;border-width:1px !important;border-color:var(--cj-dim) !important;}.theme-msdos.svelte-1ykavxi .tab-strip:where(.svelte-1ykavxi) button:where(.svelte-1ykavxi) {background:#000;color:var(--cj-dim);border:1px solid var(--cj-dim);border-bottom:none;}.theme-msdos.svelte-1ykavxi .tab-strip:where(.svelte-1ykavxi) button.active:where(.svelte-1ykavxi) {color:var(--cj-text);border-color:var(--cj-text);border-bottom:1px solid #000;margin-bottom:-1px;}.theme-msdos.svelte-1ykavxi .upload-btn, .theme-msdos.svelte-1ykavxi .scrub-btn {background:transparent !important;color:var(--cj-text) !important;border:1px solid var(--cj-dim) !important;}.theme-msdos.svelte-1ykavxi .upload-btn:hover, .theme-msdos.svelte-1ykavxi .scrub-btn:hover {background:var(--cj-text) !important;color:#000 !important;}\n\n    @media (max-width: 600px) {.button-row.svelte-1ykavxi {flex-direction:column;gap:5px;}.action-btn.svelte-1ykavxi {padding:12px;margin-bottom:5px;}\n    }.grid-2.svelte-1ykavxi {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}"
+  code: ":root {--cj-accent: #000080;--cj-bg: #c0c0c0;--cj-text: #000000;--cj-dim: #808080;}.compu-container.svelte-1ykavxi {height:100%;display:flex;flex-direction:column;font-family:'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;font-size:11px;font-weight:normal;}.window-body.svelte-1ykavxi {flex:1;overflow-y:auto;padding:12px;background:var(--cj-bg);border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;}.title-bar.svelte-1ykavxi {background:linear-gradient(90deg, #000080 0%, #1084d0 100%);color:#fff;padding:4px 8px;display:flex;justify-content:space-between;font-weight:bold;}.tab-strip.svelte-1ykavxi {display:flex;padding:6px 4px 0 4px;gap:2px;}.tab-strip.svelte-1ykavxi button:where(.svelte-1ykavxi) {background:var(--cj-bg);color:var(--cj-text);border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;padding:4px 10px;font-weight:bold;cursor:pointer;border-bottom:none;font-size:11px;}.tab-strip.svelte-1ykavxi button.active:where(.svelte-1ykavxi) {padding-bottom:6px;margin-top:-2px;z-index:10;border-top:2px solid #dfdfdf;}.action-btn.svelte-1ykavxi {width:100%;padding:6px;font-weight:bold;cursor:pointer;border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;background:var(--cj-bg);color:var(--cj-text);margin-bottom:8px;font-size:11px;}.action-btn.svelte-1ykavxi:active {border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;padding:7px 5px 5px 7px;}.outline-fieldset.svelte-1ykavxi {margin-bottom:20px;border:2px groove var(--cj-dim);padding:10px;}.repair-focus-area.svelte-1ykavxi {margin-bottom:15px;}.input-label.svelte-1ykavxi {display:block;font-weight:900;margin-bottom:4px;color:var(--cj-dim);font-size:0.9em;}.archivist-prompt.svelte-1ykavxi {margin-bottom:8px;}.forge-report.svelte-1ykavxi {margin-top:20px;color:var(--cj-text);font-weight:bold;}.weakness-alert.svelte-1ykavxi {background:var(--cj-text);color:var(--cj-bg);padding:8px;font-weight:900;text-align:center;margin-bottom:10px;border:2px solid #fff;}.repair-item.svelte-1ykavxi {margin-bottom:15px;border-bottom:2px dashed var(--cj-dim);padding-bottom:10px;}.repair-header.svelte-1ykavxi {font-weight:900;color:var(--cj-accent);text-transform:uppercase;margin-bottom:4px;}.repair-body.svelte-1ykavxi {margin-bottom:4px;line-height:1.4;font-weight:bold;}.repair-why.svelte-1ykavxi {font-size:0.9em;font-style:italic;color:var(--cj-dim);font-weight:bold;}.legacy-mode.svelte-1ykavxi {opacity:0.7;border:1px dashed red;padding:10px;}.legacy-note.svelte-1ykavxi {color:red;font-weight:bold;font-size:10px;margin-bottom:5px;}.quick-result.svelte-1ykavxi {margin:15px 0;padding:12px;border:2px dotted var(--cj-text);color:var(--cj-text);display:flex;flex-direction:column;gap:10px;background:rgba(255,255,255,0.05);}.quick-header.svelte-1ykavxi {display:flex;justify-content:space-between;align-items:center;width:100%;border-bottom:2px dashed var(--cj-dim);padding-bottom:5px;}.quick-grade.svelte-1ykavxi {font-size:2.5em;font-weight:900;}.quick-score.svelte-1ykavxi {font-size:1.5em;opacity:0.8;font-weight:900;}.quick-summary.svelte-1ykavxi {font-style:italic;font-weight:bold;}.quick-fix.svelte-1ykavxi {background:var(--cj-accent);color:#fff;padding:4px;font-weight:900;width:100%;text-align:center;}.memory-core.svelte-1ykavxi {margin-bottom:10px;background:rgba(0,0,0,0.05);padding:5px;border:2px solid var(--cj-dim);}.memory-status.svelte-1ykavxi {display:flex;justify-content:space-between;align-items:center;background:#000;color:#00ff00;padding:5px 8px;font-size:12px;border:2px inset #808080;margin-bottom:5px;font-weight:bold;}.status-indicator.svelte-1ykavxi {display:flex;gap:8px;align-items:center;font-weight:900;}.led.svelte-1ykavxi {width:8px;height:8px;border-radius:50%;background:#004400;border:1px solid #00ff00;}.led.on.svelte-1ykavxi {background:#00ff00;box-shadow:0 0 5px #00ff00;}.context-controls.svelte-1ykavxi {display:flex;gap:5px;}.upload-btn.svelte-1ykavxi {flex:1;padding:4px;font-size:11px;background:var(--cj-bg);border:2px outset #fff;cursor:pointer;font-weight:bold;}.upload-btn.svelte-1ykavxi:active {border-style:inset;}.upload-btn.synced.svelte-1ykavxi {opacity:0.6;cursor:default;}.scrub-btn.svelte-1ykavxi {width:30px;padding:0;background:var(--cj-bg);border:2px outset #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;}.thought-trace.svelte-1ykavxi {margin-bottom:8px;border:1px dashed var(--cj-dim);padding:2px;}.thought-header.svelte-1ykavxi {cursor:pointer;font-weight:bold;font-size:11px;padding:4px;color:var(--cj-dim);list-style:none;}.thought-content.svelte-1ykavxi {padding:8px;font-family:'Courier New', monospace;font-size:11px;white-space:pre-wrap;max-height:200px;overflow-y:auto;border-top:1px dashed var(--cj-dim);background:var(--cj-bg);color:var(--cj-text);opacity:0.8;font-weight:bold;}.status-bar.svelte-1ykavxi {border-top:2px solid var(--cj-dim);padding:4px 8px;background:var(--cj-bg);color:var(--cj-text);display:flex;gap:15px;font-size:12px;align-items:center;font-weight:900;}.spacer.svelte-1ykavxi {flex:1;}.disk-led.svelte-1ykavxi {font-weight:900;color:#808080;border:2px inset #808080;padding:0 4px;background:#c0c0c0;transition:all 0.1s;}.active-led.svelte-1ykavxi {background:#ff0000;color:#fff;border-color:#ff0000;box-shadow:0 0 5px #ff0000;}.empty-state.svelte-1ykavxi {padding:40px;text-align:center;opacity:0.5;font-weight:900;}.reset-btn.svelte-1ykavxi {font-size:10px;padding:0 4px;background:#ff0000;color:white;border:2px outset #ffaaaa;cursor:pointer;}.reset-btn.svelte-1ykavxi:active {border-style:inset;}\n\n    @media (max-width: 600px) {.button-row.svelte-1ykavxi {flex-direction:column;gap:5px;}.action-btn.svelte-1ykavxi {padding:12px;margin-bottom:5px;}\n    }.grid-2.svelte-1ykavxi {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}"
 };
 function GradingPanel($$anchor, $$props) {
   push($$props, true);
@@ -29603,7 +29603,6 @@ function GradingPanel($$anchor, $$props) {
   let activeFile = state(null);
   let projectData = state(null);
   let currentTab = state("critic");
-  let themeClass = state("");
   let isSaving = state(false);
   let estimatedDuration = state(4e3);
   let wizardLoadingField = state(null);
@@ -29644,7 +29643,6 @@ function GradingPanel($$anchor, $$props) {
     if (file)
       await loadProjectData(file);
   };
-  const updateTheme = (theme) => applyTheme(theme);
   async function loadProjectData(file) {
     try {
       const loadedData = await db.getProjectData(file.path);
@@ -30114,6 +30112,12 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
         return c2;
       });
       get(projectData).wizardState.characters = newChars;
+      if (updateCount > 0) {
+        const renameLog = `
+[SYSTEM NOTE - RENAMED CHARACTERS]:
+` + Object.entries(nameMap).map(([oldN, newN]) => `- ${oldN} is now ${newN}`).join("\n");
+        get(projectData).archivistContext = (get(projectData).archivistContext || "") + renameLog;
+      }
       set(projectData, { ...get(projectData) }, true);
       await saveProject(false);
       new import_obsidian6.Notice(`Renaming Complete. ${updateCount} characters updated.`);
@@ -30144,17 +30148,6 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
       await saveProject(true);
       new import_obsidian6.Notice("Disc Formatted.");
     }
-  }
-  function applyTheme(mode) {
-    const isDark = document.body.classList.contains("theme-dark");
-    if (mode === "win95")
-      set(themeClass, "theme-win95");
-    else if (mode === "msdos")
-      set(themeClass, "theme-msdos");
-    else if (mode === "invert")
-      set(themeClass, isDark ? "theme-win95" : "theme-msdos", true);
-    else
-      set(themeClass, isDark ? "theme-msdos" : "theme-win95", true);
   }
   async function runFixDialogue() {
     if (!get(activeFile))
@@ -30207,9 +30200,8 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
   onMount(() => {
     const f3 = $$props.app.workspace.getActiveFile();
     updateActiveFile(f3);
-    applyTheme(settings.theme);
   });
-  var $$exports = { updateActiveFile, updateTheme };
+  var $$exports = { updateActiveFile };
   var div = root5();
   var div_1 = child(div);
   var div_2 = child(div_1);
@@ -30726,15 +30718,14 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
   reset(div);
   template_effect(
     ($0) => {
-      var _a3, _b3, _c2, _d;
-      set_class(div, 1, `compu-container ${(_a3 = get(themeClass)) != null ? _a3 : ""}`, "svelte-1ykavxi");
-      set_style(div, `--cj-user-color: ${(_b3 = settings.msDosColor || "#00FF00") != null ? _b3 : ""}; --cj-grade-masterpiece: ${(_c2 = settings.gradingColors.masterpiece) != null ? _c2 : ""}`);
+      var _a3, _b3;
+      set_style(div, `--cj-grade-masterpiece: ${(_a3 = settings.gradingColors.masterpiece) != null ? _a3 : ""}`);
       set_text(text2, `Compu-Judge 98 ${$0 != null ? $0 : ""}`);
       classes = set_class(button_1, 1, "svelte-1ykavxi", null, classes, { active: get(currentTab) === "critic" });
       classes_1 = set_class(button_2, 1, "svelte-1ykavxi", null, classes_1, { active: get(currentTab) === "wizard" });
       classes_2 = set_class(button_3, 1, "svelte-1ykavxi", null, classes_2, { active: get(currentTab) === "synth" });
       classes_3 = set_class(button_4, 1, "svelte-1ykavxi", null, classes_3, { active: get(currentTab) === "forge" });
-      set_text(text_17, `STATUS: ${(_d = get(activeFileStatus)) != null ? _d : ""}`);
+      set_text(text_17, `STATUS: ${(_b3 = get(activeFileStatus)) != null ? _b3 : ""}`);
       classes_4 = set_class(span_5, 1, "disk-led svelte-1ykavxi", null, classes_4, { "active-led": get(isSaving) });
     },
     [
@@ -30939,7 +30930,6 @@ var CompuJudgePlugin = class extends import_obsidian8.Plugin {
     leaves.forEach((leaf) => {
       if (leaf.view instanceof CompuJudgeView) {
         leaf.view.settings = this.settings;
-        leaf.view.updateTheme(this.settings.theme);
       }
     });
   }
@@ -31089,15 +31079,6 @@ var NigsSettingTab = class extends import_obsidian8.PluginSettingTab {
     }));
     new import_obsidian8.Setting(containerEl).setName("Custom Archivist Prompt").addTextArea((text2) => text2.setValue(this.plugin.settings.customOutlinePrompt).onChange(async (val) => {
       this.plugin.settings.customOutlinePrompt = val;
-      await this.plugin.saveSettings();
-    }));
-    containerEl.createEl("h4", { text: "Visual Aesthetics" });
-    new import_obsidian8.Setting(containerEl).setName("Theme").addDropdown((drop) => drop.addOption("win95", "Windows 95").addOption("msdos", "MS-DOS").addOption("auto", "Auto (System)").setValue(this.plugin.settings.theme).onChange(async (val) => {
-      this.plugin.settings.theme = val;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian8.Setting(containerEl).setName("MS-DOS Text Color").addColorPicker((col) => col.setValue(this.plugin.settings.msDosColor).onChange(async (val) => {
-      this.plugin.settings.msDosColor = val;
       await this.plugin.saveSettings();
     }));
   }

@@ -1,5 +1,5 @@
 import { App, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, TFile, Notice } from 'obsidian';
-import { DEFAULT_SETTINGS, type NigsSettings, type ThemeMode, type AIProvider } from './types';
+import { DEFAULT_SETTINGS, type NigsSettings, type AIProvider } from './types';
 import { CloudGenService } from './CloudGen';
 import { CompuJudgeView, VIEW_TYPE_COMPU_JUDGE } from './CompuJudgeView';
 import { db } from './db';
@@ -105,7 +105,6 @@ export default class CompuJudgePlugin extends Plugin {
         leaves.forEach(leaf => {
              if (leaf.view instanceof CompuJudgeView) {
                  leaf.view.settings = this.settings; 
-                 leaf.view.updateTheme(this.settings.theme);
              }
         });
     }
@@ -403,30 +402,6 @@ class NigsSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.customOutlinePrompt)
                 .onChange(async (val) => {
                     this.plugin.settings.customOutlinePrompt = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        // --- 8. VISUALS ---
-        containerEl.createEl('h4', { text: 'Visual Aesthetics' });
-
-        new Setting(containerEl)
-            .setName('Theme')
-            .addDropdown(drop => drop
-                .addOption('win95', 'Windows 95')
-                .addOption('msdos', 'MS-DOS')
-                .addOption('auto', 'Auto (System)')
-                .setValue(this.plugin.settings.theme)
-                .onChange(async (val) => {
-                    this.plugin.settings.theme = val as ThemeMode;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName('MS-DOS Text Color')
-            .addColorPicker(col => col
-                .setValue(this.plugin.settings.msDosColor)
-                .onChange(async (val) => {
-                    this.plugin.settings.msDosColor = val;
                     await this.plugin.saveSettings();
                 }));
     }
