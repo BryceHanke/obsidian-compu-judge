@@ -30818,13 +30818,14 @@ delegate(["click"]);
 // CompuJudgeView.ts
 var VIEW_TYPE_COMPU_JUDGE = "compu-judge-view";
 var CompuJudgeView = class extends import_obsidian8.ItemView {
-  // ADDED: Needs reference to plugin to save settings
-  constructor(leaf, app, settings, cloud, plugin5) {
+  // NEW
+  constructor(leaf, app, settings, cloud, plugin5, audio) {
     super(leaf);
     this.app = app;
     this.settings = settings;
     this.cloud = cloud;
     this.plugin = plugin5;
+    this.audio = audio;
   }
   getViewType() {
     return VIEW_TYPE_COMPU_JUDGE;
@@ -30844,6 +30845,8 @@ var CompuJudgeView = class extends import_obsidian8.ItemView {
         app: this.app,
         cloud: this.cloud,
         settings: this.settings,
+        audio: this.audio,
+        // NEW: Pass AudioEngine
         onUpdateSettings: async (newSettings) => {
           Object.assign(this.settings, newSettings);
           Object.assign(this.plugin.settings, newSettings);

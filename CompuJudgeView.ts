@@ -4,6 +4,7 @@ import GradingPanel from "./GradingPanel.svelte";
 import type { CloudGenService } from "./CloudGen";
 import type { NigsSettings } from "./types";
 import type CompuJudgePlugin from "./main";
+import type { AudioEngine } from "./AudioEngine"; // NEW
 
 export const VIEW_TYPE_COMPU_JUDGE = "compu-judge-view";
 
@@ -12,14 +13,16 @@ export class CompuJudgeView extends ItemView {
     app: App;
     settings: NigsSettings;
     cloud: CloudGenService;
-    plugin: CompuJudgePlugin; // ADDED: Needs reference to plugin to save settings
+    plugin: CompuJudgePlugin;
+    audio: AudioEngine; // NEW
 
-    constructor(leaf: WorkspaceLeaf, app: App, settings: NigsSettings, cloud: CloudGenService, plugin: CompuJudgePlugin) {
+    constructor(leaf: WorkspaceLeaf, app: App, settings: NigsSettings, cloud: CloudGenService, plugin: CompuJudgePlugin, audio: AudioEngine) {
         super(leaf);
         this.app = app;
         this.settings = settings;
         this.cloud = cloud;
         this.plugin = plugin;
+        this.audio = audio; // NEW
     }
 
     getViewType() {
@@ -45,10 +48,9 @@ export class CompuJudgeView extends ItemView {
                 app: this.app,
                 cloud: this.cloud,
                 settings: this.settings,
+                audio: this.audio, // NEW: Pass AudioEngine
                 onUpdateSettings: async (newSettings: Partial<NigsSettings>) => {
-                    // [FIXED]: Actually save the settings to disk
                     Object.assign(this.settings, newSettings);
-                    // Also update plugin.settings reference
                     Object.assign(this.plugin.settings, newSettings);
                     await this.plugin.saveSettings();
                 }
