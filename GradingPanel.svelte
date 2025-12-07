@@ -570,6 +570,18 @@
     }
 
     // --- FORGE OPS HOOKS ---
+    // --- FORGE HELPERS ---
+    function handleAddRepairInstruction(instruction: string) {
+        if (!projectData) return;
+        const current = projectData.repairFocus ? projectData.repairFocus.trim() : "";
+        const entry = `- [TRIBUNAL]: ${instruction}`;
+        if (current.includes(entry)) return; // Prevent dupes
+
+        projectData.repairFocus = current.length > 0 ? `${current}\n${entry}` : entry;
+        new Notice("Instruction added to Forge.");
+        debouncedSave();
+    }
+
     async function runFixDialogue() {
         if (!activeFile) return;
         try {
@@ -653,16 +665,37 @@
                     {/if}
                 
                     {#if projectData.lastLightResult}
-                        <div class="quick-result">
-                              <div class="quick-header">
-                                <span class="quick-grade">{projectData.lastLightResult.letter_grade}</span>
-                                <span class="quick-score">{projectData.lastLightResult.score}</span>
-                             </div>
-                            {#if projectData.lastLightResult.synopsis}
-                                <p class="quick-synopsis"><span class="prefix">LOG:</span> {projectData.lastLightResult.synopsis}</p>
-                            {/if}
-                            <p class="quick-summary">{projectData.lastLightResult.summary_line}</p>
-                            <p class="quick-fix">FIX: {projectData.lastLightResult.key_improvement}</p>
+                        <!-- WIN95 POPUP STYLE QUICK SCAN -->
+                        <div class="win95-popup-window">
+                            <div class="win95-titlebar">
+                                <div class="win95-titlebar-text">
+                                    <span>📨</span> <span>WinPopup - Quick Scan</span>
+                                </div>
+                                <div class="win95-controls">
+                                    <!-- No functional buttons, just visual placeholder if needed or empty -->
+                                </div>
+                            </div>
+                            <div class="win95-menubar">
+                                <span class="win95-menu-item">Messages</span>
+                                <span class="win95-menu-item">Help</span>
+                            </div>
+                            <div class="win95-info-area">
+                                Message from <b>CRITIC_SYS</b> to <b>USER</b><br/>
+                                on {new Date().toLocaleTimeString()}
+                            </div>
+                            <div class="win95-content-inset">
+                                <b>GRADE: {projectData.lastLightResult.letter_grade} ({projectData.lastLightResult.score})</b><br/><br/>
+                                {#if projectData.lastLightResult.synopsis}
+                                    LOG: {projectData.lastLightResult.synopsis}<br/><br/>
+                                {/if}
+                                {projectData.lastLightResult.summary_line}<br/><br/>
+                                ----------------------------------------<br/>
+                                FIX: {projectData.lastLightResult.key_improvement}
+                            </div>
+                            <div class="win95-statusbar">
+                                <div class="win95-status-field">Current message: 1</div>
+                                <div class="win95-status-field">Total number of messages: 1</div>
+                            </div>
                         </div>
                     {/if}
 
@@ -672,7 +705,8 @@
                             meta={projectData.lastMetaResult} 
                             isProcessing={$processRegistry[activeFile.path]}
                             settings={settings}
-                            onRunMeta={runMeta} 
+                            onRunMeta={runMeta}
+                            onAddRepairInstruction={handleAddRepairInstruction}
                         />
                          <button class="action-btn tertiary" onclick={runGenerateReport} style="margin-top:10px;">📄 EXPORT FORENSIC REPORT</button>
                     {/if}

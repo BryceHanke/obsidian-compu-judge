@@ -332,3 +332,112 @@
     position: relative;
     z-index: 50; /* Lower than score but above normal flow if needed */
 }
+
+/* --- WIN95 POPUP WINDOW --- */
+.win95-popup-window {
+    background: #c0c0c0;
+    border-top: 2px solid #dfdfdf;
+    border-left: 2px solid #dfdfdf;
+    border-right: 2px solid #000;
+    border-bottom: 2px solid #000;
+    box-shadow: 1px 1px 0 #000;
+    padding: 2px;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
+}
+
+.win95-titlebar {
+    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+    color: #fff;
+    padding: 2px 4px;
+    font-weight: bold;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 18px;
+    margin-bottom: 1px;
+}
+
+.win95-titlebar.inactive {
+    background: #808080;
+    color: #c0c0c0;
+}
+
+.win95-titlebar-text {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Menu Bar Area - Where dropdowns live */
+.win95-menubar {
+    display: flex;
+    gap: 10px;
+    padding: 2px 6px;
+    font-size: 11px;
+    color: #000;
+    border-bottom: 1px solid #808080; /* Slight separator */
+}
+
+.win95-menu-item {
+    cursor: pointer;
+    text-decoration: underline; /* Standard alt-key hint style */
+    position: relative;
+}
+
+.win95-menu-item:hover {
+    background-color: #000080;
+    color: #fff;
+}
+
+.win95-info-area {
+    padding: 6px 8px;
+    font-size: 11px;
+    color: #000;
+}
+
+/* The Sunken Content Box */
+.win95-content-inset {
+    background: #fff;
+    border-top: 2px solid #404040;
+    border-left: 2px solid #404040;
+    border-right: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    padding: 8px;
+    margin: 4px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace; /* As per image content */
+    color: #000;
+}
+
+/* Status Bar */
+.win95-statusbar {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    margin-top: 2px;
+}
+
+.win95-status-field {
+    flex: 1;
+    border-top: 1px solid #808080;
+    border-left: 1px solid #808080;
+    border-right: 1px solid #fff;
+    border-bottom: 1px solid #fff;
+    padding: 2px 4px;
+    font-size: 10px;
+    color: #000;
+    background: #c0c0c0;
+}
+
+/* --- DITHER GRADIENT --- */
+/* Using a radial gradient to simulate a glowing center without soft shadow blur */
+.dither-radial {
+    background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 20%, rgba(255,255,255,0) 70%);
+    /* To make it look more "dithered" or retro, we rely on the sharp falloff or pixelated rendering if possible,
+       but standard CSS gradients are smooth.
+       A pattern overlay could work, but a simple radial gradient is requested. */
+}
