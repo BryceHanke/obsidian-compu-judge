@@ -29565,26 +29565,53 @@ function GradingPanel($$anchor, $$props) {
   const $processOrigin = () => store_get(processOrigin, "$processOrigin", $$stores);
   const [$$stores, $$cleanup] = setup_stores();
   let settings = proxy($$props.settings);
+  let themeClass = state(proxy(getThemeClass($$props.settings.theme)));
   let activeFile = state(null);
   let projectData = state(null);
   let currentTab = state("critic");
-  let themeClass = state("");
   let isSaving = state(false);
   let estimatedDuration = state(4e3);
   let wizardLoadingField = state(null);
-  let isMsDos = user_derived(() => settings.theme === "msdos" || settings.theme === "auto" && document.body.classList.contains("theme-dark"));
+  let isMsDos = user_derived(() => get(themeClass) === "theme-msdos");
   let isContextSynced = state(false);
   let isArchivistSynced = state(false);
   let archivistLength = user_derived(() => (get(projectData) === null || get(projectData) === void 0 ? void 0 : get(projectData).archivistContext) ? get(projectData).archivistContext.length : 0);
   let hasArchivistData = user_derived(() => get(archivistLength) > 0);
   let activeFileStatus = user_derived(() => get(activeFile) && $processRegistry()[get(activeFile).path] ? "PROCESSING" : "READY");
   const debouncedSave = debounce(() => saveProject(false), 1e3);
+  function getThemeClass(mode) {
+    const isDark = document.body.classList.contains("theme-dark");
+    if (mode === "win95")
+      return "theme-win95";
+    if (mode === "msdos")
+      return "theme-msdos";
+    if (mode === "invert")
+      return isDark ? "theme-win95" : "theme-msdos";
+    return isDark ? "theme-msdos" : "theme-win95";
+  }
   function handleSettingsUpdate(updates) {
     Object.assign(settings, updates);
     $$props.onUpdateSettings(updates);
     if (updates.theme) {
-      $$props.audio.setTheme(updates.theme);
-      applyTheme(updates.theme);
+      set(themeClass, getThemeClass(updates.theme), true);
+      safeAudioSetTheme(updates.theme);
+    }
+  }
+  function safeAudioSetTheme(theme) {
+    try {
+      if ($$props.audio)
+        $$props.audio.setTheme(theme);
+    } catch (e2) {
+      console.warn("Audio Theme Error", e2);
+    }
+  }
+  function safeAudioPlay(method) {
+    try {
+      if ($$props.audio && typeof $$props.audio[method] === "function") {
+        $$props.audio[method]();
+      }
+    } catch (e2) {
+      console.warn("Audio Play Error", e2);
     }
   }
   function handleDrivesUpdate(newDrives) {
@@ -29594,7 +29621,7 @@ function GradingPanel($$anchor, $$props) {
     saveProject(false);
   }
   function handleError(context, error) {
-    $$props.audio.playError();
+    safeAudioPlay("playError");
     console.error(`[Compu-Judge] ${context} Error:`, error);
     let msg = error instanceof Error ? error.message : String(error);
     msg = msg.replace(/^Error:\s*/i, "").replace(/^Gemini Error:\s*/i, "");
@@ -29616,8 +29643,8 @@ function GradingPanel($$anchor, $$props) {
       await loadProjectData(file);
   };
   const updateTheme = (theme) => {
-    applyTheme(theme);
-    $$props.audio.setTheme(theme);
+    set(themeClass, getThemeClass(theme), true);
+    safeAudioSetTheme(theme);
   };
   async function loadProjectData(file) {
     try {
@@ -29685,7 +29712,7 @@ function GradingPanel($$anchor, $$props) {
   async function handleUploadContext() {
     if (!get(activeFile) || !get(projectData))
       return;
-    $$props.audio.playClick();
+    safeAudioPlay("playClick");
     try {
       const content = await $$props.app.vault.read(get(activeFile));
       if (!content.trim())
@@ -29707,7 +29734,7 @@ ${content}`;
   function handleScrubContext() {
     if (!get(projectData))
       return;
-    $$props.audio.playClick();
+    safeAudioPlay("playClick");
     if (confirm("Purge Inspiration Memory?")) {
       get(projectData).wizardState.inspirationContext = "";
       set(projectData, { ...get(projectData) }, true);
@@ -29718,7 +29745,7 @@ ${content}`;
   function handleClearWizardState() {
     if (!get(projectData))
       return;
-    $$props.audio.playClick();
+    safeAudioPlay("playClick");
     if (confirm("Clear all Wizard fields? (Memory/Context will be kept)")) {
       const currentContext = get(projectData).wizardState.inspirationContext;
       get(projectData).wizardState = {
@@ -29733,7 +29760,7 @@ ${content}`;
   async function handleUploadArchivist() {
     if (!get(activeFile) || !get(projectData))
       return;
-    $$props.audio.playClick();
+    safeAudioPlay("playClick");
     try {
       const content = await $$props.app.vault.read(get(activeFile));
       if (!content.trim())
@@ -29749,7 +29776,7 @@ ${content}`;
   function handleScrubArchivist() {
     if (!get(projectData))
       return;
-    $$props.audio.playClick();
+    safeAudioPlay("playClick");
     if (confirm("Clear Archivist Memory?")) {
       get(projectData).archivistContext = "";
       set(projectData, { ...get(projectData) }, true);
@@ -29761,7 +29788,7 @@ ${content}`;
     set(estimatedDuration, duration, true);
     setStatus(label);
     setFileLoading(path, true, get(currentTab));
-    $$props.audio.playProcess();
+    safeAudioPlay("playProcess");
   }
   function stopLoading(path) {
     setTimeout(() => setFileLoading(path, false), 200);
@@ -29785,7 +29812,7 @@ ${content}`;
     try {
       const context = get(projectData).wizardState.inspirationContext || "No context provided.";
       const updated = await $$props.cloud.gradeCharacter(char, context);
-      $$props.audio.playSuccess();
+      safeAudioPlay("playSuccess");
       new import_obsidian7.Notice(`Metrics Updated for ${char.name}`);
       return updated;
     } catch (e2) {
@@ -29803,7 +29830,7 @@ ${content}`;
     try {
       const context = get(projectData).wizardState.inspirationContext || "No context provided.";
       const updated = await $$props.cloud.gradeStructureBeat(beat, context);
-      $$props.audio.playSuccess();
+      safeAudioPlay("playSuccess");
       new import_obsidian7.Notice(`Tension Calculated for ${beat.title}`);
       return updated;
     } catch (e2) {
@@ -29834,7 +29861,7 @@ ${content}`;
       get(projectData).lastAnalysisMtime = file.stat.mtime;
       set(projectData, { ...get(projectData) }, true);
       await saveProject(true);
-      $$props.audio.playSuccess();
+      safeAudioPlay("playSuccess");
       new import_obsidian7.Notice("Deep Scan Complete.");
     } catch (e2) {
       handleError("Deep Scan", e2);
@@ -29857,7 +29884,7 @@ ${content}`;
       get(projectData).lastLightResult = { ...aiGrade, summary_line: summary };
       set(projectData, { ...get(projectData) }, true);
       await saveProject(false);
-      $$props.audio.playSuccess();
+      safeAudioPlay("playSuccess");
     } catch (e2) {
       handleError("Quick Scan", e2);
     } finally {
@@ -29877,7 +29904,7 @@ ${content}`;
       get(projectData).lastMetaResult = meta;
       set(projectData, { ...get(projectData) }, true);
       await saveProject(false);
-      $$props.audio.playSuccess();
+      safeAudioPlay("playSuccess");
     } catch (e2) {
       handleError("System Diagnostics", e2);
     } finally {
@@ -29904,7 +29931,7 @@ ${content}`;
         set(projectData, { ...get(projectData) }, true);
         new import_obsidian7.Notice("Suggestion Applied.");
         await saveProject(false);
-        $$props.audio.playSuccess();
+        safeAudioPlay("playSuccess");
       }
     } catch (e2) {
       handleError("Wizard Assist", e2);
@@ -29923,7 +29950,7 @@ ${content}`;
       const outputName = get(activeFile).basename + "_FULL_OUTLINE.md";
       await safeCreateFile(outputName, synopsis);
       new import_obsidian7.Notice(`Full Outline Created.`);
-      $$props.audio.playSuccess();
+      safeAudioPlay("playSuccess");
     } catch (e2) {
       handleError("Ghostwriter", e2);
     } finally {
@@ -29962,7 +29989,7 @@ ${content}`;
       set(projectData, { ...get(projectData) }, true);
       await saveProject(false);
       new import_obsidian7.Notice("Story Bible Generated Successfully.");
-      $$props.audio.playSuccess();
+      safeAudioPlay("playSuccess");
     } catch (e2) {
       handleError("Auto-Fill", e2);
     } finally {
@@ -29992,7 +30019,7 @@ ${content}`;
       }
       await safeCreateFile(outputName, outlineMarkdown);
       new import_obsidian7.Notice("Universal Outline Created.");
-      $$props.audio.playSuccess();
+      safeAudioPlay("playSuccess");
     } catch (e2) {
       handleError("Synthesis", e2);
     } finally {
@@ -30013,7 +30040,7 @@ ${content}`;
       get(projectData).lastActionPlan = plan;
       set(projectData, { ...get(projectData) }, true);
       await saveProject(false);
-      $$props.audio.playSuccess();
+      safeAudioPlay("playSuccess");
     } catch (e2) {
       handleError("Forge", e2);
     } finally {
@@ -30056,7 +30083,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
       const outlineText = await $$props.cloud.generateOutline(combinedInput, useSearch);
       await safeCreateFile(outputFilename, outlineText);
       new import_obsidian7.Notice(`Archivist Created.`);
-      $$props.audio.playSuccess();
+      safeAudioPlay("playSuccess");
     } catch (e2) {
       handleError("Archivist", e2);
     } finally {
@@ -30075,7 +30102,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
       const outputName = get(activeFile).basename + "_REPAIRED.md";
       await safeCreateFile(outputName, repairedText);
       new import_obsidian7.Notice(`Repaired File Created.`);
-      $$props.audio.playSuccess();
+      safeAudioPlay("playSuccess");
     } catch (e2) {
       handleError("Auto-Patch", e2);
     } finally {
@@ -30109,7 +30136,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
       set(projectData, { ...get(projectData) }, true);
       await saveProject(false);
       new import_obsidian7.Notice(`Renaming Complete. ${updateCount} characters updated.`);
-      $$props.audio.playSuccess();
+      safeAudioPlay("playSuccess");
     } catch (e2) {
       handleError("Deep Rename", e2);
     } finally {
@@ -30122,7 +30149,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
     setFileLoading(get(activeFile).path, false);
     if (!get(projectData))
       return;
-    $$props.audio.playClick();
+    safeAudioPlay("playClick");
     if (window.confirm("FORCE FORMAT DISC? Resets all data.")) {
       const blankState = JSON.parse(JSON.stringify(DEFAULT_WIZARD_STATE));
       get(projectData).wizardState = blankState;
@@ -30139,25 +30166,14 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
       new import_obsidian7.Notice("Disc Formatted.");
     }
   }
-  function applyTheme(mode) {
-    const isDark = document.body.classList.contains("theme-dark");
-    if (mode === "win95")
-      set(themeClass, "theme-win95");
-    else if (mode === "msdos")
-      set(themeClass, "theme-msdos");
-    else if (mode === "invert")
-      set(themeClass, isDark ? "theme-win95" : "theme-msdos", true);
-    else
-      set(themeClass, isDark ? "theme-msdos" : "theme-win95", true);
-  }
   function switchTab(tab) {
-    $$props.audio.playClick();
+    safeAudioPlay("playClick");
     set(currentTab, tab, true);
   }
   async function runFixDialogue() {
     if (!get(activeFile))
       return;
-    $$props.audio.playClick();
+    safeAudioPlay("playClick");
     try {
       const content = await getActiveFileContent();
       const fixed = ForgeOps.fixDialogue(content);
@@ -30171,7 +30187,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
   async function runAdverbKiller(mode) {
     if (!get(activeFile))
       return;
-    $$props.audio.playClick();
+    safeAudioPlay("playClick");
     try {
       const content = await getActiveFileContent();
       const fixed = ForgeOps.assassinateAdverbs(content, mode);
@@ -30185,7 +30201,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
   async function runFilterHighlight() {
     if (!get(activeFile))
       return;
-    $$props.audio.playClick();
+    safeAudioPlay("playClick");
     try {
       const content = await getActiveFileContent();
       const fixed = ForgeOps.highlightFilters(content);
@@ -30199,7 +30215,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
   async function runGenerateReport() {
     if (!get(activeFile) || !get(projectData))
       return;
-    $$props.audio.playClick();
+    safeAudioPlay("playClick");
     try {
       await ReportGen.generateReport($$props.app, get(projectData), get(activeFile).basename);
     } catch (e2) {
@@ -30209,7 +30225,8 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
   onMount(() => {
     const f3 = $$props.app.workspace.getActiveFile();
     updateActiveFile(f3);
-    applyTheme(settings.theme);
+    set(themeClass, getThemeClass(settings.theme), true);
+    safeAudioSetTheme(settings.theme);
   });
   var $$exports = { updateActiveFile, updateTheme };
   var div = root5();

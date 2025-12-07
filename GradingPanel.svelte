@@ -14,27 +14,34 @@
     import CriticDisplay from './CriticDisplay.svelte';
     import Win95ProgressBar from './Win95ProgressBar.svelte';
     import { processRegistry, processOrigin, setFileLoading, setStatus } from './store';
-    import { AudioEngine } from './AudioEngine'; // NEW
+    import { AudioEngine } from './AudioEngine';
 
     interface Props {
         app: App;
         cloud: CloudGenService;
         settings: NigsSettings;
         onUpdateSettings: (s: Partial<NigsSettings>) => void;
-        audio: AudioEngine; // NEW
+        audio: AudioEngine;
     }
 
     let { app, cloud, settings: initialSettings, onUpdateSettings, audio }: Props = $props();
+
+    // [FIX] Reactivity: Use a derived state or keep local copy synced
     let settings = $state(initialSettings);
+
+    // [FIX] Ensure theme is initialized immediately to prevent "Broken UI" (Blank styles)
+    let themeClass = $state(getThemeClass(initialSettings.theme));
+
     let activeFile: TFile | null = $state(null);
     let projectData: ProjectData | null = $state(null);
     let currentTab = $state('critic');
-    let themeClass = $state('');
+
     let isSaving = $state(false);
     let estimatedDuration = $state(4000);
     let wizardLoadingField: string | null = $state(null);
     
-    let isMsDos = $derived(settings.theme === 'msdos' || (settings.theme === 'auto' && document.body.classList.contains('theme-dark')));
+    // Derived for MS-DOS mode check
+    let isMsDos = $derived(themeClass === 'theme-msdos');
 
     // Sync States
     let isContextSynced = $state(false);
@@ -49,14 +56,36 @@
 
     const debouncedSave = debounce(() => saveProject(false), 1000);
 
+    // [FIX] Helper to determine class string synchronously
+    function getThemeClass(mode: string): string {
+        const isDark = document.body.classList.contains('theme-dark');
+        if (mode === 'win95') return 'theme-win95';
+        if (mode === 'msdos') return 'theme-msdos';
+        if (mode === 'invert') return isDark ? 'theme-win95' : 'theme-msdos';
+        // Auto:
+        return isDark ? 'theme-msdos' : 'theme-win95';
+    }
+
     function handleSettingsUpdate(updates: Partial<NigsSettings>) {
         Object.assign(settings, updates);
         onUpdateSettings(updates);
-        // Audio theme might need update if theme changed
+        // Update local theme state immediately
         if (updates.theme) {
-            audio.setTheme(updates.theme);
-            applyTheme(updates.theme);
+            themeClass = getThemeClass(updates.theme);
+            safeAudioSetTheme(updates.theme);
         }
+    }
+
+    function safeAudioSetTheme(theme: string) {
+        try { if(audio) audio.setTheme(theme); } catch(e) { console.warn("Audio Theme Error", e); }
+    }
+
+    function safeAudioPlay(method: keyof AudioEngine) {
+        try {
+            if(audio && typeof audio[method] === 'function') {
+                (audio[method] as Function)();
+            }
+        } catch(e) { console.warn("Audio Play Error", e); }
     }
     
     function handleDrivesUpdate(newDrives: DriveBlock[]) {
@@ -66,7 +95,7 @@
     }
 
     function handleError(context: string, error: any) {
-        audio.playError(); // AUDIO
+        safeAudioPlay('playError');
         console.error(`[Compu-Judge] ${context} Error:`, error);
         let msg = error instanceof Error ? error.message : String(error);
         msg = msg.replace(/^Error:\s*/i, "").replace(/^Gemini Error:\s*/i, "");
@@ -86,8 +115,8 @@
     };
 
     export const updateTheme = (theme: string) => {
-        applyTheme(theme);
-        audio.setTheme(theme);
+        themeClass = getThemeClass(theme);
+        safeAudioSetTheme(theme);
     };
 
     async function loadProjectData(file: TFile) {
@@ -158,7 +187,7 @@
 
     async function handleUploadContext() {
         if (!activeFile || !projectData) return;
-        audio.playClick();
+        safeAudioPlay('playClick');
         try {
             const content = await app.vault.read(activeFile);
             if (!content.trim()) return new Notice("File is empty.");
@@ -174,7 +203,7 @@
 
     function handleScrubContext() {
         if (!projectData) return;
-        audio.playClick();
+        safeAudioPlay('playClick');
         if (confirm("Purge Inspiration Memory?")) {
             projectData.wizardState.inspirationContext = "";
             projectData = { ...projectData };
@@ -185,7 +214,7 @@
 
     function handleClearWizardState() {
         if (!projectData) return;
-        audio.playClick();
+        safeAudioPlay('playClick');
         if (confirm("Clear all Wizard fields? (Memory/Context will be kept)")) {
             const currentContext = projectData.wizardState.inspirationContext;
             projectData.wizardState = {
@@ -200,7 +229,7 @@
 
     async function handleUploadArchivist() {
         if (!activeFile || !projectData) return;
-        audio.playClick();
+        safeAudioPlay('playClick');
         try {
             const content = await app.vault.read(activeFile);
             if (!content.trim()) return new Notice("File is empty.");
@@ -214,7 +243,7 @@
 
     function handleScrubArchivist() {
         if (!projectData) return;
-        audio.playClick();
+        safeAudioPlay('playClick');
         if (confirm("Clear Archivist Memory?")) {
             projectData.archivistContext = "";
             projectData = { ...projectData };
@@ -227,7 +256,7 @@
         estimatedDuration = duration;
         setStatus(label);
         setFileLoading(path, true, currentTab); 
-        audio.playProcess(); // AUDIO LOOP START
+        safeAudioPlay('playProcess');
     }
     
     function stopLoading(path: string) { 
@@ -253,7 +282,7 @@
         try {
             const context = projectData.wizardState.inspirationContext || "No context provided.";
             const updated = await cloud.gradeCharacter(char, context);
-            audio.playSuccess();
+            safeAudioPlay('playSuccess');
             new Notice(`Metrics Updated for ${char.name}`);
             return updated;
         } catch(e: any) { handleError("Character Grading", e); return char; } 
@@ -268,7 +297,7 @@
         try {
             const context = projectData.wizardState.inspirationContext || "No context provided.";
             const updated = await cloud.gradeStructureBeat(beat, context);
-            audio.playSuccess();
+            safeAudioPlay('playSuccess');
             new Notice(`Tension Calculated for ${beat.title}`);
             return updated;
         } catch(e: any) { handleError("Structure Grading", e); return beat; }
@@ -292,7 +321,7 @@
             projectData.lastAnalysisMtime = file.stat.mtime;
             projectData = { ...projectData }; 
             await saveProject(true);
-            audio.playSuccess();
+            safeAudioPlay('playSuccess');
             new Notice("Deep Scan Complete.");
         } catch (e: any) { handleError("Deep Scan", e);
         } 
@@ -313,7 +342,7 @@
             projectData.lastLightResult = { ...aiGrade, summary_line: summary };
             projectData = { ...projectData }; 
             await saveProject(false);
-            audio.playSuccess();
+            safeAudioPlay('playSuccess');
         } catch (e: any) { handleError("Quick Scan", e);
         } 
         finally { stopLoading(file.path);
@@ -331,7 +360,7 @@
             projectData.lastMetaResult = meta;
             projectData = { ...projectData };
             await saveProject(false);
-            audio.playSuccess();
+            safeAudioPlay('playSuccess');
         } catch (e: any) { handleError("System Diagnostics", e); } 
         finally { stopLoading(path);
         } 
@@ -354,7 +383,7 @@
                 projectData = { ...projectData }; 
                 new Notice("Suggestion Applied.");
                 await saveProject(false);
-                audio.playSuccess();
+                safeAudioPlay('playSuccess');
             }
         } catch(e: any) { handleError("Wizard Assist", e);
         } 
@@ -372,7 +401,7 @@
             const outputName = activeFile.basename + "_FULL_OUTLINE.md";
             await safeCreateFile(outputName, synopsis);
             new Notice(`Full Outline Created.`);
-            audio.playSuccess();
+            safeAudioPlay('playSuccess');
         } catch(e: any) { handleError("Ghostwriter", e);
         } 
         finally { stopLoading(path);
@@ -408,7 +437,7 @@
             projectData = { ...projectData };
             await saveProject(false);
             new Notice("Story Bible Generated Successfully.");
-            audio.playSuccess();
+            safeAudioPlay('playSuccess');
         } catch (e: any) { handleError("Auto-Fill", e);
         } 
         finally { stopLoading(path);
@@ -439,7 +468,7 @@
 
             await safeCreateFile(outputName, outlineMarkdown);
             new Notice("Universal Outline Created.");
-            audio.playSuccess();
+            safeAudioPlay('playSuccess');
         } catch (e: any) { handleError("Synthesis", e);
         } 
         finally { stopLoading(path);
@@ -464,7 +493,7 @@
             projectData.lastActionPlan = plan; 
             projectData = { ...projectData };
             await saveProject(false);
-            audio.playSuccess();
+            safeAudioPlay('playSuccess');
         } catch (e: any) { handleError("Forge", e); } 
         finally { stopLoading(path);
         } 
@@ -499,7 +528,7 @@
             const outlineText = await cloud.generateOutline(combinedInput, useSearch);
             await safeCreateFile(outputFilename, outlineText);
             new Notice(`Archivist Created.`);
-            audio.playSuccess();
+            safeAudioPlay('playSuccess');
         } catch (e: any) { handleError("Archivist", e);
         } 
         finally { stopLoading(path);
@@ -517,7 +546,7 @@
             const outputName = activeFile.basename + "_REPAIRED.md";
             await safeCreateFile(outputName, repairedText);
             new Notice(`Repaired File Created.`);
-            audio.playSuccess();
+            safeAudioPlay('playSuccess');
         } catch (e: any) { handleError("Auto-Patch", e);
         } 
         finally { stopLoading(path);
@@ -556,7 +585,7 @@
             await saveProject(false);
             
             new Notice(`Renaming Complete. ${updateCount} characters updated.`);
-            audio.playSuccess();
+            safeAudioPlay('playSuccess');
             
         } catch (e: any) { handleError("Deep Rename", e); }
         finally { stopLoading(path); }
@@ -566,7 +595,7 @@
         if (!activeFile) return;
         setFileLoading(activeFile.path, false); 
         if (!projectData) return;
-        audio.playClick();
+        safeAudioPlay('playClick');
         if (window.confirm("FORCE FORMAT DISC? Resets all data.")) { 
             const blankState = JSON.parse(JSON.stringify(DEFAULT_WIZARD_STATE));
             projectData.wizardState = blankState; 
@@ -584,23 +613,15 @@
         } 
     }
 
-    function applyTheme(mode: string) { 
-        const isDark = document.body.classList.contains('theme-dark');
-        if (mode === 'win95') themeClass = 'theme-win95';
-        else if (mode === 'msdos') themeClass = 'theme-msdos';
-        else if (mode === 'invert') themeClass = isDark ? 'theme-win95' : 'theme-msdos';
-        else themeClass = isDark ? 'theme-msdos' : 'theme-win95';
-    }
-
     // --- UI HELPERS ---
     function switchTab(tab: string) {
-        audio.playClick();
+        safeAudioPlay('playClick');
         currentTab = tab;
     }
 
     async function runFixDialogue() {
         if (!activeFile) return;
-        audio.playClick();
+        safeAudioPlay('playClick');
         try {
             const content = await getActiveFileContent();
             const fixed = ForgeOps.fixDialogue(content);
@@ -612,7 +633,7 @@
 
     async function runAdverbKiller(mode: 'highlight' | 'kill') {
         if (!activeFile) return;
-        audio.playClick();
+        safeAudioPlay('playClick');
         try {
             const content = await getActiveFileContent();
             const fixed = ForgeOps.assassinateAdverbs(content, mode);
@@ -624,7 +645,7 @@
 
     async function runFilterHighlight() {
         if (!activeFile) return;
-        audio.playClick();
+        safeAudioPlay('playClick');
         try {
             const content = await getActiveFileContent();
             const fixed = ForgeOps.highlightFilters(content);
@@ -636,7 +657,7 @@
 
     async function runGenerateReport() {
         if (!activeFile || !projectData) return;
-        audio.playClick();
+        safeAudioPlay('playClick');
         try {
             await ReportGen.generateReport(app, projectData, activeFile.basename);
         } catch (e: any) { handleError("Report Gen", e); }
@@ -645,7 +666,8 @@
     onMount(() => { 
         const f = app.workspace.getActiveFile(); 
         updateActiveFile(f); 
-        applyTheme(settings.theme); 
+        themeClass = getThemeClass(settings.theme);
+        safeAudioSetTheme(settings.theme);
     });
 </script>
 
