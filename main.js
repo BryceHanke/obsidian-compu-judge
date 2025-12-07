@@ -27440,10 +27440,10 @@ function slide(node, { delay = 0, duration = 400, easing = cubic_out, axis = "y"
 // WizardFields.svelte
 var root_2 = from_html(`<div class="char-block bevel-down svelte-16d9qba" style="margin-bottom: 10px; margin-top: 10px;"><div class="char-header svelte-16d9qba"><span class="char-name-display" style="font-size: 12px;"></span> <button class="del-btn svelte-16d9qba">\xD7</button></div> <div class="char-body svelte-16d9qba"><label class="svelte-16d9qba">The Goal</label> <div class="input-wrap svelte-16d9qba"><input class="retro-input" placeholder="What do they want right now?"/> <button>?</button></div> <div class="grid-3-p svelte-16d9qba" style="margin-top: 5px;"><div><label style="color:#800000; font-size: 0.8em;" class="svelte-16d9qba">1. FAIL (NO, AND)</label> <div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="3" placeholder="Disaster strikes..."></textarea> <button>?</button></div></div> <div><label style="color:#808000; font-size: 0.8em;" class="svelte-16d9qba">2. FAIL (NO, BUT)</label> <div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="3" placeholder="Learning moment..."></textarea> <button>?</button></div></div> <div><label style="color:#008000; font-size: 0.8em;" class="svelte-16d9qba">3. SUCCESS (YES, BUT)</label> <div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="3" placeholder="New problem arises..."></textarea> <button>?</button></div></div></div></div></div>`);
 var root_4 = from_html(`<div class="char-body svelte-16d9qba"><div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="2" placeholder="Role &amp; Bio..."></textarea> <button>?</button> <button class="assist-btn analyze-btn svelte-16d9qba" title="Auto-Grade Scales">\u26A1</button></div> <div class="score-grid svelte-16d9qba"><div class="score-item svelte-16d9qba"><div class="score-header svelte-16d9qba"><span class="score-label" title="How good are they at what they do?">COMPETENCE</span> <span class="score-val"> </span></div> <div class="score-track bevel-down svelte-16d9qba" role="button" tabindex="0"><div class="score-fill svelte-16d9qba"></div></div></div> <div class="score-item svelte-16d9qba"><div class="score-header svelte-16d9qba"><span class="score-label" title="Do they make things happen?">PROACTIVITY</span> <span class="score-val"> </span></div> <div class="score-track bevel-down svelte-16d9qba" role="button" tabindex="0"><div class="score-fill svelte-16d9qba"></div></div></div> <div class="score-item svelte-16d9qba"><div class="score-header svelte-16d9qba"><span class="score-label" title="Do we like them? (Sympathy)">LIKABILITY</span> <span class="score-val"> </span></div> <div class="score-track bevel-down svelte-16d9qba" role="button" tabindex="0"><div class="score-fill svelte-16d9qba"></div></div></div></div></div>`);
-var root_3 = from_html(`<div class="char-block bevel-down svelte-16d9qba"><div class="char-header svelte-16d9qba" title="Toggle Expand"><div class="char-title svelte-16d9qba"><span> </span> <input type="text" class="char-name-input svelte-16d9qba" placeholder="Name"/></div> <div class="char-controls svelte-16d9qba"><button class="svelte-16d9qba">\u25B2</button> <button class="del-btn svelte-16d9qba">\xD7</button> <span class="expand-icon"> </span></div></div> <!></div>`);
+var root_3 = from_html(`<div class="char-block bevel-down svelte-16d9qba"><div class="char-header svelte-16d9qba" title="Toggle Expand" role="button" tabindex="0"><div class="char-title svelte-16d9qba"><span> </span> <input type="text" class="char-name-input svelte-16d9qba" placeholder="Name"/></div> <div class="char-controls svelte-16d9qba"><button class="svelte-16d9qba">\u25B2</button> <button class="del-btn svelte-16d9qba">\xD7</button> <span class="expand-icon"> </span></div></div> <!></div>`);
 var root_6 = from_html(`<div class="char-body svelte-16d9qba"><div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="3" placeholder="Action &amp; Change..."></textarea> <button>?</button> <button class="assist-btn analyze-btn svelte-16d9qba" title="Auto-Grade Tension &amp; Type">\u26A1</button></div> <div class="score-item svelte-16d9qba" style="margin-top: 10px;"><div class="score-header svelte-16d9qba"><span class="score-label">TENSION</span> <span class="score-val"> </span></div> <div class="score-track bevel-down svelte-16d9qba" role="button" tabindex="0"><div class="score-fill svelte-16d9qba"></div></div></div></div>`);
-var root_5 = from_html(`<div class="char-block bevel-down svelte-16d9qba"><div class="char-header svelte-16d9qba"><div class="char-title svelte-16d9qba"><span style="width: 80px; text-align:center;"> </span> <input type="text" class="char-name-input svelte-16d9qba" placeholder="Beat Title"/></div> <div class="char-controls svelte-16d9qba"><button class="svelte-16d9qba">\u25B2</button> <button class="del-btn svelte-16d9qba">\xD7</button></div></div> <!></div>`);
-var root = from_html(`<div class="wizard-container svelte-16d9qba"><fieldset class="bevel-groove memory-core svelte-16d9qba"><legend class="svelte-16d9qba">MEMORY CORE</legend> <div class="memory-status svelte-16d9qba"><div class="status-indicator svelte-16d9qba"><span></span> <span> </span></div> <div class="status-details"> </div></div> <div class="context-controls svelte-16d9qba"><button> </button> <button class="scrub-btn svelte-16d9qba">\u{1F5D1}\uFE0F PURGE</button></div></fieldset> <fieldset class="bevel-groove svelte-16d9qba"><legend class="svelte-16d9qba">1. CORE ENGINE (SANDERSON'S 1ST LAW OF PLOT)</legend> <label for="w_concept" class="svelte-16d9qba">Concept / Logline</label> <div class="input-wrap svelte-16d9qba"><textarea id="w_concept" class="retro-input" rows="2" placeholder="High concept summary..."></textarea> <button>?</button></div> <label for="w_target" class="svelte-16d9qba"> </label> <div class="input-wrap svelte-16d9qba"><input type="range" id="w_target" class="retro-range" min="50" max="100" step="5"/></div> <button class="autofill-btn svelte-16d9qba">\u2728 AUTO-GENERATE STORY BIBLE</button> <div class="grid-3-p svelte-16d9qba"><div class="p-col svelte-16d9qba"><label title="What plot/tonal promise do you make in the first chapter?" class="svelte-16d9qba">THE PROMISE (HOOK)</label> <div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="4"></textarea> <button>?</button></div></div> <div class="p-col svelte-16d9qba"><label title="How does the story move forward? (Travel, Discovery, Clues)" class="svelte-16d9qba">THE PROGRESS (SHIFT)</label> <div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="4"></textarea> <button>?</button></div></div> <div class="p-col svelte-16d9qba"><label title="How is the promise fulfilled? (Must match the promise type)" class="svelte-16d9qba">THE PAYOFF (CLIMAX)</label> <div class="input-wrap svelte-16d9qba"><textarea class="retro-input" rows="4"></textarea> <button>?</button></div></div></div></fieldset> <fieldset class="bevel-groove svelte-16d9qba"><legend class="svelte-16d9qba">2. STRUCTURE DNA (M.I.C.E. & CYCLES)</legend> <div class="grid-2 svelte-16d9qba"><div><label class="svelte-16d9qba">Primary M.I.C.E. Thread</label> <div class="input-wrap svelte-16d9qba"><select class="retro-input"><option>EVENT (Status Quo)</option><option>CHARACTER (Identity)</option><option>MILIEU (Place)</option><option>INQUIRY (Mystery)</option></select> <button>?</button></div></div> <div><label class="svelte-16d9qba">Nesting Order</label> <div class="input-wrap svelte-16d9qba"><input type="text" class="retro-input" placeholder="e.g. Milieu > Inquiry > Character"/> <button>?</button></div></div></div> <label style="margin-top: 15px; color: var(--cj-accent); border-bottom: 1px dashed var(--cj-dim);" class="svelte-16d9qba">TRY / FAIL CYCLES (SCENE ESCALATION)</label> <!> <button class="add-char-btn svelte-16d9qba">+ ADD TRY-FAIL CYCLE</button></fieldset> <fieldset class="bevel-groove character-section svelte-16d9qba"><legend class="svelte-16d9qba">3. DRAMATIS PERSONAE (THE SLIDERS)</legend> <div class="char-list"></div> <button class="add-char-btn svelte-16d9qba">+ ADD CHARACTER</button></fieldset> <fieldset class="bevel-groove svelte-16d9qba"><legend class="svelte-16d9qba">4. THE BEAT SHEET</legend> <div class="char-list"></div> <button class="add-char-btn svelte-16d9qba">+ ADD STORY BEAT</button></fieldset> <div class="footer-controls svelte-16d9qba"><button class="reset-form-btn svelte-16d9qba">RESET FIELDS</button></div></div>`);
+var root_5 = from_html(`<div class="char-block bevel-down svelte-16d9qba"><div class="char-header svelte-16d9qba" role="button" tabindex="0"><div class="char-title svelte-16d9qba"><span style="width: 80px; text-align:center;"> </span> <input type="text" class="char-name-input svelte-16d9qba" placeholder="Beat Title"/></div> <div class="char-controls svelte-16d9qba"><button class="svelte-16d9qba">\u25B2</button> <button class="del-btn svelte-16d9qba">\xD7</button></div></div> <!></div>`);
+var root = from_html(`<div class="wizard-container svelte-16d9qba"><fieldset class="bevel-groove memory-core svelte-16d9qba"><legend class="svelte-16d9qba">MEMORY CORE</legend> <div class="memory-status svelte-16d9qba"><div class="status-indicator svelte-16d9qba"><span></span> <span> </span></div> <div class="status-details"> </div></div> <div class="context-controls svelte-16d9qba"><button> </button> <button class="scrub-btn svelte-16d9qba">\u{1F5D1}\uFE0F PURGE</button></div></fieldset> <fieldset class="bevel-groove svelte-16d9qba"><legend class="svelte-16d9qba">1. CORE ENGINE (SANDERSON'S 1ST LAW OF PLOT)</legend> <label for="w_concept" class="svelte-16d9qba">Concept / Logline</label> <div class="input-wrap svelte-16d9qba"><textarea id="w_concept" class="retro-input" rows="2" placeholder="High concept summary..."></textarea> <button>?</button></div> <label for="w_target" class="svelte-16d9qba"> </label> <div class="input-wrap svelte-16d9qba"><input type="range" id="w_target" class="retro-range" min="50" max="100" step="5"/></div> <button class="autofill-btn svelte-16d9qba">\u2728 AUTO-GENERATE STORY BIBLE</button> <div class="grid-3-p svelte-16d9qba"><div class="p-col svelte-16d9qba"><label for="p_promise" title="What plot/tonal promise do you make in the first chapter?" class="svelte-16d9qba">THE PROMISE (HOOK)</label> <div class="input-wrap svelte-16d9qba"><textarea id="p_promise" class="retro-input" rows="4"></textarea> <button>?</button></div></div> <div class="p-col svelte-16d9qba"><label for="p_progress" title="How does the story move forward? (Travel, Discovery, Clues)" class="svelte-16d9qba">THE PROGRESS (SHIFT)</label> <div class="input-wrap svelte-16d9qba"><textarea id="p_progress" class="retro-input" rows="4"></textarea> <button>?</button></div></div> <div class="p-col svelte-16d9qba"><label for="p_payoff" title="How is the promise fulfilled? (Must match the promise type)" class="svelte-16d9qba">THE PAYOFF (CLIMAX)</label> <div class="input-wrap svelte-16d9qba"><textarea id="p_payoff" class="retro-input" rows="4"></textarea> <button>?</button></div></div></div></fieldset> <fieldset class="bevel-groove svelte-16d9qba"><legend class="svelte-16d9qba">2. STRUCTURE DNA (M.I.C.E. & CYCLES)</legend> <div class="grid-2 svelte-16d9qba"><div><label for="dna_mice" class="svelte-16d9qba">Primary M.I.C.E. Thread</label> <div class="input-wrap svelte-16d9qba"><select id="dna_mice" class="retro-input"><option>EVENT (Status Quo)</option><option>CHARACTER (Identity)</option><option>MILIEU (Place)</option><option>INQUIRY (Mystery)</option></select> <button>?</button></div></div> <div><label for="dna_order" class="svelte-16d9qba">Nesting Order</label> <div class="input-wrap svelte-16d9qba"><input id="dna_order" type="text" class="retro-input" placeholder="e.g. Milieu > Inquiry > Character"/> <button>?</button></div></div></div> <div style="margin-top: 15px; color: var(--cj-accent); border-bottom: 1px dashed var(--cj-dim); font-weight:bold; font-size:0.9em; text-transform:uppercase;">TRY / FAIL CYCLES (SCENE ESCALATION)</div> <!> <button class="add-char-btn svelte-16d9qba">+ ADD TRY-FAIL CYCLE</button></fieldset> <fieldset class="bevel-groove character-section svelte-16d9qba"><legend class="svelte-16d9qba">3. DRAMATIS PERSONAE (THE SLIDERS)</legend> <div class="char-list"></div> <button class="add-char-btn svelte-16d9qba">+ ADD CHARACTER</button></fieldset> <fieldset class="bevel-groove svelte-16d9qba"><legend class="svelte-16d9qba">4. THE BEAT SHEET</legend> <div class="char-list"></div> <button class="add-char-btn svelte-16d9qba">+ ADD STORY BEAT</button></fieldset> <div class="footer-controls svelte-16d9qba"><button class="reset-form-btn svelte-16d9qba">RESET FIELDS</button></div></div>`);
 var $$css = {
   hash: "svelte-16d9qba",
   code: '.wizard-container.svelte-16d9qba {display:flex;flex-direction:column;gap:20px;padding-bottom:20px;}.bevel-groove.svelte-16d9qba {border:2px groove var(--cj-dim);padding:15px;margin:0;background:transparent;}legend.svelte-16d9qba {font-weight:bold;padding:0 5px;color:var(--cj-text);font-size:1.1em;}label.svelte-16d9qba {display:block;margin-top:12px;margin-bottom:4px;font-size:0.9em;font-weight:bold;color:var(--cj-dim);text-transform:uppercase;}.input-wrap.svelte-16d9qba {display:flex;gap:5px;align-items:flex-start;}.autofill-btn.svelte-16d9qba {width:100%;margin:15px 0;padding:10px;background:linear-gradient(90deg, #4b0082, #800080);color:#fff;font-weight:900;border:2px outset #a020f0;cursor:pointer;}.autofill-btn.svelte-16d9qba:hover {background:linear-gradient(90deg, #6a0dad, #9932cc);}\n    \n    /* Reused styles from old version for consistency */.char-block.svelte-16d9qba {background:rgba(0,0,0,0.03);padding:5px;border:2px solid var(--cj-dim);}.char-header.svelte-16d9qba {display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.1);padding:5px;cursor:pointer;}.char-title.svelte-16d9qba {display:flex;align-items:center;gap:8px;flex:1;}.role-badge.svelte-16d9qba {font-size:10px;font-weight:900;padding:2px 4px;color:#fff;text-transform:uppercase;background:#555;}.char-name-input.svelte-16d9qba {background:transparent;border:none;font-weight:bold;font-family:inherit;font-size:14px;color:var(--cj-text);width:100%;}.char-name-input.svelte-16d9qba:focus {outline:none;border-bottom:1px dashed var(--cj-accent);}.char-controls.svelte-16d9qba button:where(.svelte-16d9qba) {background:transparent;border:none;cursor:pointer;font-weight:bold;color:var(--cj-dim);padding:0 4px;}.del-btn.svelte-16d9qba {color:red !important;margin-left:5px;}.char-body.svelte-16d9qba {padding:10px;border-top:1px dashed var(--cj-dim);}.add-char-btn.svelte-16d9qba {width:100%;padding:8px;border:2px dashed var(--cj-dim);background:transparent;cursor:pointer;font-weight:bold;color:var(--cj-dim);}.add-char-btn.svelte-16d9qba:hover {background:rgba(0,0,0,0.05);color:var(--cj-text);border-style:solid;}.grid-3-p.svelte-16d9qba {display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}.grid-2.svelte-16d9qba {display:grid;grid-template-columns:1fr 1fr;gap:15px;}.p-col.svelte-16d9qba label:where(.svelte-16d9qba) {text-align:center;color:var(--cj-accent);}.retro-input {resize:none;overflow:hidden;min-height:28px;box-sizing:border-box;}.memory-core.svelte-16d9qba {background:rgba(0,0,0,0.05);}.memory-status.svelte-16d9qba {display:flex;justify-content:space-between;align-items:center;background:#000;color:#00ff00;padding:8px;margin-bottom:10px;border:2px inset var(--cj-dim);}.status-indicator.svelte-16d9qba {display:flex;gap:8px;align-items:center;font-weight:900;}.led.svelte-16d9qba {width:10px;height:10px;border-radius:50%;border:1px solid #00ff00;}.led.on.svelte-16d9qba {background:#00ff00;box-shadow:0 0 5px #00ff00;}.led.off.svelte-16d9qba {background:#111;border-color:#555;}.context-controls.svelte-16d9qba {display:flex;gap:5px;}.upload-btn.svelte-16d9qba, .scrub-btn.svelte-16d9qba, .assist-btn.svelte-16d9qba, .reset-form-btn.svelte-16d9qba {background:var(--cj-bg);color:var(--cj-text);border:2px outset var(--cj-light);cursor:pointer;font-weight:bold;display:flex;align-items:center;justify-content:center;}.upload-btn.svelte-16d9qba {flex:1;padding:8px;}.assist-btn.svelte-16d9qba {width:32px;height:30px;flex-shrink:0;background:var(--cj-accent);color:#fff;border-color:var(--cj-light);position:relative;}.assist-btn.loading.svelte-16d9qba::after {content:"";width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%; animation: svelte-16d9qba-spin 0.8s linear infinite;position:absolute;}\n    @keyframes svelte-16d9qba-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }.footer-controls.svelte-16d9qba {margin-top:20px;}.reset-form-btn.svelte-16d9qba {width:100%;padding:10px;border-color:#ff0000;color:#ff0000;}.reset-form-btn.svelte-16d9qba:hover {background:#ff0000;color:#fff;}\n\n    /* CHARACTER SCALES */.score-grid.svelte-16d9qba {display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:15px 0;}.score-item.svelte-16d9qba {display:flex;flex-direction:column;gap:4px;}.score-header.svelte-16d9qba {display:flex;justify-content:space-between;font-size:10px;font-weight:bold;color:var(--cj-dim);}.score-track.svelte-16d9qba {height:16px;background:#fff;border:2px inset var(--cj-dim);cursor:crosshair;position:relative;overflow:hidden;}.score-fill.svelte-16d9qba {height:100%;transition:width 0.3s ease;border-right:2px solid rgba(0,0,0,0.5);}.analyze-btn.svelte-16d9qba {background:#800080;color:white;border-color:#dcdcdc;}\n\n    @media (max-width: 600px) {.grid-3-p.svelte-16d9qba, .grid-2.svelte-16d9qba {grid-template-columns:1fr;}.score-grid.svelte-16d9qba {grid-template-columns:1fr;}\n    }'
@@ -27595,7 +27595,7 @@ function WizardFields($$anchor, $$props) {
   var button = child(div_4);
   button.__click = function(...$$args) {
     var _a3;
-    (_a3 = $$props.isContextSynced ? null : $$props.onUploadContext) == null ? void 0 : _a3.apply(this, $$args);
+    (_a3 = $$props.isContextSynced ? void 0 : $$props.onUploadContext) == null ? void 0 : _a3.apply(this, $$args);
   };
   var text_2 = child(button, true);
   reset(button);
@@ -27720,33 +27720,45 @@ function WizardFields($$anchor, $$props) {
         button_9.__click = () => removeTryFailCycle(i3);
         reset(div_20);
         var div_21 = sibling(div_20, 2);
-        var div_22 = sibling(child(div_21), 2);
+        var label_1 = child(div_21);
+        set_attribute2(label_1, "for", `cycle_goal_${i3}`);
+        var div_22 = sibling(label_1, 2);
         var input_2 = child(div_22);
         remove_input_defaults(input_2);
+        set_attribute2(input_2, "id", `cycle_goal_${i3}`);
         var button_10 = sibling(input_2, 2);
         button_10.__click = () => $$props.onAssist(`structureDNA.tryFailCycles.${i3}.goal`);
         reset(div_22);
         var div_23 = sibling(div_22, 2);
         var div_24 = child(div_23);
-        var div_25 = sibling(child(div_24), 2);
+        var label_2 = child(div_24);
+        set_attribute2(label_2, "for", `cycle_att1_${i3}`);
+        var div_25 = sibling(label_2, 2);
         var textarea_4 = child(div_25);
         remove_textarea_child(textarea_4);
+        set_attribute2(textarea_4, "id", `cycle_att1_${i3}`);
         var button_11 = sibling(textarea_4, 2);
         button_11.__click = () => $$props.onAssist(`structureDNA.tryFailCycles.${i3}.attempt1`);
         reset(div_25);
         reset(div_24);
         var div_26 = sibling(div_24, 2);
-        var div_27 = sibling(child(div_26), 2);
+        var label_3 = child(div_26);
+        set_attribute2(label_3, "for", `cycle_att2_${i3}`);
+        var div_27 = sibling(label_3, 2);
         var textarea_5 = child(div_27);
         remove_textarea_child(textarea_5);
+        set_attribute2(textarea_5, "id", `cycle_att2_${i3}`);
         var button_12 = sibling(textarea_5, 2);
         button_12.__click = () => $$props.onAssist(`structureDNA.tryFailCycles.${i3}.attempt2`);
         reset(div_27);
         reset(div_26);
         var div_28 = sibling(div_26, 2);
-        var div_29 = sibling(child(div_28), 2);
+        var label_4 = child(div_28);
+        set_attribute2(label_4, "for", `cycle_succ_${i3}`);
+        var div_29 = sibling(label_4, 2);
         var textarea_6 = child(div_29);
         remove_textarea_child(textarea_6);
+        set_attribute2(textarea_6, "id", `cycle_succ_${i3}`);
         var button_13 = sibling(textarea_6, 2);
         button_13.__click = () => $$props.onAssist(`structureDNA.tryFailCycles.${i3}.success`);
         reset(div_29);
@@ -27794,6 +27806,7 @@ function WizardFields($$anchor, $$props) {
     var div_31 = root_3();
     var div_32 = child(div_31);
     div_32.__click = () => toggleExpandChar(get(i3));
+    div_32.__keydown = (e2) => e2.key === "Enter" && toggleExpandChar(get(i3));
     var div_33 = child(div_32);
     var span_3 = child(div_33);
     var text_4 = child(span_3, true);
@@ -27846,6 +27859,7 @@ function WizardFields($$anchor, $$props) {
         reset(div_39);
         var div_40 = sibling(div_39, 2);
         div_40.__click = (e2) => handleScoreClick(e2, get(i3), "competence");
+        div_40.__keydown = (e2) => e2.key === "Enter" && handleScoreClick(e2, get(i3), "competence");
         var div_41 = child(div_40);
         reset(div_40);
         reset(div_38);
@@ -27857,6 +27871,7 @@ function WizardFields($$anchor, $$props) {
         reset(div_43);
         var div_44 = sibling(div_43, 2);
         div_44.__click = (e2) => handleScoreClick(e2, get(i3), "proactivity");
+        div_44.__keydown = (e2) => e2.key === "Enter" && handleScoreClick(e2, get(i3), "proactivity");
         var div_45 = child(div_44);
         reset(div_44);
         reset(div_42);
@@ -27868,6 +27883,7 @@ function WizardFields($$anchor, $$props) {
         reset(div_47);
         var div_48 = sibling(div_47, 2);
         div_48.__click = (e2) => handleScoreClick(e2, get(i3), "likability");
+        div_48.__keydown = (e2) => e2.key === "Enter" && handleScoreClick(e2, get(i3), "likability");
         var div_49 = child(div_48);
         reset(div_48);
         reset(div_46);
@@ -27923,6 +27939,7 @@ function WizardFields($$anchor, $$props) {
     var div_51 = root_5();
     var div_52 = child(div_51);
     div_52.__click = () => toggleExpandStory(get(i3));
+    div_52.__keydown = (e2) => e2.key === "Enter" && toggleExpandStory(get(i3));
     var div_53 = child(div_52);
     var span_8 = child(div_53);
     var text_9 = child(span_8, true);
@@ -27971,6 +27988,7 @@ function WizardFields($$anchor, $$props) {
         reset(div_58);
         var div_59 = sibling(div_58, 2);
         div_59.__click = (e2) => handleTensionClick(e2, get(i3));
+        div_59.__keydown = (e2) => e2.key === "Enter" && handleTensionClick(e2, get(i3));
         var div_60 = child(div_59);
         reset(div_59);
         reset(div_57);
@@ -28056,7 +28074,7 @@ function WizardFields($$anchor, $$props) {
   append($$anchor, div);
   pop();
 }
-delegate(["click", "input", "change"]);
+delegate(["click", "input", "change", "keydown"]);
 
 // SynthesizerView.svelte
 var import_obsidian5 = require("obsidian");
