@@ -9,7 +9,7 @@
   --cj-light: #ffffff;
   
   /* Dynamic Variables */
-  --cj-user-color: #00FF00; 
+  --cj-user-color: #000080;
   --cj-grade-masterpiece: #FFFFFF; 
   --cj-bsod-blue: #0000AA;
   
@@ -32,28 +32,35 @@
 }
 
 .compu-container {
-    font-family: 'Courier New', monospace;
-    font-weight: bold; /* GLOBAL CHUNKINESS */
+    /* Typography Standardization */
+    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
+    font-size: 11px; /* Authenticity */
+    font-weight: normal;
     color: var(--cj-text);
     height: 100%;
     display: flex;
     flex-direction: column;
-    position: relative; /* Anchor for CRT/BSOD overlays */
+    position: relative;
 }
 
 /* --- VISUAL POLISH: CLEANER BEVELS --- */
 .bevel-up {
-    border: 2px solid #fff;
-    border-right-color: #404040;
-    border-bottom-color: #404040;
+    /* TRUE WIN95 BORDER LOGIC */
+    border-top: 1px solid #fff;
+    border-left: 1px solid #fff;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
+    box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
     background: var(--cj-bg);
 }
 
 .bevel-down {
-    border: 2px solid #404040;
-    border-right-color: #fff;
-    border-bottom-color: #fff;
-    background: #fff; /* Input fields usually white */
+    border-top: 1px solid #404040;
+    border-left: 1px solid #404040;
+    border-right: 1px solid #fff;
+    border-bottom: 1px solid #fff;
+    box-shadow: inset 1px 1px 0 #808080;
+    background: #fff;
 }
 
 .bevel-groove {
@@ -64,74 +71,105 @@
 }
 
 /* --- BUTTONS (Win95 Authentic) --- */
-.win95-btn {
-    background: var(--cj-bg);
+.win95-btn, .action-btn {
+    /* TRUE WIN95 BUTTON OUTLINE */
+    border-top: 1px solid #fff;
+    border-left: 1px solid #fff;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
+    box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
+    background: #c0c0c0;
+
     color: #000;
-    border: 2px solid #fff;
-    border-right-color: #404040;
-    border-bottom-color: #404040;
-    font-family: 'Courier New', monospace;
-    font-weight: 900;
+    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
+    font-weight: bold;
     cursor: pointer;
     padding: 4px 10px;
     text-transform: uppercase;
-    font-size: 12px;
-    box-shadow: 1px 1px 0 #000; /* Subtle shadow */
-    transition: none; /* Instant feedback */
+    font-size: 11px;
+    transition: none;
+    border-radius: 0; /* NO ROUNDED CORNERS */
 }
 
-.win95-btn:active {
-    border: 2px solid #404040;
-    border-right-color: #fff;
-    border-bottom-color: #fff;
-    padding: 5px 9px 3px 11px; /* Shift text */
-    box-shadow: none;
+.win95-btn:active, .action-btn:active {
+    border-top: 1px solid #000;
+    border-left: 1px solid #000;
+    border-right: 1px solid #fff;
+    border-bottom: 1px solid #fff;
+    box-shadow: inset 1px 1px 0 #808080;
+    padding: 5px 9px 3px 11px; /* The physical text shift */
 }
 
-.win95-btn:disabled {
+.win95-btn:disabled, .action-btn:disabled {
     color: #808080;
     text-shadow: 1px 1px 0 #fff;
     cursor: default;
 }
 
-.win95-btn.primary {
+.win95-btn.primary, .action-btn.primary {
     font-weight: bold;
-    padding: 8px 12px;
+    padding: 6px 12px;
 }
 
 .win95-btn.dashed-btn {
-    border: 2px dashed #808080;
+    border: 1px dashed #808080;
     background: transparent;
     color: #555;
     box-shadow: none;
 }
 .win95-btn.dashed-btn:hover {
-    border: 2px solid #000;
+    border: 1px solid #000;
     color: #000;
     background: rgba(255,255,255,0.2);
 }
 
 /* --- GLOBAL INPUT OVERRIDES --- */
-.retro-input {
+.retro-input, select, .retro-select {
     width: 100%;
     background-color: #fff !important;
     color: #000 !important;
-    border: 2px solid #404040 !important;
-    border-right-color: #fff !important;
-    border-bottom-color: #fff !important;
+
+    /* Input Areas need to be Courier New/Consolas */
+    font-family: 'Courier New', 'Consolas', monospace;
+
+    border-top: 1px solid #404040 !important;
+    border-left: 1px solid #404040 !important;
+    border-right: 1px solid #fff !important;
+    border-bottom: 1px solid #fff !important;
+    box-shadow: inset 1px 1px 0 #808080 !important;
+
     padding: 4px 6px;
-    font-family: 'Courier New', monospace;
     font-size: 13px;
-    font-weight: bold;
+    font-weight: normal;
     border-radius: 0 !important;
-    box-shadow: none !important;
     resize: none;
     line-height: 1.4;
+    -webkit-appearance: none; /* Remove native OS rounded styling */
+    appearance: none;
 }
 
-.retro-input:focus {
+/* Dropdown Arrow Hack for non-native appearance */
+.retro-select {
+    background-image: url('data:image/svg+xml;utf8,<svg width="10" height="10" viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><path d="M0 0 L10 0 L5 5 Z" fill="black" /></svg>');
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+}
+
+.retro-input:focus, .retro-select:focus {
     outline: 1px dotted #000;
     background-color: #fff !important;
+}
+
+/* --- TITLE BAR --- */
+.title-bar {
+    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+    color: #fff;
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
+    font-size: 11px;
 }
 
 /* --- SCROLLBARS --- */
@@ -139,9 +177,10 @@
 
 .window-body::-webkit-scrollbar-thumb { 
     background: var(--cj-bg); 
-    border: 2px solid #fff;
-    border-right-color: #404040;
-    border-bottom-color: #404040;
+    border-top: 1px solid #fff;
+    border-left: 1px solid #fff;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
 }
 
 .window-body::-webkit-scrollbar-track {
@@ -157,15 +196,17 @@
 }
 
 .agent-card {
-    border: 2px solid var(--cj-dim);
-    border-right-color: #fff;
-    border-bottom-color: #fff; /* Bevel Down */
-    background: #e0e0e0;
+    border-top: 1px solid #fff;
+    border-left: 1px solid #fff;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
+    box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
+    background: #c0c0c0;
+
     padding: 0;
     display: flex;
     flex-direction: column;
     font-size: 11px;
-    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.1);
 }
 
 .agent-header {
@@ -175,7 +216,7 @@
     text-transform: uppercase;
     font-size: 11px;
     text-align: center;
-    border-bottom: 2px solid rgba(0,0,0,0.2);
+    border-bottom: 1px solid #808080;
     letter-spacing: 1px;
 }
 
@@ -291,4 +332,3 @@
     position: relative;
     z-index: 50; /* Lower than score but above normal flow if needed */
 }
-</style>
