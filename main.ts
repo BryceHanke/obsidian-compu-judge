@@ -4,10 +4,12 @@ import { CloudGenService } from './CloudGen';
 import { CompuJudgeView, VIEW_TYPE_COMPU_JUDGE } from './CompuJudgeView';
 import { db } from './db';
 import { compuJudgeHud } from './editor-extension';
+import { AudioEngine } from './AudioEngine'; // NEW
 
 export default class CompuJudgePlugin extends Plugin {
     settings: NigsSettings;
     cloud: CloudGenService;
+    audio: AudioEngine; // NEW
 
     async onload() {
         // 1. Load Global Settings
@@ -17,13 +19,19 @@ export default class CompuJudgePlugin extends Plugin {
         db.connect(this);
         await db.init();
 
+        // 3. Initialize Audio (NEW)
+        this.audio = new AudioEngine();
+        this.audio.setEnabled(this.settings.enableAudio);
+        this.audio.setVolume(this.settings.audioVolume);
+        this.audio.setTheme(this.settings.theme);
+
         this.registerEditorExtension(compuJudgeHud);
 
         this.cloud = new CloudGenService(this.app, this.settings);
 
         this.registerView(
             VIEW_TYPE_COMPU_JUDGE,
-            (leaf) => new CompuJudgeView(leaf, this.app, this.settings, this.cloud, this)
+            (leaf) => new CompuJudgeView(leaf, this.app, this.settings, this.cloud, this, this.audio)
         );
 
         this.addRibbonIcon('bot', 'Compu-Judge 98', () => this.activateView());
@@ -63,6 +71,7 @@ export default class CompuJudgePlugin extends Plugin {
             if (leaf) await leaf.setViewState({ type: VIEW_TYPE_COMPU_JUDGE, active: true });
         }
         if (leaf) workspace.revealLeaf(leaf);
+        this.audio.playStartup(); // PLAY SOUND
     }
     
     updateViewFile(file: TFile | null) {
@@ -93,6 +102,9 @@ export default class CompuJudgePlugin extends Plugin {
         // Ensure Name Pools exist
         if (this.settings.namePool === undefined) this.settings.namePool = "";
         if (this.settings.negativeNamePool === undefined) this.settings.negativeNamePool = "";
+
+        if (this.settings.enableAudio === undefined) this.settings.enableAudio = true;
+        if (this.settings.audioVolume === undefined) this.settings.audioVolume = 0.5;
     }
 
     async saveSettings() {
@@ -101,6 +113,13 @@ export default class CompuJudgePlugin extends Plugin {
         
         await this.saveData(cleanSettings);
         
+        // Update live subsystems
+        if (this.audio) {
+            this.audio.setEnabled(this.settings.enableAudio);
+            this.audio.setVolume(this.settings.audioVolume);
+            this.audio.setTheme(this.settings.theme);
+        }
+
         const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_COMPU_JUDGE);
         leaves.forEach(leaf => {
              if (leaf.view instanceof CompuJudgeView) {
@@ -427,6 +446,30 @@ class NigsSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.msDosColor)
                 .onChange(async (val) => {
                     this.plugin.settings.msDosColor = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        // --- 9. AUDIO ---
+        containerEl.createEl('h4', { text: 'Audio Subsystem' });
+
+        new Setting(containerEl)
+            .setName('Enable Audio Engine')
+            .setDesc('Plays startup sounds and UI feedback.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableAudio)
+                .onChange(async (val) => {
+                    this.plugin.settings.enableAudio = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Audio Volume')
+            .addSlider(slider => slider
+                .setLimits(0.0, 1.0, 0.1)
+                .setValue(this.plugin.settings.audioVolume)
+                .setDynamicTooltip()
+                .onChange(async (val) => {
+                    this.plugin.settings.audioVolume = val;
                     await this.plugin.saveSettings();
                 }));
     }
