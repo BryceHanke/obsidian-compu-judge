@@ -1,0 +1,457 @@
+<script lang="ts">
+    import type { NigsWizardState, NigsSettings, CharacterBlock, StoryBlock, TryFailBlock } from './types';
+    import { autoResize } from './utils';
+    import { flip } from 'svelte/animate';
+    import { slide } from 'svelte/transition';
+
+    interface Props {
+        wizardState: NigsWizardState;
+        settings: NigsSettings;
+        onSave: () => void;
+        onAssist: (field: string) => void;
+        onUploadContext: () => void;
+        onScrubContext: () => void;
+        onClear: () => void;
+        onAutoFill: () => void;
+        isContextSynced: boolean;
+        loadingField: string | null;
+        onGradeCharacter?: (char: CharacterBlock) => Promise<CharacterBlock>;
+        onGradeStructure?: (beat: StoryBlock) => Promise<StoryBlock>;
+    }
+    
+    let { wizardState, settings, onSave, onAssist, onUploadContext, onScrubContext, onClear, onAutoFill, isContextSynced, loadingField, onGradeCharacter, onGradeStructure }: Props = $props();
+
+    function handleInput() { onSave(); }
+    function handleBlur() { onSave(); }
+
+    // --- CHARACTER LOGIC ---
+    function addCharacter() {
+        const id = 'c' + Date.now();
+        wizardState.characters.push({
+            id, role: 'Support', name: 'New Character', description: '',
+            competence: 50, proactivity: 50, likability: 50,
+            flaw: '', revelation: '', expanded: true
+        });
+        onSave();
+    }
+
+    function removeCharacter(index: number) {
+        if (confirm("Delete this character block?")) {
+            wizardState.characters.splice(index, 1);
+            onSave();
+        }
+    }
+
+    function toggleExpandChar(index: number) {
+        wizardState.characters[index].expanded = !wizardState.characters[index].expanded;
+    }
+
+    async function autoGrade(index: number) {
+        if (!onGradeCharacter) return;
+        const char = wizardState.characters[index];
+        const updated = await onGradeCharacter(char);
+        wizardState.characters[index] = updated;
+        onSave();
+    }
+
+    function handleScoreClick(e: MouseEvent, index: number, field: 'competence' | 'proactivity' | 'likability') {
+        const target = e.currentTarget as HTMLElement;
+        const rect = target.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const percentage = Math.max(0, Math.min(100, Math.round((x / rect.width) * 100)));
+        wizardState.characters[index][field] = percentage;
+        onSave();
+    }
+
+    // --- TRY / FAIL LOGIC ---
+    function addTryFailCycle() {
+        const id = 'tf' + Date.now();
+        if (!wizardState.structureDNA.tryFailCycles) wizardState.structureDNA.tryFailCycles = [];
+        wizardState.structureDNA.tryFailCycles.push({
+            id, goal: '', attempt1: '', attempt2: '', success: ''
+        });
+        onSave();
+    }
+
+    function removeTryFailCycle(index: number) {
+        if (confirm("Delete this cycle?")) {
+            wizardState.structureDNA.tryFailCycles.splice(index, 1);
+            onSave();
+        }
+    }
+
+    // --- STRUCTURE LOGIC ---
+    function addStoryBlock() {
+        const id = 's' + Date.now();
+        wizardState.structure.push({
+            id, title: 'New Beat', type: 'Beat', description: '', 
+            characters: '', tension: 50, expanded: true
+        });
+        onSave();
+    }
+
+    function removeStoryBlock(index: number) {
+        if (confirm("Delete this story beat?")) {
+            wizardState.structure.splice(index, 1);
+            onSave();
+        }
+    }
+
+    function moveStoryBlock(index: number, direction: -1 | 1) {
+        if (index + direction < 0 || index + direction >= wizardState.structure.length) return;
+        const temp = wizardState.structure[index];
+        wizardState.structure[index] = wizardState.structure[index + direction];
+        wizardState.structure[index + direction] = temp;
+        onSave();
+    }
+
+    function toggleExpandStory(index: number) {
+        wizardState.structure[index].expanded = !wizardState.structure[index].expanded;
+    }
+
+    async function autoGradeStructure(index: number) {
+        if (!onGradeStructure) return;
+        const beat = wizardState.structure[index];
+        const updated = await onGradeStructure(beat);
+        wizardState.structure[index] = updated;
+        onSave();
+    }
+
+    function handleTensionClick(e: MouseEvent, index: number) {
+        const target = e.currentTarget as HTMLElement;
+        const rect = target.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const percentage = Math.max(0, Math.min(100, Math.round((x / rect.width) * 100)));
+        wizardState.structure[index].tension = percentage;
+        onSave();
+    }
+
+    // --- UTILS ---
+    function getTensionColor(val: number): string {
+        const hue = 240 + (val / 100) * 60;
+        return `hsl(${hue}, 70%, 50%)`;
+    }
+
+    function getScoreColor(val: number): string {
+        const c = settings.gradingColors;
+        if (val >= 90) return c.masterpiece;
+        if (val >= 80) return c.excellent;
+        if (val >= 60) return c.good;
+        if (val >= 40) return c.average;
+        if (val >= 20) return c.poor;
+        return c.critical;
+    }
+
+    let contextLength = $derived(wizardState.inspirationContext ? wizardState.inspirationContext.length : 0);
+    let hasContext = $derived(contextLength > 0);
+</script>
+
+<div class="wizard-container">
+    
+    <fieldset class="bevel-groove memory-core">
+        <legend>MEMORY CORE</legend>
+        <div class="memory-status">
+            <div class="status-indicator">
+                <span class="led {hasContext ? 'on' : 'off'}"></span>
+                <span>{hasContext ? 'DATA LOADED' : 'EMPTY'}</span>
+            </div>
+            <div class="status-details">SIZE: {contextLength} CHARS</div>
+        </div>
+        <div class="context-controls">
+            <button class="upload-btn {isContextSynced ? 'synced' : ''}" onclick={isContextSynced ? null : onUploadContext} disabled={isContextSynced}>
+                {isContextSynced ? '✅ SYNCED' : '📥 IMPORT ACTIVE NOTE'}
+            </button>
+            <button class="scrub-btn" onclick={onScrubContext} disabled={!hasContext}>🗑️ PURGE</button>
+        </div>
+    </fieldset>
+
+    <fieldset class="bevel-groove">
+        <legend>1. CORE ENGINE (SANDERSON'S 1ST LAW OF PLOT)</legend>
+        <label for="w_concept">Concept / Logline</label>
+        <div class="input-wrap">
+            <textarea id="w_concept" class="retro-input" rows="2" 
+                bind:value={wizardState.concept} use:autoResize={wizardState.concept} oninput={handleInput} onblur={handleBlur} 
+                disabled={loadingField === 'concept'}
+                placeholder="High concept summary..."></textarea>
+             <button class="assist-btn {loadingField === 'concept' ? 'loading' : ''}" onclick={() => onAssist('concept')} disabled={!!loadingField}>?</button>
+        </div>
+
+        <label for="w_target">TARGET QUALITY SCORE: {wizardState.targetScore || settings.defaultTargetQuality}</label>
+        <div class="input-wrap">
+             <input type="range" id="w_target" class="retro-range" min="50" max="100" step="5" 
+                bind:value={wizardState.targetScore} onchange={handleInput} />
+        </div>
+
+        <button class="autofill-btn" onclick={onAutoFill} disabled={!!loadingField}>
+            ✨ AUTO-GENERATE STORY BIBLE
+        </button>
+
+        <div class="grid-3-p">
+            <div class="p-col">
+                <label title="What plot/tonal promise do you make in the first chapter?">THE PROMISE (HOOK)</label>
+                <div class="input-wrap">
+                    <textarea class="retro-input" rows="4" 
+                        bind:value={wizardState.threePs.promise} use:autoResize={wizardState.threePs.promise} oninput={handleInput} onblur={handleBlur} 
+                        disabled={loadingField === 'threePs.promise'}></textarea>
+                    <button class="assist-btn {loadingField === 'threePs.promise' ? 'loading' : ''}" onclick={() => onAssist('threePs.promise')} disabled={!!loadingField}>?</button>
+                </div>
+            </div>
+            <div class="p-col">
+                <label title="How does the story move forward? (Travel, Discovery, Clues)">THE PROGRESS (SHIFT)</label>
+                <div class="input-wrap">
+                    <textarea class="retro-input" rows="4" 
+                        bind:value={wizardState.threePs.progress} use:autoResize={wizardState.threePs.progress} oninput={handleInput} onblur={handleBlur}
+                        disabled={loadingField === 'threePs.progress'}></textarea>
+                     <button class="assist-btn {loadingField === 'threePs.progress' ? 'loading' : ''}" onclick={() => onAssist('threePs.progress')} disabled={!!loadingField}>?</button>
+                </div>
+            </div>
+            <div class="p-col">
+                <label title="How is the promise fulfilled? (Must match the promise type)">THE PAYOFF (CLIMAX)</label>
+                <div class="input-wrap">
+                    <textarea class="retro-input" rows="4" 
+                        bind:value={wizardState.threePs.payoff} use:autoResize={wizardState.threePs.payoff} oninput={handleInput} onblur={handleBlur}
+                        disabled={loadingField === 'threePs.payoff'}></textarea>
+                     <button class="assist-btn {loadingField === 'threePs.payoff' ? 'loading' : ''}" onclick={() => onAssist('threePs.payoff')} disabled={!!loadingField}>?</button>
+                </div>
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset class="bevel-groove">
+        <legend>2. STRUCTURE DNA (M.I.C.E. & CYCLES)</legend>
+        <div class="grid-2">
+            <div>
+                <label>Primary M.I.C.E. Thread</label>
+                <div class="input-wrap">
+                    <select class="retro-input" bind:value={wizardState.structureDNA.primaryThread} onchange={handleInput}>
+                        <option value="Event">EVENT (Status Quo)</option>
+                        <option value="Character">CHARACTER (Identity)</option>
+                        <option value="Milieu">MILIEU (Place)</option>
+                        <option value="Inquiry">INQUIRY (Mystery)</option>
+                    </select>
+                    <button class="assist-btn {loadingField === 'structureDNA.primaryThread' ? 'loading' : ''}" onclick={() => onAssist('structureDNA.primaryThread')} disabled={!!loadingField}>?</button>
+                </div>
+            </div>
+            <div>
+                <label>Nesting Order</label>
+                <div class="input-wrap">
+                    <input type="text" class="retro-input" 
+                        placeholder="e.g. Milieu > Inquiry > Character" 
+                        bind:value={wizardState.structureDNA.nestingOrder}
+                        oninput={handleInput} />
+                    <button class="assist-btn {loadingField === 'structureDNA.nestingOrder' ? 'loading' : ''}" onclick={() => onAssist('structureDNA.nestingOrder')} disabled={!!loadingField}>?</button>
+                </div>
+            </div>
+        </div>
+
+        <label style="margin-top: 15px; color: var(--cj-accent); border-bottom: 1px dashed var(--cj-dim);">TRY / FAIL CYCLES (SCENE ESCALATION)</label>
+        {#if wizardState.structureDNA.tryFailCycles}
+            {#each wizardState.structureDNA.tryFailCycles as cycle, i}
+                <div class="char-block bevel-down" style="margin-bottom: 10px; margin-top: 10px;">
+                    <div class="char-header">
+                        <span class="char-name-display" style="font-size: 12px;">CYCLE {i+1}</span>
+                        <button class="del-btn" onclick={() => removeTryFailCycle(i)}>×</button>
+                    </div>
+                    <div class="char-body">
+                        <label>The Goal</label>
+                        <div class="input-wrap">
+                            <input class="retro-input" bind:value={cycle.goal} onblur={handleBlur} placeholder="What do they want right now?" disabled={loadingField === `structureDNA.tryFailCycles.${i}.goal`} />
+                            <button class="assist-btn {loadingField === `structureDNA.tryFailCycles.${i}.goal` ? 'loading' : ''}" onclick={() => onAssist(`structureDNA.tryFailCycles.${i}.goal`)} disabled={!!loadingField}>?</button>
+                        </div>
+                        <div class="grid-3-p" style="margin-top: 5px;">
+                            <div>
+                                <label style="color:#800000; font-size: 0.8em;">1. FAIL (NO, AND)</label>
+                                <div class="input-wrap">
+                                    <textarea class="retro-input" rows="3" bind:value={cycle.attempt1} onblur={handleBlur} placeholder="Disaster strikes..." disabled={loadingField === `structureDNA.tryFailCycles.${i}.attempt1`}></textarea>
+                                     <button class="assist-btn {loadingField === `structureDNA.tryFailCycles.${i}.attempt1` ? 'loading' : ''}" onclick={() => onAssist(`structureDNA.tryFailCycles.${i}.attempt1`)} disabled={!!loadingField}>?</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label style="color:#808000; font-size: 0.8em;">2. FAIL (NO, BUT)</label>
+                                <div class="input-wrap">
+                                    <textarea class="retro-input" rows="3" bind:value={cycle.attempt2} onblur={handleBlur} placeholder="Learning moment..." disabled={loadingField === `structureDNA.tryFailCycles.${i}.attempt2`}></textarea>
+                                     <button class="assist-btn {loadingField === `structureDNA.tryFailCycles.${i}.attempt2` ? 'loading' : ''}" onclick={() => onAssist(`structureDNA.tryFailCycles.${i}.attempt2`)} disabled={!!loadingField}>?</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label style="color:#008000; font-size: 0.8em;">3. SUCCESS (YES, BUT)</label>
+                                <div class="input-wrap">
+                                    <textarea class="retro-input" rows="3" bind:value={cycle.success} onblur={handleBlur} placeholder="New problem arises..." disabled={loadingField === `structureDNA.tryFailCycles.${i}.success`}></textarea>
+                                     <button class="assist-btn {loadingField === `structureDNA.tryFailCycles.${i}.success` ? 'loading' : ''}" onclick={() => onAssist(`structureDNA.tryFailCycles.${i}.success`)} disabled={!!loadingField}>?</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {/each}
+        {/if}
+        <button class="add-char-btn" onclick={addTryFailCycle}>+ ADD TRY-FAIL CYCLE</button>
+    </fieldset>
+
+    <fieldset class="bevel-groove character-section">
+        <legend>3. DRAMATIS PERSONAE (THE SLIDERS)</legend>
+        <div class="char-list">
+            {#each wizardState.characters as char, i (char.id)}
+                 <div class="char-block bevel-down" animate:flip={{duration: 300}}>
+                    <div class="char-header" onclick={() => toggleExpandChar(i)} title="Toggle Expand">
+                        <div class="char-title">
+                            <span class="role-badge {char.role.toLowerCase()}">{char.role}</span>
+                            <input type="text" class="char-name-input" bind:value={char.name} oninput={handleInput} onclick={(e) => e.stopPropagation()} placeholder="Name" />
+                        </div>
+                        <div class="char-controls">
+                            <button onclick={(e) => { e.stopPropagation(); moveStoryBlock(i, -1); }} disabled={i === 0}>▲</button>
+                            <button onclick={(e) => { e.stopPropagation(); removeCharacter(i); }} class="del-btn">×</button>
+                            <span class="expand-icon">{char.expanded ? '−' : '+'}</span>
+                        </div>
+                    </div>
+                    {#if char.expanded}
+                        <div class="char-body" transition:slide>
+                            <div class="input-wrap">
+                                <textarea class="retro-input" rows="2" bind:value={char.description} use:autoResize={char.description} oninput={handleInput} placeholder="Role & Bio..."></textarea>
+                                <button class="assist-btn {loadingField === `characters.${i}.description` ? 'loading' : ''}" onclick={() => onAssist(`characters.${i}.description`)} disabled={!!loadingField}>?</button>
+                                <button class="assist-btn analyze-btn" onclick={() => autoGrade(i)} title="Auto-Grade Scales">⚡</button>
+                            </div>
+
+                            <div class="score-grid">
+                                <div class="score-item">
+                                    <div class="score-header">
+                                        <span class="score-label" title="How good are they at what they do?">COMPETENCE</span>
+                                        <span class="score-val">{char.competence}%</span>
+                                    </div>
+                                    <div class="score-track bevel-down" onclick={(e) => handleScoreClick(e, i, 'competence')} role="button" tabindex="0">
+                                        <div class="score-fill" style="width: {char.competence}%; background: {getScoreColor(char.competence)}"></div>
+                                    </div>
+                                </div>
+                                <div class="score-item">
+                                    <div class="score-header">
+                                        <span class="score-label" title="Do they make things happen?">PROACTIVITY</span>
+                                        <span class="score-val">{char.proactivity}%</span>
+                                    </div>
+                                    <div class="score-track bevel-down" onclick={(e) => handleScoreClick(e, i, 'proactivity')} role="button" tabindex="0">
+                                        <div class="score-fill" style="width: {char.proactivity}%; background: {getScoreColor(char.proactivity)}"></div>
+                                    </div>
+                                </div>
+                                <div class="score-item">
+                                    <div class="score-header">
+                                        <span class="score-label" title="Do we like them? (Sympathy)">LIKABILITY</span>
+                                        <span class="score-val">{char.likability}%</span>
+                                    </div>
+                                    <div class="score-track bevel-down" onclick={(e) => handleScoreClick(e, i, 'likability')} role="button" tabindex="0">
+                                        <div class="score-fill" style="width: {char.likability}%; background: {getScoreColor(char.likability)}"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {/if}
+                </div>
+            {/each}
+        </div>
+        <button class="add-char-btn" onclick={addCharacter}>+ ADD CHARACTER</button>
+    </fieldset>
+
+    <fieldset class="bevel-groove">
+        <legend>4. THE BEAT SHEET</legend>
+        <div class="char-list">
+            {#each wizardState.structure as block, i (block.id)}
+                <div class="char-block bevel-down" animate:flip={{duration: 300}}>
+                    <div class="char-header" onclick={() => toggleExpandStory(i)}>
+                        <div class="char-title">
+                            <span class="role-badge {block.type.toLowerCase().replace(/\s/g, '-')}" style="width: 80px; text-align:center;">{block.type}</span>
+                            <input type="text" class="char-name-input" bind:value={block.title} oninput={handleInput} onclick={(e) => e.stopPropagation()} placeholder="Beat Title" />
+                        </div>
+                        <div class="char-controls">
+                             <button onclick={(e) => { e.stopPropagation(); moveStoryBlock(i, -1); }} disabled={i === 0}>▲</button>
+                             <button onclick={(e) => { e.stopPropagation(); removeStoryBlock(i); }} class="del-btn">×</button>
+                        </div>
+                    </div>
+                    {#if block.expanded}
+                        <div class="char-body" transition:slide>
+                            <div class="input-wrap">
+                                <textarea class="retro-input" rows="3" bind:value={block.description} use:autoResize={block.description} oninput={handleInput} placeholder="Action & Change..."></textarea>
+                                <button class="assist-btn {loadingField === `structure.${i}.description` ? 'loading' : ''}" onclick={() => onAssist(`structure.${i}.description`)} disabled={!!loadingField}>?</button>
+                                <button class="assist-btn analyze-btn" onclick={() => autoGradeStructure(i)} title="Auto-Grade Tension & Type">⚡</button>
+                            </div>
+                            <div class="score-item" style="margin-top: 10px;">
+                                <div class="score-header">
+                                    <span class="score-label">TENSION</span>
+                                    <span class="score-val">{block.tension}%</span>
+                                </div>
+                                <div class="score-track bevel-down" onclick={(e) => handleTensionClick(e, i)} role="button" tabindex="0">
+                                    <div class="score-fill" style="width: {block.tension}%; background: {getTensionColor(block.tension)}"></div>
+                                </div>
+                            </div>
+                        </div>
+                    {/if}
+                </div>
+            {/each}
+        </div>
+        <button class="add-char-btn" onclick={addStoryBlock}>+ ADD STORY BEAT</button>
+    </fieldset>
+    
+    <div class="footer-controls">
+        <button class="reset-form-btn" onclick={onClear}>RESET FIELDS</button>
+    </div>
+</div>
+
+<style>
+    .wizard-container { display: flex; flex-direction: column; gap: 20px; padding-bottom: 20px; }
+    .bevel-groove { border: 2px groove var(--cj-dim); padding: 15px; margin: 0; background: transparent; }
+    legend { font-weight: bold; padding: 0 5px; color: var(--cj-text); font-size: 1.1em; }
+    label { display: block; margin-top: 12px; margin-bottom: 4px; font-size: 0.9em; font-weight: bold; color: var(--cj-dim); text-transform: uppercase; }
+    .input-wrap { display: flex; gap: 5px; align-items: flex-start; }
+    
+    .autofill-btn { width: 100%; margin: 15px 0; padding: 10px; background: linear-gradient(90deg, #4b0082, #800080); color: #fff; font-weight: 900; border: 2px outset #a020f0; cursor: pointer; }
+    .autofill-btn:hover { background: linear-gradient(90deg, #6a0dad, #9932cc); }
+    
+    /* Reused styles from old version for consistency */
+    .char-block { background: rgba(0,0,0,0.03); padding: 5px; border: 2px solid var(--cj-dim); }
+    .char-header { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.1); padding: 5px; cursor: pointer; }
+    .char-title { display: flex; align-items: center; gap: 8px; flex: 1; }
+    .role-badge { font-size: 10px; font-weight: 900; padding: 2px 4px; color: #fff; text-transform: uppercase; background: #555; }
+    .char-name-input { background: transparent; border: none; font-weight: bold; font-family: inherit; font-size: 14px; color: var(--cj-text); width: 100%; }
+    .char-name-input:focus { outline: none; border-bottom: 1px dashed var(--cj-accent); }
+    
+    .char-controls button { background: transparent; border: none; cursor: pointer; font-weight: bold; color: var(--cj-dim); padding: 0 4px; }
+    .del-btn { color: red !important; margin-left: 5px; }
+    .char-body { padding: 10px; border-top: 1px dashed var(--cj-dim); }
+    .add-char-btn { width: 100%; padding: 8px; border: 2px dashed var(--cj-dim); background: transparent; cursor: pointer; font-weight: bold; color: var(--cj-dim); }
+    .add-char-btn:hover { background: rgba(0,0,0,0.05); color: var(--cj-text); border-style: solid; }
+
+    .grid-3-p { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .p-col label { text-align: center; color: var(--cj-accent); }
+    
+    :global(.retro-input) { resize: none; overflow: hidden; min-height: 28px; box-sizing: border-box; }
+    
+    .memory-core { background: rgba(0,0,0,0.05); }
+    .memory-status { display: flex; justify-content: space-between; align-items: center; background: #000; color: #00ff00; padding: 8px; margin-bottom: 10px; border: 2px inset var(--cj-dim); }
+    .status-indicator { display: flex; gap: 8px; align-items: center; font-weight: 900; }
+    .led { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #00ff00; }
+    .led.on { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
+    .led.off { background: #111; border-color: #555; }
+    
+    .context-controls { display: flex; gap: 5px; }
+    .upload-btn, .scrub-btn, .assist-btn, .reset-form-btn { background: var(--cj-bg); color: var(--cj-text); border: 2px outset var(--cj-light); cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+    .upload-btn { flex: 1; padding: 8px; }
+    .assist-btn { width: 32px; height: 30px; flex-shrink: 0; background: var(--cj-accent); color: #fff; border-color: var(--cj-light); position: relative; }
+    .assist-btn.loading::after { content: ""; width: 14px; height: 14px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; position: absolute; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    
+    .footer-controls { margin-top: 20px; }
+    .reset-form-btn { width: 100%; padding: 10px; border-color: #ff0000; color: #ff0000; }
+    .reset-form-btn:hover { background: #ff0000; color: #fff; }
+
+    /* CHARACTER SCALES */
+    .score-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 15px 0; }
+    .score-item { display: flex; flex-direction: column; gap: 4px; }
+    .score-header { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; color: var(--cj-dim); }
+    .score-track { height: 16px; background: #fff; border: 2px inset var(--cj-dim); cursor: crosshair; position: relative; overflow: hidden; }
+    .score-fill { height: 100%; transition: width 0.3s ease; border-right: 2px solid rgba(0,0,0,0.5); }
+    
+    .analyze-btn { background: #800080; color: white; border-color: #dcdcdc; }
+
+    @media (max-width: 600px) {
+        .grid-3-p, .grid-2 { grid-template-columns: 1fr; }
+        .score-grid { grid-template-columns: 1fr; }
+    }
+</style>

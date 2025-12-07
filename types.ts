@@ -1,0 +1,331 @@
+// --- TYPES DEFINITION FOR COMPU-JUDGE (SANDERSON ENGINE v7.5.0) ---
+
+export type AIProvider = 'gemini' | 'openai' | 'anthropic';
+export type ThemeMode = 'msdos' | 'win95' | 'invert' | 'auto';
+
+export interface GradingColors {
+    critical: string;    // 0-20
+    poor: string;        // 20-40
+    average: string;     // 40-60
+    good: string;        // 60-80
+    excellent: string;   // 80-90
+    masterpiece: string; // 90+
+}
+
+// DRIVE BLOCK (Global Context)
+export interface DriveBlock {
+    id: string;
+    name: string;
+    content: string;
+    expanded: boolean;
+}
+
+export interface NigsSettings {
+    // --- CORE ---
+    apiKey: string;
+    modelId: string;
+    searchModelId: string; 
+    aiProvider: AIProvider;
+    openaiKey: string;
+    openaiModel: string;
+    anthropicKey: string;
+    anthropicModel: string;
+    
+    // --- NEURO-PARAMETERS ---
+    aiThinkingLevel: number;    // 1-5 (Thinking / Reasoning Effort)
+    defaultTargetQuality: number; // 0-100 (Target Score)
+    tempMultiplier: number;     
+    tempCritic: number;         
+    tempWizard: number;         
+    tempArchitect: number;      
+    tempRepair: number;         
+    tempSynth: number;          // New Synthesizer Temp
+    
+    // --- SAFETY & CONSTRAINTS ---
+    wizardNegativeConstraints: string; 
+    namePool: string;           // [NEW] Preferred Names
+    negativeNamePool: string;   // [NEW] Banned Names
+    
+    // --- SYSTEM ---
+    maxOutputTokens: number;    
+    analysisPasses: number;     
+    enableTribunal: boolean;    // Toggle 3-Agent Consensus (Market, Logic, Lit)
+    showThinking: boolean;      
+    
+    // --- PROMPTS ---
+    customSystemPrompt: string;      
+    customOutlinePrompt: string;     
+    customRepairPrompt: string;      
+    
+    // --- VISUALS ---
+    msDosColor: string;
+    theme: ThemeMode;
+    gradingColors: GradingColors;
+    
+    // --- DATA STORE ---
+    projects: Record<string, ProjectData>;
+    drives: DriveBlock[];
+    
+    // Deprecated
+    temperature?: number; 
+}
+
+export const DEFAULT_SETTINGS: NigsSettings = {
+    apiKey: '',
+    modelId: 'gemini-2.0-flash',
+    searchModelId: 'gemini-2.0-flash',
+    aiProvider: 'gemini',
+    openaiKey: '',
+    openaiModel: 'gpt-4o',
+    anthropicKey: '',
+    anthropicModel: 'claude-3-7-sonnet-20250219',
+    
+    aiThinkingLevel: 3,
+    defaultTargetQuality: 90,
+    tempMultiplier: 1.0,
+    tempCritic: 0.1,    
+    tempWizard: 0.85,   
+    tempArchitect: 0.5, 
+    tempRepair: 0.2,
+    tempSynth: 1.0,     
+    
+    wizardNegativeConstraints: "Avoid: Deus Ex Machina, Talking Animals, Dream Sequences, Modern Slang.",
+    namePool: "",           // Default Empty
+    negativeNamePool: "",   // Default Empty
+    
+    maxOutputTokens: 8192,
+    analysisPasses: 1,
+    enableTribunal: true,
+    showThinking: false,
+    customSystemPrompt: "",
+    customOutlinePrompt: "",
+    customRepairPrompt: "",
+    msDosColor: '#00FF00',
+    theme: 'msdos',
+    gradingColors: {
+        critical: '#000000',
+        poor: '#FF0000',
+        average: '#FF8C00',
+        good: '#FFD700',
+        excellent: '#FFFFE0',
+        masterpiece: '#FFFFFF'
+    },
+    projects: {},
+    drives: [] 
+};
+
+export interface NlpMetrics {
+    wordCount: number;
+    sentenceCount: number;
+    avgSentenceLength: number;
+    adverbCount: number;
+    readingLevel: string;
+    technicalGrade: number;
+    lexicalDiversity: number;
+    sentenceVariance: number;
+    dialogueRatio: number;
+    voiceContrast: number;
+    // Hard Metrics
+    filterWordCount: number;
+    weakVerbCount: number;
+    pacingScore: number;
+    adverbDensity?: number; // Added optional to fix TS error in CloudGen.ts
+}
+
+export interface MetricDetail {
+    name: string;
+    score: number; // 0-10
+    reason: string; 
+}
+
+export interface MetricCategory {
+    score: number; 
+    items: MetricDetail[];
+}
+
+export interface SandersonMetrics {
+    promise_payoff: number; 
+    laws_of_magic: number;  
+    character_agency: number;
+    competence?: number; // 0-100
+    proactivity?: number; // 0-100
+    likability?: number; // 0-100
+}
+
+export interface NigsResponse {
+    commercial_score: number;
+    commercial_reason: string; 
+    niche_score: number;
+    niche_reason: string;      
+    cohesion_score: number;
+    cohesion_reason: string;   
+    
+    content_warning: string;  
+    log_line: string;         
+    structure_map: UniversalOutlineNode[]; 
+    tension_arc: number[];    
+    third_act_score: number;
+    novelty_score: number;
+    sanderson_metrics: SandersonMetrics;
+    detailed_metrics: {
+        premise: MetricCategory;    
+        structure: MetricCategory;  
+        character: MetricCategory;  
+        theme: MetricCategory;      
+        world: MetricCategory;      
+    };
+    thought_process?: string; 
+    modules?: any; 
+    tribunal_breakdown?: {
+        market: any;
+        logic: any;
+        lit: any;
+    };
+}
+
+export interface NigsLightGrade {
+    score: string;          
+    letter_grade: string;   
+    summary_line: string;   
+    synopsis: string;       
+    thought_process?: string;
+    key_improvement: string; 
+    outline_summary: string[]; 
+}
+
+export interface NigsRepairItem {
+    issue: string;
+    instruction: string;
+    why: string; 
+}
+
+export interface NigsActionPlan {
+    weakest_link: string; 
+    thought_process?: string;
+    repairs: NigsRepairItem[]; 
+    steps?: string[]; 
+}
+
+export interface NigsMetaResponse {
+    symbol_web: string;
+    story_world: string;
+    visual_seven_steps: string;
+}
+
+export interface UniversalOutlineNode {
+    title: string;          
+    description: string;    
+    type: 'promise' | 'progress' | 'payoff' | 'beat'; 
+    characters: string[];   
+    tension: number;        
+}
+
+export interface CharacterBlock {
+    id: string; 
+    role: 'Protagonist' | 'Deuteragonist' | 'Contagonist' | 'Antagonist' | 'Support';
+    name: string;
+    description: string; 
+    competence: number; 
+    proactivity: number; 
+    likability: number; 
+    flaw: string;       
+    revelation: string; 
+    expanded: boolean;  
+}
+
+export interface StoryBlock {
+    id: string;
+    title: string;
+    type: 'Setup' | 'Inciting Incident' | 'Plot Point' | 'Pinch Point' | 'Midpoint' | 'Crisis' | 'Climax' | 'Resolution' | 'Beat';
+    description: string;
+    characters: string; 
+    tension: number; 
+    expanded: boolean;
+}
+
+export type MiceType = 'Milieu' | 'Inquiry' | 'Character' | 'Event';
+
+export interface TryFailBlock {
+    id: string;
+    goal: string;
+    attempt1: string; 
+    attempt2: string; 
+    success: string;  
+}
+
+export interface NigsWizardState {
+    concept: string;            
+    targetScore: number;
+    inspirationContext: string; 
+    threePs: {
+        promise: string;    
+        progress: string;   
+        payoff: string;     
+    };
+    sandersonLaws: {
+        magicSystem: string;    
+        limitations: string;    
+        costs: string;          
+        expansion: string;      
+    };
+    structureDNA: {
+        primaryThread: MiceType;
+        nestingOrder: string; 
+        tryFailCycles: TryFailBlock[];
+    };
+    characters: CharacterBlock[];
+    structure: StoryBlock[]; 
+    philosopher: {
+        controllingIdea: string;
+        moralArg: string;
+        counterpoint: string;
+        symbols: string;
+    };
+    synthesisDrives: DriveBlock[];
+}
+
+export const DEFAULT_WIZARD_STATE: NigsWizardState = {
+    concept: "",
+    targetScore: 90,
+    inspirationContext: "",
+    threePs: { promise: "", progress: "", payoff: "" },
+    sandersonLaws: { magicSystem: "", limitations: "", costs: "", expansion: "" },
+    structureDNA: {
+        primaryThread: 'Event',
+        nestingOrder: "",
+        tryFailCycles: []
+    },
+    characters: [
+        { id: 'c1', role: 'Protagonist', name: 'Hero', description: '', competence: 50, proactivity: 50, likability: 50, flaw: '', revelation: '', expanded: true },
+        { id: 'c2', role: 'Deuteragonist', name: 'Ally', description: '', competence: 60, proactivity: 40, likability: 80, flaw: '', revelation: '', expanded: false },
+        { id: 'c3', role: 'Contagonist', name: 'Rival', description: '', competence: 70, proactivity: 60, likability: 30, flaw: '', revelation: '', expanded: false },
+        { id: 'c4', role: 'Antagonist', name: 'Villain', description: '', competence: 90, proactivity: 90, likability: 10, flaw: '', revelation: '', expanded: false }
+    ],
+    // [UPDATED]: Default 7-Act Truby Structure
+    structure: [
+        { id: 's1', title: '1. Weakness & Need', type: 'Setup', description: 'Internal flaw and external status quo.', characters: 'Hero', tension: 10, expanded: true },
+        { id: 's2', title: '2. Desire', type: 'Inciting Incident', description: 'The goal is defined.', characters: 'Hero, Antagonist', tension: 30, expanded: false },
+        { id: 's3', title: '3. Opponent', type: 'Plot Point', description: 'First major conflict with the antagonist.', characters: 'Hero, Villain', tension: 45, expanded: false },
+        { id: 's4', title: '4. Plan', type: 'Midpoint', description: 'Strategy to win. Point of no return.', characters: 'Hero, Ally', tension: 60, expanded: false },
+        { id: 's5', title: '5. Battle', type: 'Climax', description: 'The final confrontation.', characters: 'Hero, Villain', tension: 100, expanded: false },
+        { id: 's6', title: '6. Self-Revelation', type: 'Resolution', description: 'The hero realizes the truth about themselves.', characters: 'Hero', tension: 20, expanded: false },
+        { id: 's7', title: '7. New Equilibrium', type: 'Resolution', description: 'The world has changed.', characters: 'Hero', tension: 10, expanded: false }
+    ],
+    philosopher: { controllingIdea: "", moralArg: "", counterpoint: "", symbols: "" },
+    synthesisDrives: []
+};
+
+export interface ProjectData {
+    filePath: string;
+    wizardState: NigsWizardState;
+    lastAiResult: NigsResponse | null;
+    lastLightResult: NigsLightGrade | null;
+    lastActionPlan: NigsActionPlan | null;
+    lastMetaResult: NigsMetaResponse | null;
+    lastNlpMetrics?: NlpMetrics; 
+    archivistContext: string; 
+    archivistPrompt: string;
+    repairFocus: string; 
+    updatedAt: number;
+    lastAnalysisMtime: number | null;
+}

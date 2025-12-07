@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "es2018",
+    "module": "commonjs",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noImplicitAny": false
+  },
+  "include": ["test_wizard_refactor.ts", "CloudGen.ts", "types.ts", "prompts.ts", "store.ts", "utils.ts"]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-compu-judge",
+  "name": "Compu-Judge 98",
+  "version": "7.2.0",
+  "minAppVersion": "1.0.0",
+  "description": "The Ultimate Narrative HUD. Features: Logic Kernel AI, Prose Forensics, Structure Templates, Thematic Tracking, and Smart Context Memory.",
+  "author": "Global MegaCorp",
+  "authorUrl": "https://github.com/yourname/obsidian-compu-judge",
+  "isDesktopOnly": false
+}

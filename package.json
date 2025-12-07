@@ -1,0 +1,42 @@
+{
+  "name": "obsidian-compu-judge",
+  "version": "6.9.0",
+  "description": "Compu-Judge 98: Narrative HUD (Cortex Upgrade)",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production"
+  },
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "ai",
+    "retro",
+    "svelte5"
+  ],
+  "author": "Global MegaCorp",
+  "license": "MIT",
+  "devDependencies": {
+    "@tsconfig/svelte": "^5.0.0",
+    "@types/node": "^18.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "builtin-modules": "3.3.0",
+    "esbuild": "^0.19.11",
+    "esbuild-svelte": "0.8.0",
+    "obsidian": "^1.10.3",
+    "svelte": "^5.0.0",
+    "svelte-preprocess": "^5.1.0",
+    "tslib": "^2.6.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "compromise": "^14.10.0",
+    "zod": "^3.22.4"
+  },
+  "overrides": {
+    "esbuild-svelte": {
+      "svelte": "$svelte"
+    }
+  }
+}
