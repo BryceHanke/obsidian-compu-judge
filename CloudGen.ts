@@ -111,6 +111,12 @@ class GeminiAdapter implements AIAdapter {
                  return `${base}, "thought_process": ${JSON.stringify(thoughtContent)}}`;
              }
         }
+
+        if (json && !finalOutput.trim()) {
+            // Handle case where 'thought' consumes all output but no JSON
+            throw new Error("Empty JSON Response from Gemini (Thought-only?)");
+        }
+
         return finalOutput;
     }
 }

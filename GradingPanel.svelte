@@ -9,8 +9,7 @@
     import { autoResize, debounce } from './utils';
     import { ForgeOps } from './ForgeOps';
     import { ReportGen } from './ReportGen';
-    import WizardFields from './WizardFields.svelte';
-    import SynthesizerView from './SynthesizerView.svelte';
+    import WizardView from './WizardView.svelte';
     import CriticDisplay from './CriticDisplay.svelte';
     import Win95ProgressBar from './Win95ProgressBar.svelte';
     import { processRegistry, processOrigin, setFileLoading, setStatus } from './store';
@@ -647,7 +646,6 @@
     <div class="tab-strip">
         <button class:active={currentTab === 'critic'} onclick={() => currentTab = 'critic'}>CRITIC</button>
         <button class:active={currentTab === 'wizard'} onclick={() => currentTab = 'wizard'}>WIZARD</button>
-        <button class:active={currentTab === 'synth'} onclick={() => currentTab = 'synth'}>SYNTH</button>
         <button class:active={currentTab === 'forge'} onclick={() => currentTab = 'forge'}>FORGE</button>
     </div>
 
@@ -741,44 +739,31 @@
                 </div>
 
             {:else if currentTab === 'wizard'}
-                <div class="panel-wizard">
-                     <button class="action-btn secondary" onclick={runGhostwriter}>GENERATE FULL OUTLINE</button>
-                 
-                    {#if $processRegistry[activeFile.path] && $processOrigin[activeFile.path] === 'wizard'} 
-                        <Win95ProgressBar label="ARCHITECTING..." estimatedDuration={estimatedDuration} /> 
-                    {/if}
+                 <WizardView
+                    app={app}
+                    settings={settings}
+                    activeFileStatus={!!($processRegistry[activeFile.path])}
+                    processOrigin={$processOrigin[activeFile.path]}
+                    estimatedDuration={estimatedDuration}
 
-                    <WizardFields 
-                        wizardState={projectData.wizardState} 
-                        settings={settings}
-                        onSave={debouncedSave}
-                        onAssist={runWizardAssist}
-                        onUploadContext={handleUploadContext}
-                        onScrubContext={handleScrubContext}
-                        onClear={handleClearWizardState}
-                        onAutoFill={runAutoFill}
-                        isContextSynced={isContextSynced}
-                        loadingField={wizardLoadingField}
-                        onGradeCharacter={handleGradeCharacter} 
-                        onGradeStructure={handleGradeStructure}
-                    />
-                </div>
+                    wizardState={projectData.wizardState}
+                    onSave={debouncedSave}
+                    onAssist={runWizardAssist}
+                    onUploadContext={handleUploadContext}
+                    onScrubContext={handleScrubContext}
+                    onClear={handleClearWizardState}
+                    onAutoFill={runAutoFill}
+                    isContextSynced={isContextSynced}
+                    loadingField={wizardLoadingField}
+                    onGradeCharacter={handleGradeCharacter}
+                    onGradeStructure={handleGradeStructure}
+                    onRunGhostwriter={runGhostwriter}
 
-            {:else if currentTab === 'synth'}
-                <div class="panel-synth">
-                    {#if $processRegistry[activeFile.path] && $processOrigin[activeFile.path] === 'synth'} 
-                        <Win95ProgressBar label="SYNTHESIZING..." estimatedDuration={10000} /> 
-                    {/if}
-                    <SynthesizerView 
-                        app={app}
-                        settings={settings}
-                        drives={projectData.wizardState.synthesisDrives || []} 
-                        onUpdateDrives={handleDrivesUpdate}
-                        onUpdateSettings={handleSettingsUpdate}
-                        onRunSynthesis={runDriveSynthesis}
-                        onGetActiveContent={getActiveFileContent}
-                    />
-                </div>
+                    onUpdateDrives={handleDrivesUpdate}
+                    onUpdateSettings={handleSettingsUpdate}
+                    onRunSynthesis={runDriveSynthesis}
+                    onGetActiveContent={getActiveFileContent}
+                />
 
             {:else if currentTab === 'forge'}
                  <div class="panel-forge">
