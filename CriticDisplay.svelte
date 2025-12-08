@@ -372,7 +372,7 @@
 
                     <div class="bar-col tooltip-container" style="width: {beat.widthPerc}%; flex-grow: 0; flex-shrink: 0;">
 
-                        <div class="win95-progress-container"
+                        <div class="win95-progress-container {isCritical(beat.val) ? 'critical-bar' : ''}"
                              style="
                                 width: 100%; height: 100%;
                                 background: transparent; box-shadow: none; border: none;
@@ -440,7 +440,7 @@
 
                 <div class="module-item" style="display:flex; align-items:center; gap:10px; margin-bottom: 5px;">
                     <span class="mod-label" style="width: 100px; font-weight: bold; font-size: 10px;">{m.label}</span>
-                    <div class="win95-progress-container" style="flex: 1;">
+                    <div class="win95-progress-container {isCritical(m.val) ? 'critical-bar' : ''}" style="flex: 1;">
                         <div class="win95-progress-fill"
                              style="
                                 width: {m.val > 100 ? 100 : m.val}%;

@@ -310,3 +310,24 @@
 .nigs-settings-container .window-body::-webkit-scrollbar-track {
     background: repeating-linear-gradient(45deg, #ddd, #ddd 2px, #fff 2px, #fff 4px);
 }
+
+/* CRITICAL FAILURE EFFECT (Hollow Dotted) */
+.critical-bar,
+.critical-bar .win95-progress-container,
+.critical-bar .score-track {
+    background: transparent !important;
+    border: 2px dotted #ff0000 !important; /* Red dotted outline */
+    box-shadow: none !important;
+}
+
+.critical-bar .win95-progress-fill,
+.critical-bar .score-fill {
+    display: none !important; /* Hollow - no fill */
+}
+
+/* Ensure text is visible and red/black indicating failure */
+.critical-text {
+    color: #ff0000 !important;
+    text-shadow: none !important;
+    font-weight: 900;
+}
