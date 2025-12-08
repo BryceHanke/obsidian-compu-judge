@@ -18,22 +18,29 @@
   "wizardNegativeConstraints": "Avoid: Deus Ex Machina, Talking Animals, Dream Sequences, Modern Slang, Memories, Life Force, Naming people Kaelen or Elara. Hol",
   "namePool": "",
   "negativeNamePool": "Elias, Thorne, Vance, Castellano, Frost,  Marcus, Hale, Elena, Liam, Carter, Sophie, Webb, Jonah, Creed, Isabella, Rossi, Silas, Graham, Ava, Knox, Roman, Pierce, Lily, Chen, Wyatt, Flynn, Harper, Sloan, Kaelen, Dathris, Elara, Moonwhisper, Garrick, Ironhelm, Seraphina, Valerius, Thane, Blackwood, Isolde, Lightbringer, Draven, Nightshade, Lyra, Silversong, Roderic, Stormwind, Vaelora, Sunstrike, Bram, Stonefist, Caelia, Runeweaver, Fenris, Wolfsbane, Alaric, The, Bold, Rowena, Ravenwood, Torin, Oakenshield, Eowyn, Starfall, Gareth, Dragontamer, Sylas, Shadowstep, Mirella, Goldleaf, Jaxon, Steele, Nova, Prime, Kian, Varr, Zyla, Trix, Ryker, Sol, Orion, Pax, Vega, Starr, Cade, Runner, Lyra, Zen, Jaxom, Krell, Cyra, Volt, Zenon, Flux, Kael, Corvus, Ryla, Ven, Tybalt, Chrome, Saren, Arterius, Eris, Void, Dax, Haron, Vrea, Solus, Kellan, Tech, Pennyworth, Beatrice, Shaw, Walter, Higgins, Clara, Bow, Cavendish, Edith, Wharton, Theodore, Finch, Florence, Vane, Crane, Hazel, Grace, Felix, Unger, Mabel, Pines, Jasper, Hale, Vance, Chester, Copperpot, Agatha, Prynne, Sage, Barnaby, Jones, Greenwood, Victor, Krell, Malakai, Black, Lilith, Crimson, Damien, Thorn, Darkholme, Lucius, Vane, Belladonna, Night, Hannibal, Kane, Cruella, Vesper, Volkan, Death, Jarek, Sand, Ursula, Trench, Scar, Vex, Hades, Thorne, Mordecai, Black, Saron, Void, Thanatos, Steel, Loki, Shade, Hela, Frost, Vlad, Dracul",
+  "agentWeights": {
+    "logic": 1,
+    "soul": 1,
+    "market": 1
+  },
+  "arbitrationEnabled": true,
+  "disableRainbows": false,
+  "luckTolerance": 5,
   "maxOutputTokens": 8192,
   "analysisPasses": 5,
   "enableTribunal": true,
+  "tribunalMaxRetries": 2,
   "showThinking": false,
   "customSystemPrompt": "",
   "customOutlinePrompt": "",
   "customRepairPrompt": "",
-  "msDosColor": "#ffffff",
-  "theme": "win95",
   "gradingColors": {
-    "critical": "#000000",
+    "critical": "#ff0000",
     "poor": "#7d3f3f",
-    "average": "#d91212",
-    "good": "#ff8800",
-    "excellent": "#ffeb85",
-    "masterpiece": "#ffffff"
+    "average": "#000000",
+    "good": "#38614a",
+    "excellent": "#00b315",
+    "masterpiece": "#66ff00"
   },
   "projects": {},
   "drives": [
@@ -80,6 +87,8 @@
       "expanded": true
     }
   ],
+  "msDosColor": "#ffffff",
+  "theme": "win95",
   "autoCheckGrammar": true,
   "availableModels": [
     "gemini-2.5-flash",
