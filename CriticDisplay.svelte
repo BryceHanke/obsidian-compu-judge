@@ -275,8 +275,8 @@
                         <span class="s-label">{s.label}</span>
                         <span class="s-val">{formatUnsignedScore(s.val)}%</span>
                     </div>
-                    <div class="slider-track">
-                        <div class="slider-fill" style="width: {getSliderMetrics(s.val)}%;"></div>
+                    <div class="win95-progress-container">
+                        <div class="win95-progress-fill" style="width: {getSliderMetrics(s.val)}%;"></div>
                     </div>
                 </div>
             {/each}
@@ -294,15 +294,19 @@
             {@const bar = getBarMetrics(m.val)}
             <div class="module-item">
                 <span class="mod-label">{m.label}</span>
-                <!-- Diverging Bar Container -->
-                <div class="diverging-bar-container">
-                    <div class="center-line"></div>
-                    <!-- The Bar itself -->
-                    <div class="fill {isMasterpieceEffect(m.val) ? 'glow-bar' : ''}" 
+                <!-- Diverging Bar Container (Universal Bar Style) -->
+                <div class="win95-progress-container" style="flex: 1;">
+                    <!-- We simulate divergence by positioning the rainbow bar -->
+                    <!-- Standard Win95 bars don't diverge, they fill. But user wants universal bar.
+                         If we stick to "fill" concept, we might just show percentage.
+                         However, data can be negative.
+                         Let's keep the diverging logic but use the Universal Bar styling. -->
+                    <div class="center-line" style="position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed #555; z-index:2;"></div>
+                    <div class="win95-progress-fill"
                          style="
+                            position: absolute;
                             width: {bar.width}%; 
                             left: {bar.isNegative ? (50 - bar.width) + '%' : '50%'};
-                            background: {getBarColor(m.val)}
                          ">
                     </div>
                 </div>
@@ -338,14 +342,14 @@
                                 </span>
                             </div>
                             
-                            <!-- Diverging Metric Bar -->
-                            <div class="metric-bar-container diverging-bar-container">
-                                <div class="center-line"></div>
-                                <div class="metric-bar {isMasterpieceEffect(item.score) ? 'glow-bar' : ''}" 
+                            <!-- Diverging Metric Bar (Universal Style) -->
+                            <div class="win95-progress-container" style="margin-bottom: 6px;">
+                                <div class="center-line" style="position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed #555; z-index:2;"></div>
+                                <div class="win95-progress-fill"
                                      style="
+                                        position: absolute;
                                         width: {bar.width}%; 
                                         left: {bar.isNegative ? (50 - bar.width) + '%' : '50%'};
-                                        background: {getBarColor(item.score)}
                                      ">
                                 </div>
                             </div>
@@ -463,7 +467,8 @@
     </select>
 </div>
     <div class="chart-box bevel-down">
-        <div class="chart-area zero-center">
+        <!-- [WIN95 FIX] Added explicit flex sizing to ensure scaling works -->
+        <div class="chart-area zero-center" style="display: flex; width: 100%;">
             <div class="chart-center-line"></div>
             
             <!-- SVG OVERLAY FOR IDEAL PATH -->
@@ -473,17 +478,38 @@
 
             {#each chartData as beat, i}
                 {@const bar = getBarMetrics(beat.tension)}
-                <div class="bar-col tooltip-container" style="flex-grow: {beat.widthPerc};">
+                <!-- [WIN95 FIX] Use percentage width directly instead of flex-grow if flex-grow is unreliable,
+                     but flex-grow is standard. However, mixing flex-grow with explicit widthPerc is better.
+                     Let's use 'width: X%' if calculated, else flex-grow.
+                     Our calc provides 'widthPerc' (0-100). -->
+                <div class="bar-col tooltip-container" style="width: {beat.widthPerc}%; flex-grow: 0; flex-shrink: 0;">
                     <!-- Column Flex Logic for Diverging Vertical Bars -->
-                    <div class="bar-fill {isMasterpieceEffect(beat.tension) ? 'glow-bar' : ''}" 
+                    <div class="win95-progress-container"
                          style="
-                            height: {bar.width}%; 
-                            background-color: {getBarColor(beat.tension)};
-                            position: absolute;
-                            bottom: {bar.isNegative ? 'auto' : '50%'};
-                            top: {bar.isNegative ? '50%' : 'auto'};
-                            left: 1px; right: 1px;
+                            width: 100%; height: 100%;
+                            background: transparent; box-shadow: none; border: none; /* Reset standard container for vertical usage */
+                            position: relative;
                          ">
+                        <!-- We need a vertical bar. The universal bar is horizontal.
+                             So we simulate it with a block. -->
+                        <div class="win95-progress-fill"
+                             style="
+                                width: auto;
+                                left: 1px; right: 1px;
+                                top: {bar.isNegative ? '50%' : 'auto'};
+                                bottom: {bar.isNegative ? 'auto' : '50%'};
+                                height: {bar.width}%;
+                                position: absolute;
+                                background: {getBarColor(beat.tension)}; /* Use score color, not rainbow, for chart readability?
+                                                                            Or rainbow if masterpiece?
+                                                                            User said 'score bars...'. Chart is a chart.
+                                                                            Let's keep color coding but maybe add rainbow if masterpiece. */
+                                background: {isMasterpieceEffect(beat.tension) ? 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' : getBarColor(beat.tension)};
+                                background-size: 200% auto;
+                                animation: {isMasterpieceEffect(beat.tension) ? 'rainbow-bar-scroll 3s linear infinite' : 'none'};
+                                border: 1px solid rgba(0,0,0,0.3);
+                             ">
+                        </div>
                     </div>
                     <div class="tooltip chart-tooltip">
                         <strong>{i+1}. {beat.title}</strong><br/>
@@ -519,6 +545,9 @@
                     <div class="node-chars">ACTORS: {node.characters.join(", ")}</div>
                 </div>
             {/each}
+            {#if structure.length === 0}
+                <div style="padding:10px; color:#555; font-style:italic;">[BUFFER EMPTY: No Universal Outline Data]</div>
+            {/if}
         {:else}
             {#each structure as beat}
                 <div class="structure-item">
@@ -526,6 +555,9 @@
                     <div class="beat-text">{beat}</div>
                 </div>
             {/each}
+            {#if structure.length === 0}
+                <div style="padding:10px; color:#555; font-style:italic;">[BUFFER EMPTY: No Structure Data]</div>
+            {/if}
         {/if}
     </div>
 
