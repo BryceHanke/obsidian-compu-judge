@@ -104,7 +104,7 @@ class GeminiAdapter implements AIAdapter {
         }
 
         if (json && thoughtContent && finalOutput.trim().endsWith('}')) {
-             const trimmed = finalOutput.trim().replace(/```json/g, "").replace(/```/g, "");
+             const trimmed = finalOutput.trim().replace(/^```json\s*/, "").replace(/```$/, "").replace(/```json/g, "").replace(/```/g, "");
              const lastBrace = trimmed.lastIndexOf('}');
              if (lastBrace > 0) {
                  const base = trimmed.substring(0, lastBrace);
@@ -602,7 +602,14 @@ Only score positive if it is innovative.
             const end = text.lastIndexOf('}');
             if (start === -1 || end === -1) throw new Error("No JSON found in response");
             const clean = text.substring(start, end + 1);
-            const refined = clean.replace(/```json/g, "").replace(/```/g, "");
+            // Robust cleaning of markdown fences and stray text
+            const refined = clean
+                .replace(/^```json\s*/, "")  // Leading code fence
+                .replace(/```$/, "")        // Trailing code fence
+                .replace(/```json/g, "")    // Any other occurence
+                .replace(/```/g, "")        // Any other fence
+                .replace(/[\u0000-\u001F]+/g, c => ["\r", "\n", "\t"].includes(c) ? c : ""); // Sanitize control chars but keep whitespace
+
             return JSON.parse(refined); 
         } catch (e) { 
             console.error("JSON PARSE FAILURE", text);
