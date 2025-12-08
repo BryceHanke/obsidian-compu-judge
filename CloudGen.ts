@@ -263,7 +263,7 @@ export class CloudGenService {
     }
 
     // --- DRIVE SYNTHESIS (Alchemy Mode) ---
-    // [UPDATED] Uses full concatenated context
+    // [UPDATED] Uses full concatenated context & [NEW] Thinking Agent Loop
     synthesizeDrives = async (drives: DriveBlock[], customTitle?: string, targetQuality?: number, signal?: AbortSignal): Promise<string> => {
         setStatus("FUSING NARRATIVE DRIVES...");
         
@@ -292,7 +292,57 @@ export class CloudGenService {
 
         // Use dedicated SYNTH temperature (High Creativity for Alchemy)
         const temp = this.getTemp(this.settings.tempSynth ?? 1.0);
-        return await this.callAI(finalPrompt, NIGS_DRIVE_SYNTHESIS_PROMPT, false, false, temp, signal);
+
+        // --- SYNTH AGENT LOOP (Structural Architect) ---
+        let attempts = 0;
+        const maxAttempts = (this.settings.synthAgentEnabled) ? (this.settings.synthAgentMaxRetries || 1) + 1 : 1;
+        let isApproved = false;
+        let previousCritique = "";
+        let draft = "";
+
+        do {
+            attempts++;
+            if (attempts > 1) setStatus(`SYNTH AGENT: REFINING FUSION (ATTEMPT ${attempts})...`);
+
+            const currentPrompt = previousCritique ? `${finalPrompt}\n\n[PREVIOUS CRITIQUE - FIX THIS]:\n${previousCritique}` : finalPrompt;
+
+            draft = await this.callAI(currentPrompt, NIGS_DRIVE_SYNTHESIS_PROMPT, false, false, temp, signal);
+
+            // If Agent disabled, accept first draft
+            if (!this.settings.synthAgentEnabled) return draft;
+
+            // [AGENT REVIEW]
+            setStatus("STRUCTURAL ARCHITECT: REVIEWING FUSION...");
+            const reviewPrompt = `
+[TASK]: Review this generated narrative fusion.
+[CRITERIA]:
+1. Did it follow the 7-Act Truby Structure?
+2. Did it use the User's Title?
+3. Is it logically consistent?
+
+[DRAFT]:
+${draft.substring(0, 5000)}... (truncated)
+
+Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
+`;
+            // Simple check using basic temp
+            const reviewRaw = await this.callAI(reviewPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal);
+            const review = this.parseJson<{ verdict: string, reason: string }>(reviewRaw);
+
+            if (review.verdict === "PASS") {
+                isApproved = true;
+                setStatus("STRUCTURAL ARCHITECT: APPROVED.");
+            } else {
+                console.warn(`SYNTH AGENT REJECTED: ${review.reason}`);
+                previousCritique = review.reason;
+                if (attempts >= maxAttempts) {
+                    setStatus("MAX RETRIES REACHED. RETURNING BEST EFFORT.");
+                }
+            }
+
+        } while (!isApproved && attempts < maxAttempts);
+
+        return draft;
     }
 
     // --- GRADING (Unified System) ---
@@ -488,7 +538,8 @@ ${JSON.stringify(finalResponse)}
 
 
     private gradeContentLegacy = async (text: string, context?: { inspiration: string; target: number }, nlpStats?: NlpMetrics, signal?: AbortSignal): Promise<NigsResponse> => {
-        const passes = Math.max(1, Math.min(10, this.settings.analysisPasses));
+        // [LEGACY] Map "Cores" to Analysis Passes
+        const passes = Math.max(1, Math.min(10, this.settings.criticCores || 1));
         const contextBlock = context?.inspiration ? `\n[UPLOADED SOURCE CONTEXT]: "${context.inspiration}"\n` : "";
         
         let statsBlock = "";
@@ -759,7 +810,7 @@ Only score positive if it is innovative.
         };
     }
 
-    // --- ASSIST WIZARD (Logic Hardened + Name Protocol) ---
+    // --- ASSIST WIZARD (Logic Hardened + Name Protocol) & [NEW] Thinking Agent ---
     assistWizard = async (field: string, state: NigsWizardState, signal?: AbortSignal) => {
         setStatus("CONSULTING NARRATIVE DATABASE...");
         const sourceMaterial = state.inspirationContext || "No source file loaded.";
@@ -865,9 +916,56 @@ Only score positive if it is innovative.
         `;
 
         const temp = this.getTemp(this.settings.tempWizard);
-        const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, true, temp, signal);
-        const data = this.parseJson<{ suggestion: string }>(res);
-        return data.suggestion;
+
+        // --- WIZARD AGENT LOOP (Creative Consultant) ---
+        let attempts = 0;
+        const maxAttempts = (this.settings.wizardAgentEnabled) ? (this.settings.wizardAgentMaxRetries || 1) + 1 : 1;
+        let isApproved = false;
+        let suggestion = "";
+        let previousCritique = "";
+
+        do {
+            attempts++;
+            if (attempts > 1) setStatus(`CREATIVE CONSULTANT: REFINING IDEA (ATTEMPT ${attempts})...`);
+
+            const currentPrompt = previousCritique ? `${prompt}\n\n[PREVIOUS CRITIQUE]: The previous suggestion was rejected because: ${previousCritique}. TRY AGAIN.` : prompt;
+
+            const res = await this.callAI(currentPrompt, NIGS_WIZARD_ASSIST_PROMPT, true, true, temp, signal);
+            const data = this.parseJson<{ suggestion: string }>(res);
+            suggestion = data.suggestion;
+
+            // If Agent disabled, accept first draft
+            if (!this.settings.wizardAgentEnabled) return suggestion;
+
+            // [AGENT REVIEW]
+            setStatus("CREATIVE CONSULTANT: REVIEWING...");
+            const reviewPrompt = `
+[TASK]: Review this narrative suggestion.
+[CRITERIA]:
+1. Is it clichéd? (Fail if yes).
+2. Does it respect the constraints?
+3. Is it logically tight?
+
+[SUGGESTION]: "${suggestion}"
+
+Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
+`;
+            const reviewRaw = await this.callAI(reviewPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal);
+            const review = this.parseJson<{ verdict: string, reason: string }>(reviewRaw);
+
+            if (review.verdict === "PASS") {
+                isApproved = true;
+                setStatus("CREATIVE CONSULTANT: APPROVED.");
+            } else {
+                console.warn(`WIZARD AGENT REJECTED: ${review.reason}`);
+                previousCritique = review.reason;
+                if (attempts >= maxAttempts) {
+                    setStatus("MAX RETRIES REACHED. RETURNING BEST EFFORT.");
+                }
+            }
+        } while (!isApproved && attempts < maxAttempts);
+
+        return suggestion;
     }
     
     wizardCompose = async (state: NigsWizardState, signal?: AbortSignal) => {

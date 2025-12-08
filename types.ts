@@ -11,6 +11,12 @@ export interface GradingColors {
     masterpiece: string; // 90+
 }
 
+export interface GradientMap {
+    startColor: string;
+    midColor: string;
+    endColor: string;
+}
+
 // DRIVE BLOCK (Global Context)
 export interface DriveBlock {
     id: string;
@@ -57,12 +63,18 @@ export interface NigsSettings {
     
     // --- SYSTEM ---
     maxOutputTokens: number;    
-    analysisPasses: number;     
+    criticCores: number;        // [RENAMED] from analysisPasses
     enableTribunal: boolean;    // Toggle 3-Agent Consensus (Market, Logic, Lit)
     tribunalConfiguration: 'Iterative' | 'Parallel'; // [NEW] Tribunal Run Configuration
     tribunalMaxRetries: number; // [NEW] Number of retries for Tribunal loop
     showThinking: boolean;      
     
+    // --- AGENTS ---
+    wizardAgentEnabled: boolean;
+    wizardAgentMaxRetries: number;
+    synthAgentEnabled: boolean;
+    synthAgentMaxRetries: number;
+
     // --- PROMPTS ---
     customSystemPrompt: string;      
     customOutlinePrompt: string;     
@@ -70,6 +82,7 @@ export interface NigsSettings {
     
     // --- VISUALS ---
     gradingColors: GradingColors;
+    gradientMap: GradientMap; // [NEW]
     
     // --- DATA STORE ---
     projects: Record<string, ProjectData>;
@@ -77,6 +90,7 @@ export interface NigsSettings {
     
     // Deprecated
     temperature?: number; 
+    analysisPasses?: number;
 }
 
 export const DEFAULT_SETTINGS: NigsSettings = {
@@ -112,11 +126,17 @@ export const DEFAULT_SETTINGS: NigsSettings = {
     luckTolerance: 5,
     
     maxOutputTokens: 8192,
-    analysisPasses: 1,
+    criticCores: 1, // Default 1
     enableTribunal: true,
     tribunalConfiguration: 'Parallel', // Default to Parallel
     tribunalMaxRetries: 2, // Default 2 retries
     showThinking: false,
+
+    wizardAgentEnabled: true,
+    wizardAgentMaxRetries: 1,
+    synthAgentEnabled: true,
+    synthAgentMaxRetries: 1,
+
     customSystemPrompt: "",
     customOutlinePrompt: "",
     customRepairPrompt: "",
@@ -127,6 +147,11 @@ export const DEFAULT_SETTINGS: NigsSettings = {
         good: '#FFD700',
         excellent: '#FFFFE0',
         masterpiece: '#FFFFFF'
+    },
+    gradientMap: {
+        startColor: '#ff0000',
+        midColor: '#ffff00',
+        endColor: '#00ff00'
     },
     projects: {},
     drives: [] 
