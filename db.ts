@@ -1,12 +1,24 @@
 import { TFile, TFolder, normalizePath, type Plugin } from 'obsidian';
-import { DEFAULT_WIZARD_STATE, type ProjectData, type NigsSettings, DEFAULT_SETTINGS } from './types';
+import { DEFAULT_WIZARD_STATE, type ProjectData, type NigsSettings, DEFAULT_SETTINGS, type NigsWizardState, type NigsActionPlan } from './types';
 import type CompuJudgePlugin from './main';
 
 const DATA_FOLDER = '.compu-judge';
+const GLOBAL_WIZARD_FILE = 'global_wizard_data.json';
+const GLOBAL_FORGE_FILE = 'global_forge_data.json';
+
+// Global Forge/Archivist Data Type
+export interface GlobalForgeData {
+    archivistContext: string;
+    archivistPrompt: string;
+    repairFocus: string;
+    lastActionPlan: NigsActionPlan | null;
+}
 
 export class NigsDB {
     private plugin: CompuJudgePlugin | null = null;
     private memoryCache: Map<string, ProjectData> = new Map();
+    private wizardCache: NigsWizardState | null = null;
+    private forgeCache: GlobalForgeData | null = null;
 
     connect(plugin: CompuJudgePlugin) {
         this.plugin = plugin;
@@ -159,6 +171,100 @@ export class NigsDB {
     }
 
     /**
+     * Load GLOBAL Wizard Data (Persistent across files)
+     */
+    async getGlobalWizardData(): Promise<NigsWizardState> {
+        if (!this.plugin) throw new Error("DB Not Connected");
+
+        if (this.wizardCache) return this.wizardCache;
+
+        const path = `${DATA_FOLDER}/${GLOBAL_WIZARD_FILE}`;
+        const adapter = this.plugin.app.vault.adapter;
+
+        const defaults = JSON.parse(JSON.stringify(DEFAULT_WIZARD_STATE));
+
+        if (await adapter.exists(path)) {
+            try {
+                const json = await adapter.read(path);
+                const stored = JSON.parse(json);
+                // Merge
+                const merged = {
+                    ...defaults,
+                    ...stored,
+                    structureDNA: { ...defaults.structureDNA, ...(stored.structureDNA || {}) },
+                    sandersonLaws: { ...defaults.sandersonLaws, ...(stored.sandersonLaws || {}) },
+                    threePs: { ...defaults.threePs, ...(stored.threePs || {}) },
+                    philosopher: { ...defaults.philosopher, ...(stored.philosopher || {}) }
+                };
+                this.wizardCache = merged;
+                return merged;
+            } catch (e) {
+                console.error("[Compu-Judge] Failed to load Global Wizard Data", e);
+                return defaults;
+            }
+        }
+
+        this.wizardCache = defaults;
+        return defaults;
+    }
+
+    /**
+     * Save GLOBAL Wizard Data
+     */
+    async saveGlobalWizardData(data: NigsWizardState): Promise<void> {
+        if (!this.plugin) return;
+        const clean = JSON.parse(JSON.stringify(data));
+        this.wizardCache = clean;
+        const path = `${DATA_FOLDER}/${GLOBAL_WIZARD_FILE}`;
+        await this.plugin.app.vault.adapter.write(path, JSON.stringify(clean, null, 2));
+    }
+
+    /**
+     * Load GLOBAL Forge Data
+     */
+    async getGlobalForgeData(): Promise<GlobalForgeData> {
+        if (!this.plugin) throw new Error("DB Not Connected");
+        if (this.forgeCache) return this.forgeCache;
+
+        const path = `${DATA_FOLDER}/${GLOBAL_FORGE_FILE}`;
+        const adapter = this.plugin.app.vault.adapter;
+
+        const defaults: GlobalForgeData = {
+            archivistContext: "",
+            archivistPrompt: "",
+            repairFocus: "",
+            lastActionPlan: null
+        };
+
+        if (await adapter.exists(path)) {
+            try {
+                const json = await adapter.read(path);
+                const stored = JSON.parse(json);
+                const merged = { ...defaults, ...stored };
+                this.forgeCache = merged;
+                return merged;
+            } catch (e) {
+                console.error("[Compu-Judge] Failed to load Global Forge Data", e);
+                return defaults;
+            }
+        }
+
+        this.forgeCache = defaults;
+        return defaults;
+    }
+
+    /**
+     * Save GLOBAL Forge Data
+     */
+    async saveGlobalForgeData(data: GlobalForgeData): Promise<void> {
+        if (!this.plugin) return;
+        const clean = JSON.parse(JSON.stringify(data));
+        this.forgeCache = clean;
+        const path = `${DATA_FOLDER}/${GLOBAL_FORGE_FILE}`;
+        await this.plugin.app.vault.adapter.write(path, JSON.stringify(clean, null, 2));
+    }
+
+    /**
      * Delete all data (Nuclear Option)
      */
     async deleteDatabase() {
@@ -173,6 +279,8 @@ export class NigsDB {
         }
         
         this.memoryCache.clear();
+        this.wizardCache = null;
+        this.forgeCache = null;
         this.plugin.settings.projects = {};
         await this.plugin.saveSettings();
     }

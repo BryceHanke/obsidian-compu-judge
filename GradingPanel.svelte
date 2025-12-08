@@ -2,9 +2,9 @@
     import { onMount } from 'svelte';
     import { TFile, App, Notice } from 'obsidian';
     import type { CloudGenService } from './CloudGen';
-    import type { NigsSettings, ProjectData, CharacterBlock, StoryBlock, DriveBlock } from './types';
+    import type { NigsSettings, ProjectData, CharacterBlock, StoryBlock, DriveBlock, NigsWizardState, NigsActionPlan } from './types';
     import { DEFAULT_WIZARD_STATE } from './types'; 
-    import { db } from './db';
+    import { db, type GlobalForgeData } from './db';
     import { NlpService } from './nlp';
     import { autoResize, debounce } from './utils';
     import { ForgeOps } from './ForgeOps';
@@ -25,10 +25,13 @@
     let settings = $state(initialSettings);
     let activeFile: TFile | null = $state(null);
     let projectData: ProjectData | null = $state(null);
+    let wizardData: NigsWizardState | null = $state(null);
+    let forgeData: GlobalForgeData | null = $state(null);
     let currentTab = $state('critic');
     let isSaving = $state(false);
     let estimatedDuration = $state(4000);
     let wizardLoadingField: string | null = $state(null);
+    let uploadedImage: { data: string, mimeType: string } | null = $state(null);
     
     // Sync States
     let isContextSynced = $state(false);
@@ -37,7 +40,7 @@
     // [WIN95 UPDATE] Quick Scan Dropdown State
     let showQuickScanMenu = $state(false);
 
-    let archivistLength = $derived(projectData?.archivistContext ? projectData.archivistContext.length : 0);
+    let archivistLength = $derived(forgeData?.archivistContext ? forgeData.archivistContext.length : 0);
     let hasArchivistData = $derived(archivistLength > 0);
 
     // [FIX]: Moved logic from template to script to prevent build errors with Optional Chaining in HTML
@@ -49,7 +52,7 @@
     let isProjectDataLoading = $derived(activeFile && !projectData);
 
     // [OPTIMIZATION] Debounced save for text inputs
-    const debouncedSave = debounce(() => saveProject(false), 1000);
+    const debouncedSave = debounce(() => saveAll(false), 1000);
 
     function handleSettingsUpdate(updates: Partial<NigsSettings>) {
         Object.assign(settings, updates);
@@ -58,9 +61,9 @@
     
     // [NEW] Handle Drive Updates Locally
     function handleDrivesUpdate(newDrives: DriveBlock[]) {
-        if (!projectData) return;
-        projectData.wizardState.synthesisDrives = newDrives;
-        saveProject(false);
+        if (!wizardData) return;
+        wizardData.synthesisDrives = newDrives;
+        saveAll(false);
     }
 
     function handleError(context: string, error: any) {
@@ -104,19 +107,37 @@
         }
     }
 
-    async function saveProject(updateMtime: boolean = false) {
-        if (!projectData || !activeFile) return;
-        if (projectData.filePath !== activeFile.path) {
-            console.warn("Save aborted: State mismatch detected.");
-            return;
+    async function loadGlobalData() {
+        try {
+            wizardData = await db.getGlobalWizardData();
+            forgeData = await db.getGlobalForgeData();
+            await checkAllSyncs();
+        } catch (e: any) {
+            handleError("Load Global Data", e);
         }
+    }
 
+    async function saveAll(updateMtime: boolean = false) {
         isSaving = true;
         try {
-            if (updateMtime && activeFile instanceof TFile) {
-                projectData.lastAnalysisMtime = activeFile.stat.mtime;
+            // Save Critic Data (File Specific)
+            if (projectData && activeFile) {
+                if (updateMtime && activeFile instanceof TFile) {
+                    projectData.lastAnalysisMtime = activeFile.stat.mtime;
+                }
+                await db.saveProjectData(projectData, projectData.lastAnalysisMtime);
             }
-            await db.saveProjectData(projectData, projectData.lastAnalysisMtime);
+
+            // Save Global Wizard Data
+            if (wizardData) {
+                await db.saveGlobalWizardData(wizardData);
+            }
+
+            // Save Global Forge Data
+            if (forgeData) {
+                await db.saveGlobalForgeData(forgeData);
+            }
+
             await checkAllSyncs();
         } catch(e) {
             handleError("Save Failed", e);
@@ -126,7 +147,7 @@
     }
 
     async function checkAllSyncs() {
-        if (!activeFile || !projectData) {
+        if (!activeFile || !wizardData || !forgeData) {
             isContextSynced = false;
             isArchivistSynced = false;
             return;
@@ -138,9 +159,9 @@
                 isArchivistSynced = true;
                 return;
             }
-            const wizCtx = projectData.wizardState.inspirationContext || "";
+            const wizCtx = wizardData.inspirationContext || "";
             isContextSynced = wizCtx.includes(content);
-            const arcCtx = projectData.archivistContext || "";
+            const arcCtx = forgeData.archivistContext || "";
             isArchivistSynced = arcCtx === content || (arcCtx.length > 0 && arcCtx.includes(content.substring(0, 100)));
         } catch {
             isContextSynced = false;
@@ -158,64 +179,102 @@
         await app.vault.modify(activeFile, newContent);
     }
 
+    async function updateFrontMatter(grade: any) {
+        if (!activeFile) return;
+        try {
+            await app.fileManager.processFrontMatter(activeFile, (frontmatter) => {
+                frontmatter['critic_score'] = grade.score || grade.commercial_score;
+                frontmatter['critic_grade'] = grade.letter_grade || (grade.commercial_score >= 90 ? 'S' : grade.commercial_score >= 80 ? 'A' : grade.commercial_score >= 60 ? 'B' : 'C');
+                if (grade.log_line) frontmatter['critic_logline'] = grade.log_line;
+                if (grade.summary_line) frontmatter['critic_summary'] = grade.summary_line;
+                frontmatter['critic_date'] = new Date().toISOString().split('T')[0];
+            });
+        } catch (e) {
+            console.error("Failed to update frontmatter", e);
+        }
+    }
+
     async function handleUploadContext() {
-        if (!activeFile || !projectData) return;
+        if (!activeFile || !wizardData) return;
         try {
             const content = await app.vault.read(activeFile);
             if (!content.trim()) return new Notice("File is empty.");
-            const currentContext = projectData.wizardState.inspirationContext || "";
+            const currentContext = wizardData.inspirationContext || "";
             const newContext = currentContext ?
             `${currentContext}\n\n[IMPORTED SOURCE]:\n${content}` : `[IMPORTED SOURCE]:\n${content}`;
-            projectData.wizardState.inspirationContext = newContext;
-            projectData = { ...projectData }; 
+            wizardData.inspirationContext = newContext;
             new Notice("Wizard Memory Updated.");
-            await saveProject(false);
+            await saveAll(false);
         } catch (e: any) { handleError("Memory Upload", e); }
     }
 
     function handleScrubContext() {
-        if (!projectData) return;
+        if (!wizardData) return;
         if (confirm("Purge Inspiration Memory?")) {
-            projectData.wizardState.inspirationContext = "";
-            projectData = { ...projectData };
-            saveProject(false);
+            wizardData.inspirationContext = "";
+            saveAll(false);
             new Notice("Wizard Memory Purged.");
         }
     }
 
     function handleClearWizardState() {
-        if (!projectData) return;
+        if (!wizardData) return;
         if (confirm("Clear all Wizard fields? (Memory/Context will be kept)")) {
-            const currentContext = projectData.wizardState.inspirationContext;
-            projectData.wizardState = {
-                ...JSON.parse(JSON.stringify(DEFAULT_WIZARD_STATE)),
+            const currentContext = wizardData.inspirationContext;
+            const defaults = JSON.parse(JSON.stringify(DEFAULT_WIZARD_STATE));
+            wizardData = {
+                ...defaults,
                 inspirationContext: currentContext
             };
-            projectData = { ...projectData };
-            saveProject(false);
+            saveAll(false);
             new Notice("Wizard Fields Cleared.");
         }
     }
 
     async function handleUploadArchivist() {
-        if (!activeFile || !projectData) return;
+        if (!activeFile || !forgeData) return;
         try {
             const content = await app.vault.read(activeFile);
             if (!content.trim()) return new Notice("File is empty.");
-            projectData.archivistContext = content;
-            projectData = { ...projectData };
+            forgeData.archivistContext = content;
             new Notice("Archivist Memory Loaded.");
-            await saveProject(false);
+            await saveAll(false);
         } catch (e: any) { handleError("Buffer Load", e);
         }
     }
 
+    // New function to handle image upload
+    function handleImageUpload(event: Event) {
+        const target = event.target as HTMLInputElement;
+        const file = target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const result = e.target?.result as string;
+            // result is data:image/jpeg;base64,....
+            const parts = result.split(',');
+            if (parts.length === 2) {
+                const mimeType = parts[0].split(':')[1].split(';')[0];
+                const base64 = parts[1];
+                uploadedImage = { data: base64, mimeType };
+                new Notice("Image Loaded into Buffer.");
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function clearImage() {
+        uploadedImage = null;
+        new Notice("Image Buffer Cleared.");
+    }
+
     function handleScrubArchivist() {
-        if (!projectData) return;
+        if (!forgeData) return;
         if (confirm("Clear Archivist Memory?")) {
-            projectData.archivistContext = "";
-            projectData = { ...projectData };
-            saveProject(false);
+            forgeData.archivistContext = "";
+            uploadedImage = null;
+            saveAll(false);
             new Notice("Archivist Memory Cleared.");
         }
     }
@@ -243,11 +302,11 @@
     }
 
     async function handleGradeCharacter(char: CharacterBlock): Promise<CharacterBlock> {
-        if (!activeFile || !projectData) return char;
-        const path = activeFile.path;
+        if (!wizardData) return char;
+        const path = "WIZARD_GLOBAL"; // Independent of file
         startLoading(path, 3000, `ANALYZING ${char.name.toUpperCase()}...`);
         try {
-            const context = projectData.wizardState.inspirationContext || "No context provided.";
+            const context = wizardData.inspirationContext || "No context provided.";
             const updated = await cloud.gradeCharacter(char, context);
             new Notice(`Metrics Updated for ${char.name}`);
             return updated;
@@ -257,11 +316,11 @@
     }
 
     async function handleGradeStructure(beat: StoryBlock): Promise<StoryBlock> {
-        if (!activeFile || !projectData) return beat;
-        const path = activeFile.path;
+        if (!wizardData) return beat;
+        const path = "WIZARD_GLOBAL";
         startLoading(path, 3000, `ANALYZING ${beat.type.toUpperCase()}...`);
         try {
-            const context = projectData.wizardState.inspirationContext || "No context provided.";
+            const context = wizardData.inspirationContext || "No context provided.";
             const updated = await cloud.gradeStructureBeat(beat, context);
             new Notice(`Tension Calculated for ${beat.title}`);
             return updated;
@@ -272,20 +331,20 @@
 
     async function runAnalysis() { 
         const file = activeFile;
-        if (!file || !projectData) return; 
+        if (!file || !projectData || !wizardData) return;
         const content = await app.vault.read(file);
         const estTime = cloud.estimateDuration(content, 'scan');
         startLoading(file.path, estTime, "CALCULATING METRICS...");
         try { 
             const nlpStats = NlpService.analyze(content);
             setStatus("SYNTHESIZING DEEP SCAN...");
-            const context = { inspiration: projectData.wizardState.inspirationContext, target: projectData.wizardState.targetScore };
+            const context = { inspiration: wizardData.inspirationContext, target: wizardData.targetScore };
             const result = await cloud.gradeContent(content, context, nlpStats);
             if (activeFile?.path !== file.path) return;
             projectData.lastAiResult = result; 
             projectData.lastAnalysisMtime = file.stat.mtime;
-            projectData = { ...projectData }; 
-            await saveProject(true);
+            await updateFrontMatter(result);
+            await saveAll(true);
             new Notice("Deep Scan Complete.");
         } catch (e: any) { handleError("Deep Scan", e);
         } 
@@ -304,8 +363,8 @@
             if (activeFile?.path !== file.path) return;
             const summary = `${aiGrade.summary_line}`;
             projectData.lastLightResult = { ...aiGrade, summary_line: summary };
-            projectData = { ...projectData }; 
-            await saveProject(false);
+            await updateFrontMatter(aiGrade);
+            await saveAll(false);
         } catch (e: any) { handleError("Quick Scan", e);
         } 
         finally { stopLoading(file.path);
@@ -321,30 +380,28 @@
             const meta = await cloud.getMetaAnalysis(content); 
             if (activeFile.path !== path) return;
             projectData.lastMetaResult = meta;
-            projectData = { ...projectData };
-            await saveProject(false);
+            await saveAll(false);
         } catch (e: any) { handleError("System Diagnostics", e); } 
         finally { stopLoading(path);
         } 
     }
 
     async function runWizardAssist(fieldPath: string) { 
-        if (!projectData || !activeFile) return;
-        const path = activeFile.path; 
+        if (!wizardData) return;
+        const path = "WIZARD_GLOBAL";
         wizardLoadingField = fieldPath;
         startLoading(path, 3000, "CONSULTING...");
         try { 
-            const suggestion = await cloud.assistWizard(fieldPath, projectData.wizardState);
-            if (activeFile.path !== path) return;
+            const suggestion = await cloud.assistWizard(fieldPath, wizardData);
+
             const parts = fieldPath.split('.');
-            let target: any = projectData.wizardState;
+            let target: any = wizardData;
             for (let i = 0; i < parts.length - 1; i++) target = target[parts[i]];
             const key = parts[parts.length - 1];
             if (target) {
                 target[key] = suggestion;
-                projectData = { ...projectData }; 
                 new Notice("Suggestion Applied.");
-                await saveProject(false);
+                await saveAll(false);
             }
         } catch(e: any) { handleError("Wizard Assist", e);
         } 
@@ -353,13 +410,13 @@
     }
 
     async function runGhostwriter() { 
-        if (!activeFile || !projectData) return;
-        const path = activeFile.path;
+        if (!wizardData) return;
+        const path = "WIZARD_GLOBAL";
         const estTime = cloud.estimateDuration("generate comprehensive outline", 'architect');
         startLoading(path, estTime, "ARCHITECTING FULL OUTLINE...");
         try { 
-            const synopsis = await cloud.wizardCompose(projectData.wizardState);
-            const outputName = activeFile.basename + "_FULL_OUTLINE.md";
+            const synopsis = await cloud.wizardCompose(wizardData);
+            const outputName = (wizardData.concept ? wizardData.concept.substring(0, 20).replace(/[^a-z0-9]/gi, '_') : "Untitled") + "_FULL_OUTLINE.md";
             await safeCreateFile(outputName, synopsis);
             new Notice(`Full Outline Created.`);
         } catch(e: any) { handleError("Ghostwriter", e);
@@ -369,33 +426,33 @@
     }
 
     async function runAutoFill() {
-        if (!activeFile || !projectData) return;
-        const concept = projectData.wizardState.concept;
+        if (!wizardData) return;
+        const concept = wizardData.concept;
         if (!concept || concept.length < 5) {
             new Notice("Please enter a Concept/Logline first.");
             return;
         }
         if (!confirm("AUTO-FILL WARNING:\nThis will overwrite your current characters, structure, and 3 Ps.\n\nContinue?")) return;
-        const path = activeFile.path;
+        const path = "WIZARD_GLOBAL";
         startLoading(path, 8000, "ARCHITECTING STORY BIBLE...");
         try {
-            const context = projectData.wizardState.inspirationContext || "";
+            const context = wizardData.inspirationContext || "";
             const generatedState = await cloud.autoFillWizard(concept, context);
-            if (activeFile.path !== path) return;
-            projectData.wizardState = {
-                ...projectData.wizardState,
+
+            wizardData = {
+                ...wizardData,
                 ...generatedState,
                 concept: concept,
                 inspirationContext: context,
                 characters: generatedState.characters || [],
                 structure: generatedState.structure || [],
-                structureDNA: generatedState.structureDNA || projectData.wizardState.structureDNA,
-                threePs: generatedState.threePs || projectData.wizardState.threePs,
-                sandersonLaws: generatedState.sandersonLaws || projectData.wizardState.sandersonLaws,
-                philosopher: generatedState.philosopher || projectData.wizardState.philosopher
+                structureDNA: generatedState.structureDNA || wizardData.structureDNA,
+                threePs: generatedState.threePs || wizardData.threePs,
+                sandersonLaws: generatedState.sandersonLaws || wizardData.sandersonLaws,
+                philosopher: generatedState.philosopher || wizardData.philosopher
             };
-            projectData = { ...projectData };
-            await saveProject(false);
+
+            await saveAll(false);
             new Notice("Story Bible Generated Successfully.");
         } catch (e: any) { handleError("Auto-Fill", e);
         } 
@@ -405,15 +462,15 @@
 
     // [UPDATED] RUN SYNTHESIS WITH OPTIONAL TITLE
     async function runDriveSynthesis(customTitle?: string) {
-        if (!activeFile || !projectData) return;
+        if (!wizardData) return;
         // [UPDATED] Use Local Project Drives
-        const drives = projectData.wizardState.synthesisDrives || [];
+        const drives = wizardData.synthesisDrives || [];
         if (drives.length === 0) {
             new Notice("No drives found. Create a drive first.");
             return;
         }
         if (!confirm("INITIATE FUSION?\nThis will generate a new Universal Outline document from your drives.\n\nProceed?")) return;
-        const path = activeFile.path;
+        const path = "WIZARD_GLOBAL";
         startLoading(path, 10000, "FUSING NARRATIVE DRIVES...");
 
         try {
@@ -429,7 +486,7 @@
                 outputName = `${safeTitle}.md`;
             } else {
                 // Fallback to Active File Name if no codename provided
-                outputName = `${activeFile.basename}_UNIVERSAL_OUTLINE.md`;
+                outputName = `UNIVERSAL_OUTLINE_${Date.now()}.md`;
             }
 
             await safeCreateFile(outputName, outlineMarkdown);
@@ -441,7 +498,7 @@
     }
 
     async function runForge() { 
-        if (!activeFile || !projectData) return;
+        if (!activeFile || !projectData || !forgeData) return;
         const path = activeFile.path; 
         const content = await app.vault.read(activeFile);
         const estTime = cloud.estimateDuration(content, 'scan');
@@ -450,37 +507,45 @@
             // [UPDATED] Pass Scan Results to getActionPlan
             const plan = await cloud.getActionPlan(
                 content, 
-                projectData.repairFocus, 
+                forgeData.repairFocus,
                 projectData.lastAiResult || undefined, 
                 projectData.lastLightResult || undefined
             );
             
             if (activeFile.path !== path) return;
-            projectData.lastActionPlan = plan; 
-            projectData = { ...projectData };
-            await saveProject(false);
+            forgeData.lastActionPlan = plan;
+            await saveAll(false);
         } catch (e: any) { handleError("Forge", e); } 
         finally { stopLoading(path);
         } 
     }
 
     async function runOutlineGeneration() { 
-        if (!activeFile || !projectData) return;
-        const path = activeFile.path;
+        if (!forgeData) return;
+        const path = "FORGE_GLOBAL";
         try { 
-            const sourceText = projectData.archivistContext ? projectData.archivistContext.trim() : "";
-            const instructions = projectData.archivistPrompt ? projectData.archivistPrompt.trim() : "";
-            if (sourceText.length === 0 && instructions.length === 0) throw new Error("ARCHIVIST IDLE: Please Upload Text OR enter a Title/Concept.");
+            const sourceText = forgeData.archivistContext ? forgeData.archivistContext.trim() : "";
+            const instructions = forgeData.archivistPrompt ? forgeData.archivistPrompt.trim() : "";
+            const hasImage = !!uploadedImage;
+
+            if (sourceText.length === 0 && instructions.length === 0 && !hasImage) throw new Error("ARCHIVIST IDLE: Please Upload Text, Image, OR enter a Title/Concept.");
+
             let combinedInput = "";
             let modeLabel = "";
             let useSearch = false;
-            let outputFilename = activeFile.basename + "_OUTLINE.md";
+            let outputFilename = "ARCHIVIST_OUTLINE.md";
             const estTime = cloud.estimateDuration(sourceText || instructions, 'architect');
 
             if (sourceText.length > 0) {
                 modeLabel = "ANALYZING UPLOADED TEXT...";
                 combinedInput = `INSTRUCTIONS: ${instructions}\n\nTEXT TO ANALYZE:\n${sourceText}`;
                 startLoading(path, estTime, modeLabel);
+                outputFilename = "TEXT_ANALYSIS.md";
+            } else if (hasImage) {
+                 modeLabel = "ANALYZING VISUAL DATA...";
+                 combinedInput = `INSTRUCTIONS: ${instructions}\n\n[VISUAL INPUT PROVIDED]`;
+                 startLoading(path, estTime, modeLabel);
+                 outputFilename = "VISUAL_ANALYSIS.md";
             } else {
                 modeLabel = "RESEARCHING & GENERATING...";
                 combinedInput = `TARGET TITLE / CONCEPT: "${instructions}"\n\nDIRECTIVE: If this is an existing published story (Book/Movie), retrieve the accurate plot details and outline the published work. DO NOT include reviews, ratings, or critical reception. STRICTLY STORY ONLY.`;
@@ -490,7 +555,10 @@
                 startLoading(path, estTime, modeLabel); 
             }
             new Notice(modeLabel);
-            const outlineText = await cloud.generateOutline(combinedInput, useSearch);
+
+            const images = uploadedImage ? [uploadedImage] : undefined;
+            const outlineText = await cloud.generateOutline(combinedInput, useSearch, undefined, images);
+
             await safeCreateFile(outputFilename, outlineText);
             new Notice(`Archivist Created.`);
         } catch (e: any) { handleError("Archivist", e);
@@ -500,13 +568,13 @@
     }
 
     async function runAutoRepair() {
-        if (!activeFile || !projectData || !projectData.lastActionPlan) return;
+        if (!activeFile || !projectData || !forgeData || !forgeData.lastActionPlan) return;
         const path = activeFile.path;
         const content = await app.vault.read(activeFile);
         const estTime = cloud.estimateDuration(content, 'repair');
         startLoading(path, estTime, "APPLYING NARRATIVE PATCH...");
         try {
-            const repairedText = await cloud.autoRepair(content, projectData.lastActionPlan);
+            const repairedText = await cloud.autoRepair(content, forgeData.lastActionPlan);
             const outputName = activeFile.basename + "_REPAIRED.md";
             await safeCreateFile(outputName, repairedText);
             new Notice(`Repaired File Created.`);
@@ -518,19 +586,19 @@
 
     // --- DEEP RENAME (NEW) ---
     async function runDeepRename() {
-        if (!activeFile || !projectData) return;
-        const chars = projectData.wizardState.characters;
+        if (!wizardData) return;
+        const chars = wizardData.characters;
         if (!chars || chars.length === 0) {
             new Notice("No characters found in Wizard.");
             return;
         }
         if (!confirm("RENAME CAST WARNING:\nThis will permanently update character names in your Wizard based on Deep Nomenclature logic. Undo is not supported.\n\nProceed?")) return;
         
-        const path = activeFile.path;
+        const path = "WIZARD_GLOBAL";
         startLoading(path, 6000, "ETYMOLOGIST: RENAMING...");
         
         try {
-            const context = projectData.wizardState.inspirationContext || "";
+            const context = wizardData.inspirationContext || "";
             const nameMap = await cloud.generateDeepNames(chars, context);
             
             // Apply updates
@@ -543,17 +611,16 @@
                 return c;
             });
             
-            projectData.wizardState.characters = newChars;
+            wizardData.characters = newChars;
 
             // [PHASE 2 - UPDATE 4]: Add note to archivistContext
-            if (updateCount > 0) {
+            if (updateCount > 0 && forgeData) {
                  const renameLog = `\n[SYSTEM NOTE - RENAMED CHARACTERS]:\n` +
                     Object.entries(nameMap).map(([oldN, newN]) => `- ${oldN} is now ${newN}`).join('\n');
-                 projectData.archivistContext = (projectData.archivistContext || "") + renameLog;
+                 forgeData.archivistContext = (forgeData.archivistContext || "") + renameLog;
             }
 
-            projectData = { ...projectData };
-            await saveProject(false);
+            await saveAll(false);
             
             new Notice(`Renaming Complete. ${updateCount} characters updated.`);
             
@@ -562,35 +629,35 @@
     }
 
     async function resetCurrentDisc() { 
-        if (!activeFile) return;
-        setFileLoading(activeFile.path, false); 
-        if (!projectData) return;
+        if (activeFile) {
+            setFileLoading(activeFile.path, false);
+        }
+
         if (window.confirm("FORCE FORMAT DISC? Resets all data.")) { 
-            const blankState = JSON.parse(JSON.stringify(DEFAULT_WIZARD_STATE));
-            projectData.wizardState = blankState; 
-            projectData.lastAiResult = null; 
-            projectData.lastLightResult = null; 
-            projectData.lastActionPlan = null; 
-            projectData.lastMetaResult = null;
-            projectData.lastAnalysisMtime = null;
-            projectData.archivistPrompt = ""; 
-            projectData.archivistContext = "";
-            projectData.repairFocus = ""; 
-            projectData = { ...projectData }; 
-            await saveProject(true); 
-            new Notice("Disc Formatted.");
+            if (projectData && activeFile) {
+                // Clear Critic Data Only
+                projectData.lastAiResult = null;
+                projectData.lastLightResult = null;
+                projectData.lastMetaResult = null;
+                projectData.lastAnalysisMtime = null;
+                await db.saveProjectData(projectData, 0); // Reset
+            }
+
+            // Should we clear Wizard/Forge? They are persistent now.
+            // Maybe just clear the Critic part for the current file?
+            new Notice("Critic Disc Formatted.");
         } 
     }
 
     // --- FORGE OPS HOOKS ---
     // --- FORGE HELPERS ---
     function handleAddRepairInstruction(instruction: string) {
-        if (!projectData) return;
-        const current = projectData.repairFocus ? projectData.repairFocus.trim() : "";
+        if (!forgeData) return;
+        const current = forgeData.repairFocus ? forgeData.repairFocus.trim() : "";
         const entry = `- [TRIBUNAL]: ${instruction}`;
         if (current.includes(entry)) return; // Prevent dupes
 
-        projectData.repairFocus = current.length > 0 ? `${current}\n${entry}` : entry;
+        forgeData.repairFocus = current.length > 0 ? `${current}\n${entry}` : entry;
         new Notice("Instruction added to Forge.");
         debouncedSave();
     }
@@ -636,8 +703,9 @@
     }
 
 
-    onMount(() => { 
+    onMount(async () => {
         const f = app.workspace.getActiveFile(); 
+        await loadGlobalData();
         updateActiveFile(f); 
     });
 </script>
@@ -661,14 +729,200 @@
     </div>
 
     <div class="window-body">
-        {#if !activeFile}
-             <div class="empty-state">INSERT DISK (OPEN MARKDOWN FILE)</div>
-        {:else if isProjectDataLoading}
-             <div class="empty-state">LOADING PROJECT DATA...</div>
-             <Win95ProgressBar label="READING DISK..." estimatedDuration={1000} />
-        {:else if projectData}
-            
-            {#if currentTab === 'critic'}
+
+        <!-- WIZARD TAB (GLOBAL) -->
+        {#if currentTab === 'wizard'}
+             {#if !wizardData}
+                 <div class="empty-state">BOOTING WIZARD OS...</div>
+             {:else}
+                 <WizardView
+                    app={app}
+                    settings={settings}
+                    activeFileStatus={!!($processRegistry['WIZARD_GLOBAL'])}
+                    processOrigin={$processOrigin['WIZARD_GLOBAL']}
+                    estimatedDuration={estimatedDuration}
+
+                    wizardState={wizardData}
+                    onSave={debouncedSave}
+                    onAssist={runWizardAssist}
+                    onUploadContext={handleUploadContext}
+                    onScrubContext={handleScrubContext}
+                    onClear={handleClearWizardState}
+                    onAutoFill={runAutoFill}
+                    isContextSynced={isContextSynced}
+                    loadingField={wizardLoadingField}
+                    onGradeCharacter={handleGradeCharacter}
+                    onGradeStructure={handleGradeStructure}
+                    onRunGhostwriter={runGhostwriter}
+
+                    onUpdateDrives={handleDrivesUpdate}
+                    onUpdateSettings={handleSettingsUpdate}
+                    onRunSynthesis={runDriveSynthesis}
+                    onGetActiveContent={getActiveFileContent}
+                />
+            {/if}
+
+        <!-- FORGE TAB (GLOBAL + LOCAL TOOLS) -->
+        {:else if currentTab === 'forge'}
+             {#if !forgeData}
+                 <div class="empty-state">IGNITING FORGE...</div>
+             {:else}
+                 <div class="panel-forge">
+                     {#if activeFile && projectData}
+                        <button class="action-btn primary" onclick={runForge}>GENERATE REPAIR PLAN (ACTIVE FILE)</button>
+                     {:else}
+                        <div class="weakness-alert">INSERT DISK (OPEN FILE) FOR REPAIR TOOLS</div>
+                     {/if}
+                     
+                     {#if ($processRegistry[activeFile?.path || ""] && $processOrigin[activeFile?.path || ""] === 'forge') || $processRegistry['FORGE_GLOBAL']}
+                        <Win95ProgressBar label="FORGING..." estimatedDuration={estimatedDuration} /> 
+                     {/if}
+
+                     <div class="repair-focus-area">
+                         <label for="repairFocus" class="input-label">REPAIR FOCUS (OPTIONAL):</label>
+                         <textarea 
+                            id="repairFocus"
+                            class="retro-input" 
+                            rows="2" 
+                            placeholder="E.g., 'Fix the pacing in Act 2' or 'Make the villain scarier'" 
+                            bind:value={forgeData.repairFocus}
+                            use:autoResize={forgeData.repairFocus}
+                        ></textarea>
+                    </div>
+
+                    <fieldset class="outline-fieldset win95-popup-window">
+                         <div class="win95-titlebar">
+                            <div class="win95-titlebar-text">
+                                <span>🔧</span> <span>Prose Tools (Active File)</span>
+                            </div>
+                        </div>
+                        <div class="win95-content-inset" style="border:none; box-shadow:none; padding:10px;">
+                             <div class="button-grid">
+                                <button class="action-btn secondary" onclick={runFixDialogue} disabled={!activeFile}>FIX DIALOGUE PUNCTUATION</button>
+                                <button class="action-btn secondary" onclick={() => runAdverbKiller('highlight')} disabled={!activeFile}>HIGHLIGHT ADVERBS (RED)</button>
+                                <button class="action-btn secondary" onclick={runFilterHighlight} disabled={!activeFile}>HIGHLIGHT FILTER WORDS (YELLOW)</button>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="outline-fieldset win95-popup-window">
+                         <div class="win95-titlebar">
+                            <div class="win95-titlebar-text">
+                                <span>📚</span> <span>Structural Archivist (Global)</span>
+                            </div>
+                        </div>
+                        <div class="win95-content-inset" style="border:none; box-shadow:none; padding:10px;">
+                            <div class="memory-core bevel-down">
+                                <div class="memory-status">
+                                    <div class="status-indicator">
+                                        <span class="led {hasArchivistData || uploadedImage ? 'on' : 'off'}"></span>
+                                        <span>{hasArchivistData || uploadedImage ? 'BUFFER LOADED' : 'BUFFER EMPTY'}</span>
+                                    </div>
+                                    <div class="status-details">{archivistLength} CHARS {uploadedImage ? '+ IMAGE' : ''}</div>
+                                </div>
+                                <div class="context-controls">
+                                    <button
+                                        class="upload-btn {isArchivistSynced ? 'synced' : ''}"
+                                        onclick={handleUploadArchivist}
+                                        disabled={isArchivistSynced || !activeFile}
+                                        title="Load active file into buffer"
+                                    >
+                                        {isArchivistSynced ? '✅ SYNCED' : '📥 LOAD BUFFER'}
+                                    </button>
+                                     <button class="scrub-btn" onclick={handleScrubArchivist} disabled={!hasArchivistData && !uploadedImage}>🗑️</button>
+                                 </div>
+                            </div>
+
+                            <!-- IMAGE UPLOAD -->
+                            <div style="margin-bottom: 8px; display: flex; gap: 5px; align-items: center;">
+                                <label class="action-btn secondary" style="margin: 0; text-align: center; cursor: pointer;">
+                                    📷 LOAD IMAGE / WEBTOON
+                                    <input type="file" accept="image/*" onchange={handleImageUpload} style="display: none;">
+                                </label>
+                                {#if uploadedImage}
+                                    <button class="scrub-btn" onclick={clearImage} title="Clear Image">X</button>
+                                {/if}
+                            </div>
+
+                            <textarea
+                                class="retro-input archivist-prompt"
+                                rows="2"
+                                placeholder="INSTRUCTIONS: Focus area OR Story Title (e.g. 'The Matrix')"
+                                bind:value={forgeData.archivistPrompt}
+                                use:autoResize={forgeData.archivistPrompt}
+                            ></textarea>
+
+                            <div class="grid-2">
+                                <button class="action-btn tertiary outline-btn" onclick={runOutlineGeneration}>
+                                    {hasArchivistData || uploadedImage ? 'ANALYZE BUFFER' : 'GENERATE FROM TITLE'}
+                                </button>
+                                <button class="action-btn secondary outline-btn" onclick={runDeepRename}>
+                                    🏷️ RENAME CAST (DEEP)
+                                </button>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    {#if forgeData.lastActionPlan}
+                        <div class="forge-report win95-popup-window">
+                             <div class="win95-titlebar">
+                                <div class="win95-titlebar-text">
+                                    <span>🛡️</span> <span>Repair Plan</span>
+                                </div>
+                                 <div class="win95-controls">
+                                    <button class="win95-close-btn" onclick={() => { if(forgeData) forgeData.lastActionPlan = null; saveAll(false); }}>X</button>
+                                </div>
+                            </div>
+                            <div class="win95-menubar">
+                                <span class="win95-menu-item">Actions</span>
+                            </div>
+
+                            <div class="win95-content-inset">
+                                {#if forgeData.lastActionPlan.thought_process}
+                                    <details class="thought-trace bevel-groove">
+                                        <summary class="thought-header">COGNITIVE TRACE (RAW)</summary>
+                                        <div class="thought-content">{forgeData.lastActionPlan.thought_process}</div>
+                                    </details>
+                                  {/if}
+
+                                    <div class="weakness-alert">WEAK LINK: {forgeData.lastActionPlan.weakest_link}</div>
+
+                                {#if forgeData.lastActionPlan.repairs}
+                                    <div class="repair-list">
+                                          {#each forgeData.lastActionPlan.repairs as repair, i}
+                                            <div class="repair-item">
+                                              <div class="repair-header">ISSUE {i+1}: {repair.issue}</div>
+                                               <div class="repair-body">{repair.instruction}</div>
+                                              <div class="repair-why">RATIONALE: {repair.why}</div>
+                                            </div>
+                                        {/each}
+                                    </div>
+                                {:else if forgeData.lastActionPlan.steps}
+                                    <div class="repair-list legacy-mode">
+                                       <p class="legacy-note">[LEGACY REPORT DETECTED - RE-RUN FOR DETAILS]</p>
+                                        <ol class="forge-steps">
+                                            {#each forgeData.lastActionPlan.steps as step}
+                                                <li>{step}</li>
+                                            {/each}
+                                        </ol>
+                                    </div>
+                                {/if}
+
+                                 <button class="action-btn secondary" onclick={runAutoRepair} disabled={!activeFile}>EXECUTE REPAIR PROTOCOL (AUTO-PATCH)</button>
+                            </div>
+                        </div>
+                    {/if}
+                 </div>
+            {/if}
+
+        <!-- CRITIC TAB (FILE SPECIFIC) -->
+        {:else if currentTab === 'critic'}
+            {#if !activeFile}
+                 <div class="empty-state">INSERT DISK (OPEN MARKDOWN FILE)</div>
+            {:else if isProjectDataLoading}
+                 <div class="empty-state">READING DISK SECTORS...</div>
+                 <Win95ProgressBar label="MOUNTING..." estimatedDuration={1000} />
+            {:else if projectData}
                 <div class="panel-critic">
                     <div class="button-row">
                         <button class="action-btn primary" onclick={() => runAnalysis()}>
@@ -677,10 +931,10 @@
                         <button class="action-btn secondary" onclick={runQuickScan}>QUICK SCAN</button>
                     </div>
 
-                    {#if $processRegistry[activeFile.path] && $processOrigin[activeFile.path] === 'critic'} 
-                        <Win95ProgressBar label="ANALYZING..." estimatedDuration={estimatedDuration} /> 
+                    {#if $processRegistry[activeFile.path] && $processOrigin[activeFile.path] === 'critic'}
+                        <Win95ProgressBar label="ANALYZING..." estimatedDuration={estimatedDuration} />
                     {/if}
-                
+
                     {#if projectData.lastLightResult}
                         <!-- WIN95 POPUP STYLE QUICK SCAN -->
                         <div class="win95-popup-window">
@@ -740,9 +994,9 @@
                     {/if}
 
                     {#if projectData.lastAiResult}
-                        <CriticDisplay 
-                            data={projectData.lastAiResult} 
-                            meta={projectData.lastMetaResult} 
+                        <CriticDisplay
+                            data={projectData.lastAiResult}
+                            meta={projectData.lastMetaResult}
                             isProcessing={$processRegistry[activeFile.path]}
                             settings={settings}
                             onRunMeta={runMeta}
@@ -751,167 +1005,6 @@
                          <button class="action-btn tertiary" onclick={runGenerateReport} style="margin-top:10px;">📄 EXPORT FORENSIC REPORT</button>
                     {/if}
                 </div>
-
-            {:else if currentTab === 'wizard'}
-                 <WizardView
-                    app={app}
-                    settings={settings}
-                    activeFileStatus={!!($processRegistry[activeFile.path])}
-                    processOrigin={$processOrigin[activeFile.path]}
-                    estimatedDuration={estimatedDuration}
-
-                    wizardState={projectData.wizardState}
-                    onSave={debouncedSave}
-                    onAssist={runWizardAssist}
-                    onUploadContext={handleUploadContext}
-                    onScrubContext={handleScrubContext}
-                    onClear={handleClearWizardState}
-                    onAutoFill={runAutoFill}
-                    isContextSynced={isContextSynced}
-                    loadingField={wizardLoadingField}
-                    onGradeCharacter={handleGradeCharacter}
-                    onGradeStructure={handleGradeStructure}
-                    onRunGhostwriter={runGhostwriter}
-
-                    onUpdateDrives={handleDrivesUpdate}
-                    onUpdateSettings={handleSettingsUpdate}
-                    onRunSynthesis={runDriveSynthesis}
-                    onGetActiveContent={getActiveFileContent}
-                />
-
-            {:else if currentTab === 'forge'}
-                 <div class="panel-forge">
-                     <button class="action-btn primary" onclick={runForge}>GENERATE REPAIR PLAN</button>
-                     
-                     {#if $processRegistry[activeFile.path] && $processOrigin[activeFile.path] === 'forge'} 
-                        <Win95ProgressBar label="FORGING..." estimatedDuration={estimatedDuration} /> 
-                     {/if}
-
-                     <div class="repair-focus-area">
-                         <label for="repairFocus" class="input-label">REPAIR FOCUS (OPTIONAL):</label>
-                         <textarea 
-                            id="repairFocus"
-                            class="retro-input" 
-                            rows="2" 
-                            placeholder="E.g., 'Fix the pacing in Act 2' or 'Make the villain scarier'" 
-                            bind:value={projectData.repairFocus}
-                            use:autoResize={projectData.repairFocus}
-                        ></textarea>
-                    </div>
-
-                    <fieldset class="outline-fieldset win95-popup-window">
-                         <div class="win95-titlebar">
-                            <div class="win95-titlebar-text">
-                                <span>🔧</span> <span>Prose Tools</span>
-                            </div>
-                        </div>
-                        <div class="win95-content-inset" style="border:none; box-shadow:none; padding:10px;">
-                             <div class="button-grid">
-                                <button class="action-btn secondary" onclick={runFixDialogue}>FIX DIALOGUE PUNCTUATION</button>
-                                <button class="action-btn secondary" onclick={() => runAdverbKiller('highlight')}>HIGHLIGHT ADVERBS (RED)</button>
-                                <button class="action-btn secondary" onclick={runFilterHighlight}>HIGHLIGHT FILTER WORDS (YELLOW)</button>
-                            </div>
-                        </div>
-                    </fieldset>
-
-                    <fieldset class="outline-fieldset win95-popup-window">
-                         <div class="win95-titlebar">
-                            <div class="win95-titlebar-text">
-                                <span>📚</span> <span>Structural Archivist</span>
-                            </div>
-                        </div>
-                        <div class="win95-content-inset" style="border:none; box-shadow:none; padding:10px;">
-                            <div class="memory-core bevel-down">
-                                <div class="memory-status">
-                                    <div class="status-indicator">
-                                        <span class="led {hasArchivistData ? 'on' : 'off'}"></span>
-                                        <span>{hasArchivistData ? 'BUFFER LOADED' : 'BUFFER EMPTY'}</span>
-                                    </div>
-                                    <div class="status-details">{archivistLength} CHARS</div>
-                                </div>
-                                <div class="context-controls">
-                                    <button
-                                        class="upload-btn {isArchivistSynced ? 'synced' : ''}"
-                                        onclick={handleUploadArchivist}
-                                        disabled={isArchivistSynced}
-                                        title="Load active file into buffer"
-                                    >
-                                        {isArchivistSynced ? '✅ SYNCED' : '📥 LOAD BUFFER'}
-                                    </button>
-                                    <button class="scrub-btn" onclick={handleScrubArchivist} disabled={!hasArchivistData}>🗑️</button>
-                                 </div>
-                            </div>
-
-                            <textarea
-                                class="retro-input archivist-prompt"
-                                rows="2"
-                                placeholder="INSTRUCTIONS: Focus area OR Story Title (e.g. 'The Matrix')"
-                                bind:value={projectData.archivistPrompt}
-                                use:autoResize={projectData.archivistPrompt}
-                            ></textarea>
-
-                            <div class="grid-2">
-                                <button class="action-btn tertiary outline-btn" onclick={runOutlineGeneration}>
-                                    {hasArchivistData ? 'ANALYZE BUFFER' : 'GENERATE FROM TITLE'}
-                                </button>
-                                <!-- NEW BUTTON HERE -->
-                                <button class="action-btn secondary outline-btn" onclick={runDeepRename}>
-                                    🏷️ RENAME CAST (DEEP)
-                                </button>
-                            </div>
-                        </div>
-                    </fieldset>
-
-                    {#if projectData.lastActionPlan}
-                        <div class="forge-report win95-popup-window">
-                             <div class="win95-titlebar">
-                                <div class="win95-titlebar-text">
-                                    <span>🛡️</span> <span>Repair Plan</span>
-                                </div>
-                                 <div class="win95-controls">
-                                    <button class="win95-close-btn">X</button>
-                                </div>
-                            </div>
-                            <div class="win95-menubar">
-                                <span class="win95-menu-item">Actions</span>
-                            </div>
-
-                            <div class="win95-content-inset">
-                                {#if projectData.lastActionPlan.thought_process}
-                                    <details class="thought-trace bevel-groove">
-                                        <summary class="thought-header">COGNITIVE TRACE (RAW)</summary>
-                                        <div class="thought-content">{projectData.lastActionPlan.thought_process}</div>
-                                    </details>
-                                  {/if}
-
-                                    <div class="weakness-alert">WEAK LINK: {projectData.lastActionPlan.weakest_link}</div>
-
-                                {#if projectData.lastActionPlan.repairs}
-                                    <div class="repair-list">
-                                          {#each projectData.lastActionPlan.repairs as repair, i}
-                                            <div class="repair-item">
-                                              <div class="repair-header">ISSUE {i+1}: {repair.issue}</div>
-                                               <div class="repair-body">{repair.instruction}</div>
-                                              <div class="repair-why">RATIONALE: {repair.why}</div>
-                                            </div>
-                                        {/each}
-                                    </div>
-                                {:else if projectData.lastActionPlan.steps}
-                                    <div class="repair-list legacy-mode">
-                                       <p class="legacy-note">[LEGACY REPORT DETECTED - RE-RUN FOR DETAILS]</p>
-                                        <ol class="forge-steps">
-                                            {#each projectData.lastActionPlan.steps as step}
-                                                <li>{step}</li>
-                                            {/each}
-                                        </ol>
-                                    </div>
-                                {/if}
-
-                                 <button class="action-btn secondary" onclick={runAutoRepair}>EXECUTE REPAIR PROTOCOL (AUTO-PATCH)</button>
-                            </div>
-                        </div>
-                    {/if}
-                 </div>
             {/if}
         {/if}
     </div>
@@ -935,6 +1028,7 @@
     
     .action-btn { width: 100%; padding: 6px; font-weight: bold; cursor: pointer; border-top: 1px solid #fff; border-left: 1px solid #fff; border-right: 1px solid #000; border-bottom: 1px solid #000; box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf; background: var(--cj-bg); color: var(--cj-text); margin-bottom: 8px; font-size: 11px; }
     .action-btn:active { border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #fff; border-bottom: 1px solid #fff; box-shadow: inset 1px 1px 0 #808080; padding: 7px 5px 5px 7px; }
+    .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     
     .outline-fieldset { margin-bottom: 20px; border: 2px groove var(--cj-dim); padding: 0; }
     .outline-fieldset legend { margin-left: 5px; }
