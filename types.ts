@@ -44,6 +44,16 @@ export interface NigsSettings {
     wizardNegativeConstraints: string; 
     namePool: string;           // [NEW] Preferred Names
     negativeNamePool: string;   // [NEW] Banned Names
+
+    // --- ARBITRATION & CONTROL ---
+    agentWeights: {
+        logic: number;
+        soul: number;
+        market: number;
+    };
+    arbitrationEnabled: boolean;
+    disableRainbows: boolean;
+    luckTolerance: number; // 0-10
     
     // --- SYSTEM ---
     maxOutputTokens: number;    
@@ -89,6 +99,15 @@ export const DEFAULT_SETTINGS: NigsSettings = {
     wizardNegativeConstraints: "Avoid: Deus Ex Machina, Talking Animals, Dream Sequences, Modern Slang.",
     namePool: "",           // Default Empty
     negativeNamePool: "",   // Default Empty
+
+    agentWeights: {
+        logic: 1.0,
+        soul: 1.0,
+        market: 1.0
+    },
+    arbitrationEnabled: true,
+    disableRainbows: false,
+    luckTolerance: 5,
     
     maxOutputTokens: 8192,
     analysisPasses: 1,
@@ -147,6 +166,29 @@ export interface SandersonMetrics {
     likability?: number; // 0-100
 }
 
+export interface NigsVibeCheck {
+    score: number; // 0-100 (Soul Score)
+    mood: string;
+    critique: string;
+}
+
+export interface NigsFactReport {
+    score: number; // 0-100 (Logic Score)
+    inconsistencies: string[];
+    luck_incidents: string[];
+    deus_ex_machina_count: number;
+}
+
+export interface NigsArbitrationLog {
+    final_verdict: number; // The Adjusted Score
+    ruling: string;        // The Chief Justice's reasoning
+    logic_score: number;
+    soul_score: number;
+    market_score: number;
+    genre_modifier: number; // + / -
+    luck_penalty: number;
+}
+
 export interface NigsResponse {
     commercial_score: number;
     commercial_reason: string; 
@@ -177,6 +219,7 @@ export interface NigsResponse {
         logic: any;
         lit: any;
     };
+    arbitration_log?: NigsArbitrationLog;
 }
 
 export interface NigsLightGrade {

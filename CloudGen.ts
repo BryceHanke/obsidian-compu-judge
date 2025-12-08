@@ -1,5 +1,6 @@
 import { requestUrl, App } from 'obsidian';
 import type { NigsSettings, NigsResponse, NigsWizardState, NigsLightGrade, NigsActionPlan, NigsMetaResponse, NlpMetrics, CharacterBlock, StoryBlock, DriveBlock } from './types';
+import type { NigsVibeCheck, NigsFactReport, NigsArbitrationLog } from './types';
 import { 
     NIGS_SYSTEM_PROMPT, NIGS_TRIBUNAL, NIGS_SYNTHESIS_PROMPT, 
     NIGS_WIZARD_COMPOSITION_PROMPT, 
@@ -12,7 +13,8 @@ import {
     NIGS_AUTOFILL_PROMPT,
     NIGS_DRIVE_SYNTHESIS_PROMPT,
     NIGS_RENAME_PROMPT,
-    NIGS_GRADE_ANALYST_PROMPT
+    NIGS_GRADE_ANALYST_PROMPT,
+    NIGS_ARBITRATOR_PROMPT
 } from './prompts'; 
 import { setStatus } from './store';
 
@@ -320,94 +322,86 @@ ${sourceMaterial}
         let finalResponse: NigsResponse | null = null;
         let isApproved = false;
 
-        // Loop runs at least once
+        // [UPDATED] Tribunal Loop with Soul, Jester, Logic, Market
         do {
             attempts++;
             setStatus(attempts > 1 ? `RE-CONVENING TRIBUNAL (ATTEMPT ${attempts})...` : "STARTING TRIBUNAL PROCESS...");
 
-            // --- ITERATIVE TRIBUNAL LOOP (INTERNAL 3 CYCLES) ---
-            let previousConsensus = "";
-            let finalTribunalResults = { market: "", logic: "", lit: "", forensic: "" };
+            // --- PARALLEL TRIBUNAL CALL ---
+            // We run 4 agents: Soul (Vibe), Logic (Truth), Market (ROI), Jester (Satire)
+            // Plus Forensic (System) for deep metrics.
 
-            // Define cycles: [Temperature Multiplier, Description]
-            const cycles = [
-                { mult: 1.0, label: "BASELINE" },
-                { mult: 1.5, label: "STRESS TEST (HIGH TEMP)" },
-                { mult: 0.5, label: "FACT CHECK (LOW TEMP)" }
-            ];
+            setStatus("CONVENING AGENTS: SOUL, JESTER, LOGIC, MARKET...");
 
-            for (const cycle of cycles) {
-                setStatus(`TRIBUNAL CYCLE: ${cycle.label}...`);
+            // Temps
+            const soulTemp = this.getTemp(0.9); // High creativity
+            const logicTemp = this.getTemp(0.1, true); // Strict
+            const marketTemp = this.getTemp(0.5);
+            const jesterTemp = this.getTemp(1.1); // Chaos
 
-                // Inject previous consensus into prompt if available
-                const consensusBlock = previousConsensus ? `
-[PREVIOUS TRIBUNAL CONSENSUS]:
-The agents have previously debated and found:
-${previousConsensus}
+            const [soulRaw, jesterRaw, logicRaw, marketRaw, forensicRaw] = await Promise.all([
+                this.callAI(baseInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp).catch(e => `{"error": "Soul Failed"}`),
+                this.callAI(baseInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp).catch(e => `{"error": "Jester Failed"}`),
+                this.callAI(baseInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp).catch(e => `{"error": "Logic Failed"}`),
+                this.callAI(baseInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp).catch(e => `{"error": "Market Failed"}`),
+                this.callAI(baseInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp).catch(e => `{"error": "Forensic Failed"}`)
+            ]);
 
-[INSTRUCTION]: Review the consensus above. If you agree, deepen the analysis. If you disagree, provide evidence.
-` : "";
+            // Parse individual reports
+            const soulReport = this.parseJson<NigsVibeCheck>(soulRaw);
+            const jesterReport = this.parseJson<any>(jesterRaw);
+            const logicReport = this.parseJson<NigsFactReport>(logicRaw);
+            const marketReport = this.parseJson<any>(marketRaw);
 
-                const fullPrompt = `${baseInputPayload}\n${consensusBlock}`;
+            // --- CHIEF JUSTICE ARBITRATION ---
+            setStatus("CHIEF JUSTICE: DELIBERATING...");
 
-                // Calculate Temps for this cycle
-                const baseTemp = 0.7;
-                const cycleTemp = Math.min(2.0, Math.max(0.1, baseTemp * cycle.mult));
-                const logicTemp = Math.min(0.5, Math.max(0.0, 0.1 * cycle.mult)); // Logic must stay colder
+            const arbitrationPayload = `
+[TRIBUNAL REPORTS]:
+1. SOUL: Score ${soulReport.score} (${soulReport.mood}) - ${soulReport.critique}
+2. LOGIC: Score ${logicReport.score} - ${logicReport.inconsistencies.length} plot holes, ${logicReport.deus_ex_machina_count} Deus Ex Machinas.
+3. MARKET: ${JSON.stringify(marketReport)}
+4. JESTER: ${JSON.stringify(jesterReport)}
 
-                // Run Agents in Parallel
-                const [marketRaw, logicRaw, litRaw, forensicRaw] = await Promise.all([
-                    this.callAI(fullPrompt, NIGS_TRIBUNAL.MARKET, true, false, cycleTemp)
-                        .catch(e => `{"error": "Market Agent Failed: ${e.message}"}`),
-                    this.callAI(fullPrompt, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp)
-                        .catch(e => `{"error": "Logic Agent Failed: ${e.message}"}`),
-                    this.callAI(fullPrompt, NIGS_TRIBUNAL.LITERARY, true, false, cycleTemp)
-                        .catch(e => `{"error": "Lit Agent Failed: ${e.message}"}`),
-                    this.callAI(fullPrompt, NIGS_SYSTEM_PROMPT, true, false, logicTemp)
-                        .catch(e => `{"error": "Forensic Agent Failed: ${e.message}"}`)
-                ]);
-
-                // Save raw results for the final synthesis
-                finalTribunalResults = { market: marketRaw, logic: logicRaw, lit: litRaw, forensic: forensicRaw };
-
-                // Synthesize Interim Consensus (for the next loop, unless it's the last one)
-                if (cycle.label !== "FACT CHECK (LOW TEMP)") {
-                     setStatus(`SYNTHESIZING CONSENSUS (${cycle.label})...`);
-                     const synthesisPrompt = `
-[INTERIM DEBATE]:
-1. MARKET: ${marketRaw}
-2. LOGIC: ${logicRaw}
-3. LIT: ${litRaw}
-
-[TASK]: Summarize the key points of agreement and disagreement. Output a brief textual summary.
+[GENRE CONTEXT]: ${context?.inspiration || "Unknown"}
+[SETTINGS]:
+- Logic Weight: ${this.settings.agentWeights.logic}
+- Soul Weight: ${this.settings.agentWeights.soul}
+- Luck Tolerance: ${this.settings.luckTolerance}
 `;
-                     previousConsensus = await this.callAI(synthesisPrompt, "You are the Tribunal Clerk. Summarize findings.", false, false, 0.5);
-                }
+
+            const arbitrationRaw = await this.callAI(arbitrationPayload, NIGS_ARBITRATOR_PROMPT, true, false, 0.2);
+            const arbitrationLog = this.parseJson<NigsArbitrationLog>(arbitrationRaw);
+
+            // --- SYNTHESIS (Generating Final NigsResponse) ---
+            // We use the Forensic scan as the base structure, but OVERRIDE the scores with the Arbitrator's verdict.
+            finalResponse = this.parseJson<NigsResponse>(forensicRaw);
+
+            // Apply Arbitration Overrides
+            finalResponse.commercial_score = arbitrationLog.final_verdict;
+            finalResponse.commercial_reason = `[CHIEF JUSTICE RULING]: ${arbitrationLog.ruling}`;
+            finalResponse.niche_score = soulReport.score;
+            finalResponse.niche_reason = soulReport.critique;
+            finalResponse.cohesion_score = logicReport.score;
+            finalResponse.cohesion_reason = `Plot Holes: ${logicReport.inconsistencies.length}`;
+
+            // Attach Arbitration Log
+            finalResponse.arbitration_log = arbitrationLog;
+
+            // Populate Tribunal Breakdown for UI
+            finalResponse.tribunal_breakdown = {
+                market: marketReport,
+                logic: logicReport,
+                lit: soulReport // Mapping Soul to Lit slot for UI compatibility
+            };
+
+            // --- VETO PROTOCOL (Logic Hard Fail) ---
+            // If logic score is < 0 (Negative), we slash the commercial score. 0 is passing.
+            if (logicReport.score < 0) {
+                 const vetoFactor = 1 / 6;
+                 finalResponse.commercial_score = Math.round(finalResponse.commercial_score * vetoFactor);
+                 finalResponse.commercial_reason += " [LOGIC VETO: Score Slashed]";
             }
-
-            // --- FINAL VERDICT ---
-            setStatus("ISSUING FINAL JUDGMENT...");
-
-            const finalSynthesisPayload = `
-[FINAL TRIBUNAL REPORTS]:
-1. MARKET ANALYST:
-${finalTribunalResults.market}
-2. LOGIC ENGINE:
-${finalTribunalResults.logic}
-3. LITERARY CRITIC:
-${finalTribunalResults.lit}
-4. FORENSIC SCAN:
-${finalTribunalResults.forensic}
-
-[TASK]: Synthesize a FINAL NigsResponse JSON.
-- **ZERO-BASED SCORING:** Start at 0.
-- **LOGIC VETO:** If Logic/Forensic found a Plot Hole, the final score MUST be negative.
-- **MARKET REALITY:** If Market says boring, the final score cannot be positive.
-`;
-
-            const strictTemp = this.getTemp(0.1, true);
-            const finalResStr = await this.callAI(finalSynthesisPayload, NIGS_SYNTHESIS_PROMPT, true, false, strictTemp);
-            finalResponse = this.parseJson<NigsResponse>(finalResStr);
 
             // --- GRADE ANALYST CHECK ---
             setStatus("GRADE ANALYST: VERIFYING OUTPUT...");
@@ -417,7 +411,6 @@ ${JSON.stringify(finalResponse)}
 
 [TASK]: Verify this report matches the Zero-Based Scoring Protocol and is complete.
 `;
-            // Low Temp for Analyst
             const analystResStr = await this.callAI(analystPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2);
             const analystRes = this.parseJson<{ verdict: string, reason: string }>(analystResStr);
 

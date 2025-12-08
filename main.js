@@ -79,6 +79,14 @@ var DEFAULT_SETTINGS = {
   // Default Empty
   negativeNamePool: "",
   // Default Empty
+  agentWeights: {
+    logic: 1,
+    soul: 1,
+    market: 1
+  },
+  arbitrationEnabled: true,
+  disableRainbows: false,
+  luckTolerance: 5,
   maxOutputTokens: 8192,
   analysisPasses: 1,
   enableTribunal: true,
@@ -132,6 +140,28 @@ var DEFAULT_WIZARD_STATE = {
 var import_obsidian = require("obsidian");
 
 // prompts.ts
+var NIGS_CORE_INTELLIGENCE = `
+[INTELLIGENCE KERNEL v2.0]
+[MISSION]: ENSURE LOGIC, CAUSALITY, AND THEMATIC RESONANCE.
+
+### 1. THE LOGIC GATES (MANDATORY CHECKS):
+Every creative decision must pass these 5 gates:
+1.  **PSYCHOLOGICAL LOGIC:** Does this align with the character's flaw/desire?
+2.  **ETHICAL LOGIC:** Does this align with the character's moral code?
+3.  **CAUSAL LOGIC:** Is this event the direct physical consequence of the previous event? (No "And then", only "Therefore").
+4.  **POSSIBILITY LOGIC:** Does the established magic/physics actually support this?
+5.  **STRATEGIC LOGIC:** Is this the smartest move the character could make? (Avoid the "Idiot Plot").
+
+### 2. DEEP NOMENCLATURE PROTOCOL:
+For ANY new name (Character, Place, Item):
+1.  **Identify Meaning:** What is the core trait?
+2.  **Abstraction:** Find a root (Latin/Greek/Old English).
+3.  **Mutation:** Corrupt it phonetically.
+4.  **No Cheese:** No puns, no portmanteaus.
+
+### 3. VALUE SHIFT PROTOCOL:
+Every scene/beat MUST display a shift in polarity (e.g., +Life to -Death, +Hope to -Despair).
+`;
 var NIGS_SYSTEM_PROMPT = `
 [SYSTEM OVERRIDE: NARRATIVE GRANDMASTER ENGINE v21.0]
 [MODE]: RUTHLESS EDITOR MODE (BRUTAL HONESTY)
@@ -224,6 +254,8 @@ var NIGS_FORGE_PROMPT = `
 [ROLE]: THE FORGE (Narrative Forensic Analyst).
 [TASK]: Conduct a DEEP SCAN and generate a completely accurate and exhaustive "Story Bible" based ONLY on the text provided.
 
+${NIGS_CORE_INTELLIGENCE}
+
 **[DIAGNOSTIC PROTOCOL - FORENSIC TELEMETRY]:**
 You must analyze the text with extreme precision. Do not hallucinate details. If something is ambiguous, note it as such.
 
@@ -272,26 +304,12 @@ var NIGS_WIZARD_COMPOSITION_PROMPT = `
 [ROLE]: Grandmaster Ghostwriter.
 [TASK]: Expand Story DNA into a COMPREHENSIVE, DEEPLY STRUCTURED EPIC.
 
+${NIGS_CORE_INTELLIGENCE}
+
 [SCOPE: THE LOGICAL EPIC]
 - **QUALITY OVER QUANTITY:** Every beat must exist for a reason.
-- **VALUE SHIFTS:** Every scene must start at one polarity and end on another (e.g., Safety -> Danger).
 - **SUBTEXT:** Characters must never speak the plot. They must speak their desires, usually through lies.
 - **UNBOUNDED CAST:** Generate an **EXHAUSTIVE CAST LIST**. Do not limit the number of characters. Include major heroes, minor support, villains, henchmen, and incidental figures. If they exist in the story logic, they must be included.
-
-### MULTI-CHAIN LOGIC PROTOCOL (5-POINT CHECK):
-You must validate every major creative decision through FIVE distinct logic chains to ensure "Perfect Sense":
-1.  **PSYCHOLOGICAL LOGIC:** Does this align with the character's flaw/desire?
-2.  **ETHICAL LOGIC:** Does this align with the character's moral code? (Even villains have codes).
-3.  **CAUSAL LOGIC:** Is this event the direct physical consequence of the previous event? (No "And then", only "Therefore").
-4.  **POSSIBILITY LOGIC:** Does the established magic system, technology, or physics actually support this?
-5.  **STRATEGIC LOGIC:** Is this the smartest move the character could make? (Avoid the "Idiot Plot").
-
-### DEEP NOMENCLATURE PROTOCOL:
-For ANY new name (Character, Place, Item) not explicitly defined in the source:
-1.  **Identify Meaning:** What is the core trait?
-2.  **Abstraction:** Find a root (Latin/Greek/Old English).
-3.  **Mutation:** Corrupt it phonetically.
-4.  **No Cheese:** No puns, no portmanteaus.
 
 [STRUCTURE: 7-ACT ANATOMY]:
 You must organize the story using the **7-Act Truby Structure** (compatible with Sanderson's Plot Points):
@@ -433,6 +451,8 @@ var NIGS_DRIVE_SYNTHESIS_PROMPT = `
 [SYSTEM OVERRIDE: NARRATIVE ALCHEMIST v21.0]
 [TASK]: Create the **MOST COMPELLING STORY POSSIBLE** by fusing the DNA of the provided "Narrative Drives".
 
+${NIGS_CORE_INTELLIGENCE}
+
 [OBJECTIVE: THE MASTERPIECE]:
 You are aiming for a Quality Score of 100/100.
 - **Compelling:** High stakes, deep emotion, unexpected twists.
@@ -445,26 +465,11 @@ You are aiming for a Quality Score of 100/100.
 - **UNBOUNDED CAST:** Generate an **EXHAUSTIVE CAST LIST**. Include every character necessary to populate the world realistically (Major, Minor, Background).
 - **LONG PLOT:** Complex structure based on causal chains.
 
-### MULTI-CHAIN LOGIC PROTOCOL (THE 5-POINT COHERENCE ENGINE):
-You must validate every major creative decision through FIVE distinct logic chains to ensure "Perfect Sense":
-1.  **PSYCHOLOGICAL LOGIC:** Does this character's action align with their established flaw and desire?
-2.  **ETHICAL LOGIC:** Does this action align with the character's moral code?
-3.  **CAUSAL LOGIC:** Is this event the direct physical consequence of the previous event? (No "And then", only "Therefore").
-4.  **POSSIBILITY LOGIC:** Does the established magic system, technology, or physics actually support this?
-5.  **STRATEGIC LOGIC:** Is this the smartest move the character could make? (Avoid the "Idiot Plot").
-
 ### INSTRUCTION PRIORITY (META-DATA SCAN):
 Scan the content of every Drive for **User Instructions** (e.g., "Notes:", "Requirements:", "Do not change X", "Make sure...").
 1.  **BINDING:** Explicit user commands found within the text MUST be obeyed. They override "Genetic Splicing" logic.
 2.  **SPECIFICITY:** If a drive explicitly names a character or location and says "Use this name", you must bypass the Nomenclature Protocol for that specific entity.
 3.  **CONFLICT RESOLUTION:** If Drive A says "No Magic" and Drive B says "High Magic", prioritize the instructions in the *later* drive (Drive B overrides Drive A).
-
-### DEEP NOMENCLATURE PROTOCOL (THE CHAIN OF LOGIC):
-For all entities NOT covered by specific user instructions:
-1.  **IDENTIFY MEANING:** What is the core trait?
-2.  **ABSTRACTION LAYER:** Find a root word in Latin, Greek, Sanskrit, or Old English.
-3.  **MUTATION:** Corrupt the word phonetically to create a distinct proper noun.
-4.  **THE "CHEESE" FILTER:** No Puns. No Portmanteaus. No Direct Descriptors.
 
 ### FUSION PROTOCOL:
 1.  **NO RECYCLING:** Do not summarize the drives. Do not use the exact plots provided (unless instructed).
@@ -539,6 +544,39 @@ Start at 0.
   "log_line": "The sales pitch."
 }
 `,
+  SOUL: `
+[IDENTITY]: THE VIBE CHECKER (THE SOUL).
+[CORE DRIVE]: Emotional Resonance & Atmosphere.
+[METRICS - ZERO BASED]:
+Start at 0.
+- **Vibe:** +Points for mood, atmosphere, and "Soul".
+- **Emotion:** +Points if it makes you FEEL.
+- **Beauty:** +Points for prose quality (even if slow).
+- **Cringe:** -Points for forced drama or cheap sentiment.
+
+[OUTPUT JSON]:
+{
+    "score": 0,
+    "mood": "e.g. Melancholic, Cyberpunk, Hopeful",
+    "critique": "Analysis of the 'Soul' of the piece."
+}
+`,
+  JESTER: `
+[IDENTITY]: THE ROYAL JESTER (THE SATIRIST).
+[CORE DRIVE]: Mockery & Truth through Humor.
+[METRICS - ZERO BASED]:
+Start at 0.
+- **Pretentious:** -Points if the author tries too hard.
+- **Clich\xE9:** -Points for overused tropes.
+- **Irony:** +Points for self-awareness.
+- **Roast:** Be funny but accurate.
+
+[OUTPUT JSON]:
+{
+    "roast": "A 1-sentence savage takedown or compliment.",
+    "score_modifier": 0 // Suggest a deduction or bonus
+}
+`,
   LOGIC: `
 [IDENTITY]: LOGIC ENGINE.
 [CORE DRIVE]: Internal Consistency & Causality.
@@ -548,59 +586,46 @@ Start at 0.
 - **Character Consistency:** -10 for breaking character.
 - **World Mechanics:** -10 for breaking magic/tech rules.
 - **Promises:** -10 for breaking a promise made to the reader.
-- **No Bonus:** Logic is expected. You mostly subtract. Max positive is +5 for exceptionally tight plotting.
+- **LUCK CHECK:**
+    - **Inciting Luck (GOOD):** Luck that gets the hero INTO trouble. (Neutral or +Points).
+    - **Deus Ex Machina (BAD):** Luck that gets the hero OUT of trouble. (-20 Points).
 
 [OUTPUT JSON]:
 {
-  "cohesion_score": 0,
-  "cohesion_reason": "Logic report (+/- reasons).",
-  "content_warning": "Logical failures detected."
-}
-`,
-  LITERARY: `
-[IDENTITY]: LITERARY CRITIC.
-[CORE DRIVE]: Theme, Prose, & Subtext.
-[METRICS - ZERO BASED]:
-Start at 0.
-- **Voice:** +Points for unique style.
-- **Theme:** +Points for strong moral argument.
-- **Novelty:** +Points for originality, -Points for clich\xE9s.
-
-[OUTPUT JSON]:
-{
-  "niche_score": 0,
-  "niche_reason": "Thematic analysis (+/- reasons).",
-  "third_act_score": 0,
-  "novelty_score": 0
+  "score": 0,
+  "inconsistencies": ["List of plot holes..."],
+  "luck_incidents": ["List of lucky breaks..."],
+  "deus_ex_machina_count": 0
 }
 `
 };
-var NIGS_SYNTHESIS_PROMPT = `
-[IDENTITY]: CHIEF JUSTICE (THE JUDGE).
-[TASK]: Synthesize the conflicting reports from your Tribunal (Market, Logic, Lit, and Forensic) into a FINAL VERDICT using the **Zero-Based Scoring Protocol**.
-[OBJECTIVE]: UNBIASED ASSESSMENT based purely on MERIT. No external bias.
+var NIGS_ARBITRATOR_PROMPT = `
+[IDENTITY]: CHIEF JUSTICE (THE FINAL ARBITER).
+[TASK]: Synthesize the conflicting reports from your Tribunal (Soul, Jester, Logic, Market) into a FINAL VERDICT using the **Zero-Based Scoring Protocol**.
 
-[INPUT DATA]: See User Message. You have reports from:
-1. MARKET ANALYST
-2. LOGIC ENGINE
-3. LITERARY CRITIC
-4. FORENSIC SCAN (Legacy Model)
+[INPUT DATA]:
+You will receive reports from 4 Agents. They will disagree. You must arbitrate.
 
-[JUDGMENT PROTOCOL - QUALITY CALIBRATION]:
-Compare the input against these **QUALITY STANDARDS** (Genre irrelevant, Execution paramount):
-1. **0 (Competent):** Quality equivalent to *Ready Player One*. Functional, readable, but relies on tropes/nostalgia. Safe.
-2. **+50 (Masterpiece):** Quality equivalent to *The Godfather*. Perfect logic, deep thematic resonance, high stakes, total immersion.
-3. **-50 (Critical Failure):** Quality equivalent to *The Room*. Incoherent, broken logic, inconsistent characters, unintentional comedy.
+[ARBITRATION RULES]:
+1. **Genre Weighting:**
+   - If Romance/SliceOfLife: Soul > Logic.
+   - If SciFi/Mystery: Logic > Soul.
+   - If Comedy: Jester > All.
+2. **The "Deus Ex Machina" Law:**
+   - If Logic Agent flags > 0 Deus Ex Machina events, the Final Score CANNOT exceed 60 (Good), no matter how good the Soul score is.
+3. **The "Boring" Law:**
+   - If Market says "Boring" and Soul says "Beautiful", check the Pacing. Slow != Bad, but Boring = Bad.
 
-[INSTRUCTIONS]:
-- **Start at 0**.
-- **ADD** points for strengths identified by Market/Lit.
-- **SUBTRACT** points for weaknesses identified by Logic/Forensic.
-- **Logic Veto:** If Logic/Forensic found a Plot Hole, the final Cohesion Score MUST be negative.
-- **Character Sliders:** Ensure the protagonist scores (Competence/Proactivity/Likability) are extracted or estimated if not provided.
-
-[OUTPUT JSON]: Same format as NIGS_SYSTEM_PROMPT. Ensure all scores are signed integers (e.g. -15, 0, +22).
-- **Include "quality_arc":** An array of integers (0-100) representing the EXECUTION QUALITY of each beat (not the tension).
+[OUTPUT JSON]:
+{
+  "final_verdict": 0,
+  "ruling": "A judicial summary explaining the final score, citing the agents (e.g. 'Logic overruled Soul due to Plot Hole').",
+  "logic_score": 0,
+  "soul_score": 0,
+  "market_score": 0,
+  "genre_modifier": 0,
+  "luck_penalty": 0
+}
 `;
 var NIGS_GRADE_ANALYST_PROMPT = `
 [ROLE]: THE ANALYST (Quality Assurance Agent).
@@ -4435,6 +4460,20 @@ function from_html(content, flags2) {
     return clone;
   };
 }
+function text(value = "") {
+  if (!hydrating) {
+    var t3 = create_text(value + "");
+    assign_nodes(t3, t3);
+    return t3;
+  }
+  var node = hydrate_node;
+  if (node.nodeType !== TEXT_NODE) {
+    node.before(node = create_text());
+    set_hydrate_node(node);
+  }
+  assign_nodes(node, node);
+  return node;
+}
 function comment() {
   if (hydrating) {
     assign_nodes(hydrate_node, null);
@@ -7061,67 +7100,57 @@ ${sourceMaterial}
       do {
         attempts++;
         setStatus(attempts > 1 ? `RE-CONVENING TRIBUNAL (ATTEMPT ${attempts})...` : "STARTING TRIBUNAL PROCESS...");
-        let previousConsensus = "";
-        let finalTribunalResults = { market: "", logic: "", lit: "", forensic: "" };
-        const cycles = [
-          { mult: 1, label: "BASELINE" },
-          { mult: 1.5, label: "STRESS TEST (HIGH TEMP)" },
-          { mult: 0.5, label: "FACT CHECK (LOW TEMP)" }
-        ];
-        for (const cycle of cycles) {
-          setStatus(`TRIBUNAL CYCLE: ${cycle.label}...`);
-          const consensusBlock = previousConsensus ? `
-[PREVIOUS TRIBUNAL CONSENSUS]:
-The agents have previously debated and found:
-${previousConsensus}
+        setStatus("CONVENING AGENTS: SOUL, JESTER, LOGIC, MARKET...");
+        const soulTemp = this.getTemp(0.9);
+        const logicTemp = this.getTemp(0.1, true);
+        const marketTemp = this.getTemp(0.5);
+        const jesterTemp = this.getTemp(1.1);
+        const [soulRaw, jesterRaw, logicRaw, marketRaw, forensicRaw] = await Promise.all([
+          this.callAI(baseInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp).catch((e2) => `{"error": "Soul Failed"}`),
+          this.callAI(baseInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp).catch((e2) => `{"error": "Jester Failed"}`),
+          this.callAI(baseInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp).catch((e2) => `{"error": "Logic Failed"}`),
+          this.callAI(baseInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp).catch((e2) => `{"error": "Market Failed"}`),
+          this.callAI(baseInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp).catch((e2) => `{"error": "Forensic Failed"}`)
+        ]);
+        const soulReport = this.parseJson(soulRaw);
+        const jesterReport = this.parseJson(jesterRaw);
+        const logicReport = this.parseJson(logicRaw);
+        const marketReport = this.parseJson(marketRaw);
+        setStatus("CHIEF JUSTICE: DELIBERATING...");
+        const arbitrationPayload = `
+[TRIBUNAL REPORTS]:
+1. SOUL: Score ${soulReport.score} (${soulReport.mood}) - ${soulReport.critique}
+2. LOGIC: Score ${logicReport.score} - ${logicReport.inconsistencies.length} plot holes, ${logicReport.deus_ex_machina_count} Deus Ex Machinas.
+3. MARKET: ${JSON.stringify(marketReport)}
+4. JESTER: ${JSON.stringify(jesterReport)}
 
-[INSTRUCTION]: Review the consensus above. If you agree, deepen the analysis. If you disagree, provide evidence.
-` : "";
-          const fullPrompt = `${baseInputPayload}
-${consensusBlock}`;
-          const baseTemp = 0.7;
-          const cycleTemp = Math.min(2, Math.max(0.1, baseTemp * cycle.mult));
-          const logicTemp = Math.min(0.5, Math.max(0, 0.1 * cycle.mult));
-          const [marketRaw, logicRaw, litRaw, forensicRaw] = await Promise.all([
-            this.callAI(fullPrompt, NIGS_TRIBUNAL.MARKET, true, false, cycleTemp).catch((e2) => `{"error": "Market Agent Failed: ${e2.message}"}`),
-            this.callAI(fullPrompt, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp).catch((e2) => `{"error": "Logic Agent Failed: ${e2.message}"}`),
-            this.callAI(fullPrompt, NIGS_TRIBUNAL.LITERARY, true, false, cycleTemp).catch((e2) => `{"error": "Lit Agent Failed: ${e2.message}"}`),
-            this.callAI(fullPrompt, NIGS_SYSTEM_PROMPT, true, false, logicTemp).catch((e2) => `{"error": "Forensic Agent Failed: ${e2.message}"}`)
-          ]);
-          finalTribunalResults = { market: marketRaw, logic: logicRaw, lit: litRaw, forensic: forensicRaw };
-          if (cycle.label !== "FACT CHECK (LOW TEMP)") {
-            setStatus(`SYNTHESIZING CONSENSUS (${cycle.label})...`);
-            const synthesisPrompt = `
-[INTERIM DEBATE]:
-1. MARKET: ${marketRaw}
-2. LOGIC: ${logicRaw}
-3. LIT: ${litRaw}
-
-[TASK]: Summarize the key points of agreement and disagreement. Output a brief textual summary.
+[GENRE CONTEXT]: ${(context == null ? void 0 : context.inspiration) || "Unknown"}
+[SETTINGS]:
+- Logic Weight: ${this.settings.agentWeights.logic}
+- Soul Weight: ${this.settings.agentWeights.soul}
+- Luck Tolerance: ${this.settings.luckTolerance}
 `;
-            previousConsensus = await this.callAI(synthesisPrompt, "You are the Tribunal Clerk. Summarize findings.", false, false, 0.5);
-          }
+        const arbitrationRaw = await this.callAI(arbitrationPayload, NIGS_ARBITRATOR_PROMPT, true, false, 0.2);
+        const arbitrationLog = this.parseJson(arbitrationRaw);
+        finalResponse = this.parseJson(forensicRaw);
+        finalResponse.commercial_score = arbitrationLog.final_verdict;
+        finalResponse.commercial_reason = `[CHIEF JUSTICE RULING]: ${arbitrationLog.ruling}`;
+        finalResponse.niche_score = soulReport.score;
+        finalResponse.niche_reason = soulReport.critique;
+        finalResponse.cohesion_score = logicReport.score;
+        finalResponse.cohesion_reason = `Plot Holes: ${logicReport.inconsistencies.length}`;
+        finalResponse.arbitration_log = arbitrationLog;
+        finalResponse.tribunal_breakdown = {
+          market: marketReport,
+          logic: logicReport,
+          lit: soulReport
+          // Mapping Soul to Lit slot for UI compatibility
+        };
+        if (logicReport.score <= 0) {
+          const vetoFactor = 1 / 6;
+          finalResponse.commercial_score = Math.round(finalResponse.commercial_score * vetoFactor);
+          finalResponse.commercial_reason += " [LOGIC VETO: Score Slashed]";
         }
-        setStatus("ISSUING FINAL JUDGMENT...");
-        const finalSynthesisPayload = `
-[FINAL TRIBUNAL REPORTS]:
-1. MARKET ANALYST:
-${finalTribunalResults.market}
-2. LOGIC ENGINE:
-${finalTribunalResults.logic}
-3. LITERARY CRITIC:
-${finalTribunalResults.lit}
-4. FORENSIC SCAN:
-${finalTribunalResults.forensic}
-
-[TASK]: Synthesize a FINAL NigsResponse JSON.
-- **ZERO-BASED SCORING:** Start at 0.
-- **LOGIC VETO:** If Logic/Forensic found a Plot Hole, the final score MUST be negative.
-- **MARKET REALITY:** If Market says boring, the final score cannot be positive.
-`;
-        const strictTemp = this.getTemp(0.1, true);
-        const finalResStr = await this.callAI(finalSynthesisPayload, NIGS_SYNTHESIS_PROMPT, true, false, strictTemp);
-        finalResponse = this.parseJson(finalResStr);
         setStatus("GRADE ANALYST: VERIFYING OUTPUT...");
         const analystPrompt = `
 [INPUT REPORT]:
@@ -28795,28 +28824,29 @@ var root_10 = from_html(`<div class="detail-category svelte-1wfho06"><div class=
 var root_9 = from_html(`<div class="section-header svelte-1wfho06">FORENSIC REPORT</div> <div class="details-grid bevel-down svelte-1wfho06"></div>`, 1);
 var root_13 = from_html(`<div class="dropdown-list svelte-1wfho06"><div class="dd-item svelte-1wfho06">Inject Issue to Repair</div> <div class="dd-item svelte-1wfho06">Focus on Commercial Appeal</div></div>`);
 var root_14 = from_html(`<div class="dropdown-list svelte-1wfho06"><div class="dd-item svelte-1wfho06">Inject Logic Fix</div> <div class="dd-item svelte-1wfho06">Focus on Cohesion</div></div>`);
-var root_15 = from_html(`<div class="dropdown-list svelte-1wfho06"><div class="dd-item svelte-1wfho06">Inject Thematic Repair</div> <div class="dd-item svelte-1wfho06">Focus on Novelty</div></div>`);
-var root_12 = from_html(`<div class="section-header svelte-1wfho06">TRIBUNAL CONSENSUS</div> <div class="tribunal-grid"><div class="win95-popup-window"><div><div class="win95-titlebar-text"><span>\u{1F4C8}</span> <span>MARKET ANALYST</span></div></div> <div class="win95-menubar" style="position:relative;"><span class="win95-menu-item">Actions</span> <!></div> <div class="win95-info-area"><b> </b></div> <div class="win95-content-inset"> <br/><br/> <i> </i></div></div>  <div class="win95-popup-window"><div><div class="win95-titlebar-text"><span>\u{1F9E0}</span> <span>LOGIC ENGINE</span></div></div> <div class="win95-menubar" style="position:relative;"><span class="win95-menu-item">Actions</span> <!></div> <div class="win95-info-area"><b> </b></div> <div class="win95-content-inset" style="color: #800000;"> <br/><br/> <span style="color:#000;"><i> </i></span></div></div>  <div class="win95-popup-window"><div><div class="win95-titlebar-text"><span>\u2712\uFE0F</span> <span>LITERARY CRITIC</span></div></div> <div class="win95-menubar" style="position:relative;"><span class="win95-menu-item">Actions</span> <!></div> <div class="win95-info-area"><b> </b></div> <div class="win95-content-inset"> <br/><br/> <i> </i></div></div></div>`, 1);
-var root_17 = from_html(`<option> </option>`);
-var root_16 = from_html(`<select class="retro-select svelte-1wfho06"></select>`);
-var root_18 = from_html(`<div class="chart-center-line svelte-1wfho06"></div> <svg class="chart-overlay svelte-1wfho06" preserveAspectRatio="none" viewBox="0 0 100 100"><path fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6"></path></svg>`, 1);
-var root_20 = from_html(`<div class="win95-progress-fill"></div>`);
-var root_21 = from_html(`<div class="win95-progress-fill"></div>`);
-var root_19 = from_html(`<div class="bar-col tooltip-container svelte-1wfho06"><div class="win95-progress-container" style="
+var root_17 = from_html(`<div class="dropdown-list svelte-1wfho06"><div class="dd-item svelte-1wfho06">Inject Vibe Repair</div></div>`);
+var root_12 = from_html(`<div class="section-header svelte-1wfho06">TRIBUNAL CONSENSUS</div> <div class="tribunal-grid"><div class="win95-popup-window"><div><div class="win95-titlebar-text"><span>\u{1F4C8}</span> <span>MARKET ANALYST</span></div></div> <div class="win95-menubar" style="position:relative;"><span class="win95-menu-item">Actions</span> <!></div> <div class="win95-info-area"><b> </b></div> <div class="win95-content-inset"> <br/><br/> <i> </i></div></div>  <div class="win95-popup-window"><div><div class="win95-titlebar-text"><span>\u{1F9E0}</span> <span>LOGIC ENGINE</span></div></div> <div class="win95-menubar" style="position:relative;"><span class="win95-menu-item">Actions</span> <!></div> <div class="win95-info-area"><b> </b></div> <div class="win95-content-inset" style="color: #800000;"><!> <br/><br/> <span style="color:#000;"><i> </i></span></div></div>  <div class="win95-popup-window"><div><div class="win95-titlebar-text"><span>\u2728</span> <span>THE SOUL</span></div></div> <div class="win95-menubar" style="position:relative;"><span class="win95-menu-item">Actions</span> <!></div> <div class="win95-info-area"><b> </b></div> <div class="win95-content-inset"> <br/><br/> <i> </i></div></div></div>`, 1);
+var root_18 = from_html(`<div class="section-header svelte-1wfho06" style="margin-top:20px;">CHIEF JUSTICE ARBITRATION LOG</div> <div class="win95-popup-window"><div class="win95-titlebar"><div class="win95-titlebar-text"><span>\u2696\uFE0F</span> <span>FINAL VERDICT</span></div></div> <div class="win95-content-inset" style="font-family: 'Courier New', monospace; font-weight: bold;"> </div></div>`, 1);
+var root_20 = from_html(`<option> </option>`);
+var root_19 = from_html(`<select class="retro-select svelte-1wfho06"></select>`);
+var root_21 = from_html(`<div class="chart-center-line svelte-1wfho06"></div> <svg class="chart-overlay svelte-1wfho06" preserveAspectRatio="none" viewBox="0 0 100 100"><path fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6"></path></svg>`, 1);
+var root_232 = from_html(`<div class="win95-progress-fill"></div>`);
+var root_24 = from_html(`<div class="win95-progress-fill"></div>`);
+var root_222 = from_html(`<div class="bar-col tooltip-container svelte-1wfho06"><div class="win95-progress-container" style="
                             width: 100%; height: 100%;
                             background: transparent; box-shadow: none; border: none;
                             position: relative;
                          "><!></div> <div class="tooltip chart-tooltip svelte-1wfho06"><strong> </strong><br/> <br/> <span style="font-size:0.8em; opacity:0.8"> </span></div></div>`);
-var root_222 = from_html(`<div style="display:flex; align-items:center; gap:5px;"><span class="legend-box svelte-1wfho06" style="border:1px dashed #000080;"></span> <span style="font-size:9px; color:#000080;"> </span></div>`);
-var root_24 = from_html(`<div><div class="node-header svelte-1wfho06"><span class="node-type svelte-1wfho06"> </span> <span class="node-title"> </span> <span> </span></div> <div class="node-desc svelte-1wfho06"> </div> <div class="node-chars svelte-1wfho06"> </div></div>`);
-var root_25 = from_html(`<div style="padding:10px; color:#555; font-style:italic;">[BUFFER EMPTY: No Universal Outline Data]</div>`);
-var root_232 = from_html(`<!> <!>`, 1);
-var root_27 = from_html(`<div class="structure-item"><div class="square-bullet">\u25A0</div> <div class="beat-text"> </div></div>`);
-var root_28 = from_html(`<div style="padding:10px; color:#555; font-style:italic;">[BUFFER EMPTY: No Structure Data]</div>`);
+var root_25 = from_html(`<div style="display:flex; align-items:center; gap:5px;"><span class="legend-box svelte-1wfho06" style="border:1px dashed #000080;"></span> <span style="font-size:9px; color:#000080;"> </span></div>`);
+var root_27 = from_html(`<div><div class="node-header svelte-1wfho06"><span class="node-type svelte-1wfho06"> </span> <span class="node-title"> </span> <span> </span></div> <div class="node-desc svelte-1wfho06"> </div> <div class="node-chars svelte-1wfho06"> </div></div>`);
+var root_28 = from_html(`<div style="padding:10px; color:#555; font-style:italic;">[BUFFER EMPTY: No Universal Outline Data]</div>`);
 var root_26 = from_html(`<!> <!>`, 1);
-var root_30 = from_html(`<div class="raw-box svelte-1wfho06"><pre> </pre></div>`);
-var root_29 = from_html(`<button class="toggle-btn svelte-1wfho06"> </button> <!>`, 1);
-var root3 = from_html(`<div class="critic-display svelte-1wfho06"><div><div class="win95-menubar" style="margin-bottom: 10px; border-bottom: 1px solid #808080;"><span class="win95-menu-item"> </span> <!></div> <div class="main-score-row svelte-1wfho06"><div class="score-block main svelte-1wfho06"><div class="score-title svelte-1wfho06">OVERALL SCORE</div> <div> </div> <div> </div></div></div> <div class="score-divider-horizontal svelte-1wfho06"></div> <div class="sub-score-row svelte-1wfho06"><div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">COMMERCIAL</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">LITERARY</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">COHESION</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div></div> <!> <div class="log-section svelte-1wfho06" style="margin-top: 10px;"><span class="log-label svelte-1wfho06">LOGLINE:</span> <span class="log-text-blue"> </span></div></div> <div class="section-header svelte-1wfho06">SANDERSON ENGINE METRICS</div> <div class="modules-grid bevel-down svelte-1wfho06"><!> <div class="divider-line svelte-1wfho06"></div> <!></div> <!> <!> <div class="section-header svelte-1wfho06"><span>STORY GRAPH</span> <select class="retro-select svelte-1wfho06" style="margin-left: auto; margin-right: 10px;"><option>Narrative Tension</option><option>Beat Quality</option></select> <!></div> <div class="chart-box bevel-down svelte-1wfho06"><div class="chart-area zero-center svelte-1wfho06" style="display: flex; width: 100%;"><!> <!></div> <div class="chart-axis svelte-1wfho06"><span>START</span> <!> <span>END</span></div></div> <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px;"><div class="section-header svelte-1wfho06" style="margin:0;">UNIVERSAL OUTLINE</div></div> <div class="structure-box bevel-down svelte-1wfho06"><!></div> <!> <button class="action-btn secondary">RUN DEEP META-ANALYSIS</button></div>`);
+var root_30 = from_html(`<div class="structure-item"><div class="square-bullet">\u25A0</div> <div class="beat-text"> </div></div>`);
+var root_31 = from_html(`<div style="padding:10px; color:#555; font-style:italic;">[BUFFER EMPTY: No Structure Data]</div>`);
+var root_29 = from_html(`<!> <!>`, 1);
+var root_33 = from_html(`<div class="raw-box svelte-1wfho06"><pre> </pre></div>`);
+var root_322 = from_html(`<button class="toggle-btn svelte-1wfho06"> </button> <!>`, 1);
+var root3 = from_html(`<div class="critic-display svelte-1wfho06"><div><div class="win95-menubar" style="margin-bottom: 10px; border-bottom: 1px solid #808080;"><span class="win95-menu-item"> </span> <!></div> <div class="main-score-row svelte-1wfho06"><div class="score-block main svelte-1wfho06"><div class="score-title svelte-1wfho06">OVERALL SCORE</div> <div> </div> <div> </div></div></div> <div class="score-divider-horizontal svelte-1wfho06"></div> <div class="sub-score-row svelte-1wfho06"><div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">COMMERCIAL</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">LITERARY</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">COHESION</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div></div> <!> <div class="log-section svelte-1wfho06" style="margin-top: 10px;"><span class="log-label svelte-1wfho06">LOGLINE:</span> <span class="log-text-blue"> </span></div></div> <div class="section-header svelte-1wfho06">SANDERSON ENGINE METRICS</div> <div class="modules-grid bevel-down svelte-1wfho06"><!> <div class="divider-line svelte-1wfho06"></div> <!></div> <!> <!> <!> <div class="section-header svelte-1wfho06"><span>STORY GRAPH</span> <select class="retro-select svelte-1wfho06" style="margin-left: auto; margin-right: 10px;"><option>Narrative Tension</option><option>Beat Quality</option></select> <!></div> <div class="chart-box bevel-down svelte-1wfho06"><div class="chart-area zero-center svelte-1wfho06" style="display: flex; width: 100%;"><!> <!></div> <div class="chart-axis svelte-1wfho06"><span>START</span> <!> <span>END</span></div></div> <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px;"><div class="section-header svelte-1wfho06" style="margin:0;">UNIVERSAL OUTLINE</div></div> <div class="structure-box bevel-down svelte-1wfho06"><!></div> <!> <button class="action-btn secondary">RUN DEEP META-ANALYSIS</button></div>`);
 var $$css3 = {
   hash: "svelte-1wfho06",
   code: `.critic-display.svelte-1wfho06 {display:flex;flex-direction:column;gap:15px;font-family:'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;color:#000;font-weight:normal;}.bevel-down.svelte-1wfho06 {border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;background:#fff;  /* Typically input backgrounds, but for panels might need grey */background:#c0c0c0; /* Keeping original logic but with Win95 bevels */padding:10px;}
@@ -29175,14 +29205,15 @@ function CriticDisplay($$anchor, $$props) {
           reset(div_30);
           reset(div_28);
           template_effect(
-            ($0, $1) => {
+            ($0, $1, $2) => {
               set_text(text_12, get(s3).label);
               set_text(text_13, `${$0 != null ? $0 : ""}%`);
-              set_style(div_31, `width: ${$1 != null ? $1 : ""}%;`);
+              set_style(div_31, `width: ${$1 != null ? $1 : ""}%; background: ${$2 != null ? $2 : ""};`);
             },
             [
               () => formatUnsignedScore(get(s3).val),
-              () => getSliderMetrics(get(s3).val)
+              () => getSliderMetrics(get(s3).val),
+              () => getBarColor(get(s3).val)
             ]
           );
           append($$anchor3, div_28);
@@ -29344,7 +29375,7 @@ function CriticDisplay($$anchor, $$props) {
   }
   var node_9 = sibling(node_8, 2);
   {
-    var consequent_8 = ($$anchor2) => {
+    var consequent_9 = ($$anchor2) => {
       var fragment_2 = root_12();
       var div_44 = sibling(first_child(fragment_2), 2);
       var div_45 = child(div_44);
@@ -29431,10 +29462,27 @@ function CriticDisplay($$anchor, $$props) {
       reset(b_1);
       reset(div_59);
       var div_60 = sibling(div_59, 2);
-      var text_25 = child(div_60, true);
-      var span_14 = sibling(text_25, 4);
+      var node_12 = child(div_60);
+      {
+        var consequent_7 = ($$anchor3) => {
+          var text_25 = text();
+          template_effect(() => set_text(text_25, $$props.data.tribunal_breakdown.logic.inconsistencies[0]));
+          append($$anchor3, text_25);
+        };
+        var alternate_1 = ($$anchor3) => {
+          var text_26 = text("No Logic Holes Detected.");
+          append($$anchor3, text_26);
+        };
+        if_block(node_12, ($$render) => {
+          if ($$props.data.tribunal_breakdown.logic.inconsistencies && $$props.data.tribunal_breakdown.logic.inconsistencies.length > 0)
+            $$render(consequent_7);
+          else
+            $$render(alternate_1, false);
+        });
+      }
+      var span_14 = sibling(node_12, 5);
       var i_2 = child(span_14);
-      var text_26 = child(i_2);
+      var text_27 = child(i_2);
       reset(i_2);
       reset(span_14);
       reset(div_60);
@@ -29448,95 +29496,105 @@ function CriticDisplay($$anchor, $$props) {
         e2.stopPropagation();
         set(openDropdown, get(openDropdown) === "lit" ? null : "lit", true);
       };
-      var node_12 = sibling(span_15, 2);
+      var node_13 = sibling(span_15, 2);
       {
-        var consequent_7 = ($$anchor3) => {
-          var div_64 = root_15();
+        var consequent_8 = ($$anchor3) => {
+          var div_64 = root_17();
           var div_65 = child(div_64);
           div_65.__click = () => {
             var _a3;
-            $$props.onAddRepairInstruction(`Refine Theme: ${(_a3 = $$props.data.tribunal_breakdown) == null ? void 0 : _a3.lit.niche_reason}`);
-            set(openDropdown, null);
-          };
-          var div_66 = sibling(div_65, 2);
-          div_66.__click = () => {
-            $$props.onAddRepairInstruction(`Boost Novelty`);
+            $$props.onAddRepairInstruction(`Refine Vibe: ${(_a3 = $$props.data.tribunal_breakdown) == null ? void 0 : _a3.lit.critique}`);
             set(openDropdown, null);
           };
           reset(div_64);
           append($$anchor3, div_64);
         };
-        if_block(node_12, ($$render) => {
+        if_block(node_13, ($$render) => {
           if (get(openDropdown) === "lit")
-            $$render(consequent_7);
+            $$render(consequent_8);
         });
       }
       reset(div_63);
-      var div_67 = sibling(div_63, 2);
-      var b_2 = child(div_67);
-      var text_27 = child(b_2);
+      var div_66 = sibling(div_63, 2);
+      var b_2 = child(div_66);
+      var text_28 = child(b_2);
       reset(b_2);
-      reset(div_67);
-      var div_68 = sibling(div_67, 2);
-      var text_28 = child(div_68);
-      var i_3 = sibling(text_28, 4);
-      var text_29 = child(i_3);
+      reset(div_66);
+      var div_67 = sibling(div_66, 2);
+      var text_29 = child(div_67);
+      var i_3 = sibling(text_29, 4);
+      var text_30 = child(i_3);
       reset(i_3);
-      reset(div_68);
+      reset(div_67);
       reset(div_61);
       reset(div_44);
       template_effect(
-        ($0, $1, $2, $3) => {
-          var _a3, _b3, _c2;
+        ($0, $1, $2) => {
+          var _a3, _b3, _c2, _d;
           set_class(div_46, 1, `win95-titlebar ${get(selectedAgent) === "market" ? "" : "inactive"}`);
           set_text(text_21, `SCORE: ${$0 != null ? $0 : ""}`);
           set_text(text_22, $$props.data.tribunal_breakdown.market.log_line || "N/A");
           set_text(text_23, `"${(_a3 = $$props.data.tribunal_breakdown.market.commercial_reason || "") != null ? _a3 : ""}"`);
           set_class(div_54, 1, `win95-titlebar ${get(selectedAgent) === "logic" ? "" : "inactive"}`);
           set_text(text_24, `COHESION: ${$1 != null ? $1 : ""}`);
-          set_text(text_25, $$props.data.tribunal_breakdown.logic.content_warning || "No Logic Holes Detected.");
-          set_text(text_26, `"${(_b3 = $$props.data.tribunal_breakdown.logic.cohesion_reason || "") != null ? _b3 : ""}"`);
+          set_text(text_27, `Deus Ex Machinas: ${(_b3 = $$props.data.tribunal_breakdown.logic.deus_ex_machina_count || 0) != null ? _b3 : ""}`);
           set_class(div_62, 1, `win95-titlebar ${get(selectedAgent) === "lit" ? "" : "inactive"}`);
-          set_text(text_27, `NOVELTY: ${$2 != null ? $2 : ""}`);
-          set_text(text_28, `Theme Strength: ${$3 != null ? $3 : ""}`);
-          set_text(text_29, `"${(_c2 = $$props.data.tribunal_breakdown.lit.niche_reason || "") != null ? _c2 : ""}"`);
+          set_text(text_28, `SCORE: ${$2 != null ? $2 : ""}`);
+          set_text(text_29, `Mood: ${(_c2 = $$props.data.tribunal_breakdown.lit.mood || "N/A") != null ? _c2 : ""}`);
+          set_text(text_30, `"${(_d = $$props.data.tribunal_breakdown.lit.critique || "") != null ? _d : ""}"`);
         },
         [
           () => formatScoreDisplay($$props.data.tribunal_breakdown.market.commercial_score),
-          () => formatScoreDisplay($$props.data.tribunal_breakdown.logic.cohesion_score),
-          () => formatScoreDisplay($$props.data.tribunal_breakdown.lit.novelty_score),
-          () => formatScoreDisplay($$props.data.tribunal_breakdown.lit.niche_score)
+          () => formatScoreDisplay($$props.data.tribunal_breakdown.logic.score),
+          () => formatScoreDisplay($$props.data.tribunal_breakdown.lit.score)
         ]
       );
       append($$anchor2, fragment_2);
     };
     if_block(node_9, ($$render) => {
       if ($$props.data.tribunal_breakdown)
-        $$render(consequent_8);
+        $$render(consequent_9);
     });
   }
-  var div_69 = sibling(node_9, 2);
-  var select = sibling(child(div_69), 2);
+  var node_14 = sibling(node_9, 2);
+  {
+    var consequent_10 = ($$anchor2) => {
+      var fragment_4 = root_18();
+      var div_68 = sibling(first_child(fragment_4), 2);
+      var div_69 = sibling(child(div_68), 2);
+      var text_31 = child(div_69, true);
+      reset(div_69);
+      reset(div_68);
+      template_effect(() => set_text(text_31, $$props.data.arbitration_log.ruling));
+      append($$anchor2, fragment_4);
+    };
+    if_block(node_14, ($$render) => {
+      if ($$props.data.arbitration_log)
+        $$render(consequent_10);
+    });
+  }
+  var div_70 = sibling(node_14, 2);
+  var select = sibling(child(div_70), 2);
   var option = child(select);
   option.value = option.__value = "tension";
   var option_1 = sibling(option);
   option_1.value = option_1.__value = "quality";
   reset(select);
-  var node_13 = sibling(select, 2);
+  var node_15 = sibling(select, 2);
   {
-    var consequent_9 = ($$anchor2) => {
-      var select_1 = root_16();
+    var consequent_11 = ($$anchor2) => {
+      var select_1 = root_19();
       each(select_1, 21, () => Object.entries(IDEAL_ARCS), index, ($$anchor3, $$item) => {
         var $$array_1 = user_derived(() => to_array(get($$item), 2));
         let key2 = () => get($$array_1)[0];
         let arc = () => get($$array_1)[1];
-        var option_2 = root_17();
-        var text_30 = child(option_2, true);
+        var option_2 = root_20();
+        var text_32 = child(option_2, true);
         reset(option_2);
         var option_2_value = {};
         template_effect(() => {
           var _a3;
-          set_text(text_30, arc().label);
+          set_text(text_32, arc().label);
           if (option_2_value !== (option_2_value = key2())) {
             option_2.value = (_a3 = option_2.__value = key2()) != null ? _a3 : "";
           }
@@ -29547,43 +29605,43 @@ function CriticDisplay($$anchor, $$props) {
       bind_select_value(select_1, () => get(selectedArc), ($$value) => set(selectedArc, $$value));
       append($$anchor2, select_1);
     };
-    if_block(node_13, ($$render) => {
+    if_block(node_15, ($$render) => {
       if (get(graphMode) === "tension")
-        $$render(consequent_9);
+        $$render(consequent_11);
     });
   }
-  reset(div_69);
-  var div_70 = sibling(div_69, 2);
-  var div_71 = child(div_70);
-  var node_14 = child(div_71);
+  reset(div_70);
+  var div_71 = sibling(div_70, 2);
+  var div_72 = child(div_71);
+  var node_16 = child(div_72);
   {
-    var consequent_10 = ($$anchor2) => {
-      var fragment_3 = root_18();
-      var svg = sibling(first_child(fragment_3), 2);
+    var consequent_12 = ($$anchor2) => {
+      var fragment_5 = root_21();
+      var svg = sibling(first_child(fragment_5), 2);
       var path_1 = child(svg);
       reset(svg);
       template_effect(() => set_attribute2(path_1, "d", get(idealPathD)));
-      append($$anchor2, fragment_3);
+      append($$anchor2, fragment_5);
     };
-    if_block(node_14, ($$render) => {
+    if_block(node_16, ($$render) => {
       if (get(graphMode) === "tension")
-        $$render(consequent_10);
+        $$render(consequent_12);
     });
   }
-  var node_15 = sibling(node_14, 2);
-  each(node_15, 17, () => get(chartData), index, ($$anchor2, beat, i3) => {
+  var node_17 = sibling(node_16, 2);
+  each(node_17, 17, () => get(chartData), index, ($$anchor2, beat, i3) => {
     const bar = user_derived(() => get(graphMode) === "tension" ? getBarMetrics(get(beat).val) : null);
     const qualityH = user_derived(() => get(graphMode) === "quality" ? getQualityMetrics(get(beat).val) : 0);
-    var div_72 = root_19();
-    var div_73 = child(div_72);
-    var node_16 = child(div_73);
+    var div_73 = root_222();
+    var div_74 = child(div_73);
+    var node_18 = child(div_74);
     {
-      var consequent_11 = ($$anchor3) => {
-        var div_74 = root_20();
+      var consequent_13 = ($$anchor3) => {
+        var div_75 = root_232();
         template_effect(
           ($0, $1) => {
             var _a3;
-            return set_style(div_74, `
+            return set_style(div_75, `
                                     width: auto;
                                     left: 1px; right: 1px;
                                     top: ${get(bar).isNegative ? "50%" : "auto"};
@@ -29601,14 +29659,14 @@ function CriticDisplay($$anchor, $$props) {
             () => isMasterpieceEffect(get(beat).val) ? "rainbow-bar-scroll 3s linear infinite" : "none"
           ]
         );
-        append($$anchor3, div_74);
+        append($$anchor3, div_75);
       };
-      var alternate_1 = ($$anchor3) => {
-        var div_75 = root_21();
+      var alternate_2 = ($$anchor3) => {
+        var div_76 = root_24();
         template_effect(
           ($0, $1, $2) => {
             var _a3;
-            return set_style(div_75, `
+            return set_style(div_76, `
                                     width: auto;
                                     left: 1px; right: 1px;
                                     bottom: 0;
@@ -29626,102 +29684,102 @@ function CriticDisplay($$anchor, $$props) {
             () => isMasterpieceEffect(get(beat).val) ? "rainbow-bar-scroll 3s linear infinite" : "none"
           ]
         );
-        append($$anchor3, div_75);
+        append($$anchor3, div_76);
       };
-      if_block(node_16, ($$render) => {
+      if_block(node_18, ($$render) => {
         if (get(graphMode) === "tension" && get(bar))
-          $$render(consequent_11);
+          $$render(consequent_13);
         else
-          $$render(alternate_1, false);
+          $$render(alternate_2, false);
       });
     }
-    reset(div_73);
-    var div_76 = sibling(div_73, 2);
-    var strong = child(div_76);
-    var text_31 = child(strong);
+    reset(div_74);
+    var div_77 = sibling(div_74, 2);
+    var strong = child(div_77);
+    var text_33 = child(strong);
     reset(strong);
-    var text_32 = sibling(strong, 2);
-    var span_16 = sibling(text_32, 3);
-    var text_33 = child(span_16);
+    var text_34 = sibling(strong, 2);
+    var span_16 = sibling(text_34, 3);
+    var text_35 = child(span_16);
     reset(span_16);
-    reset(div_76);
-    reset(div_72);
+    reset(div_77);
+    reset(div_73);
     template_effect(
       ($0, $1) => {
         var _a3, _b3;
-        set_style(div_72, `width: ${(_a3 = get(beat).widthPerc) != null ? _a3 : ""}%; flex-grow: 0; flex-shrink: 0;`);
-        set_text(text_31, `${i3 + 1}. ${(_b3 = get(beat).title) != null ? _b3 : ""}`);
-        set_text(text_32, ` ${get(graphMode) === "tension" ? "Tension" : "Quality"}: ${$0 != null ? $0 : ""}`);
-        set_text(text_33, `Duration: ${$1 != null ? $1 : ""}%`);
+        set_style(div_73, `width: ${(_a3 = get(beat).widthPerc) != null ? _a3 : ""}%; flex-grow: 0; flex-shrink: 0;`);
+        set_text(text_33, `${i3 + 1}. ${(_b3 = get(beat).title) != null ? _b3 : ""}`);
+        set_text(text_34, ` ${get(graphMode) === "tension" ? "Tension" : "Quality"}: ${$0 != null ? $0 : ""}`);
+        set_text(text_35, `Duration: ${$1 != null ? $1 : ""}%`);
       },
       [
         () => formatScoreDisplay(get(beat).val),
         () => Math.round(get(beat).widthPerc)
       ]
     );
-    append($$anchor2, div_72);
+    append($$anchor2, div_73);
   });
-  reset(div_71);
-  var div_77 = sibling(div_71, 2);
-  var node_17 = sibling(child(div_77), 2);
+  reset(div_72);
+  var div_78 = sibling(div_72, 2);
+  var node_19 = sibling(child(div_78), 2);
   {
-    var consequent_12 = ($$anchor2) => {
-      var div_78 = root_222();
-      var span_17 = sibling(child(div_78), 2);
-      var text_34 = child(span_17);
+    var consequent_14 = ($$anchor2) => {
+      var div_79 = root_25();
+      var span_17 = sibling(child(div_79), 2);
+      var text_36 = child(span_17);
       reset(span_17);
-      reset(div_78);
+      reset(div_79);
       template_effect(() => {
         var _a3;
-        return set_text(text_34, `IDEAL (${(_a3 = IDEAL_ARCS[get(selectedArc)].label) != null ? _a3 : ""})`);
+        return set_text(text_36, `IDEAL (${(_a3 = IDEAL_ARCS[get(selectedArc)].label) != null ? _a3 : ""})`);
       });
-      append($$anchor2, div_78);
+      append($$anchor2, div_79);
     };
-    if_block(node_17, ($$render) => {
+    if_block(node_19, ($$render) => {
       if (get(graphMode) === "tension")
-        $$render(consequent_12);
+        $$render(consequent_14);
     });
   }
   next(2);
-  reset(div_77);
-  reset(div_70);
-  var div_79 = sibling(div_70, 4);
-  var node_18 = child(div_79);
+  reset(div_78);
+  reset(div_71);
+  var div_80 = sibling(div_71, 4);
+  var node_20 = child(div_80);
   {
-    var consequent_14 = ($$anchor2) => {
-      var fragment_4 = root_232();
-      var node_19 = first_child(fragment_4);
-      each(node_19, 17, () => get(structure), index, ($$anchor3, node) => {
-        var div_80 = root_24();
-        var div_81 = child(div_80);
-        var span_18 = child(div_81);
-        var text_35 = child(span_18, true);
+    var consequent_16 = ($$anchor2) => {
+      var fragment_6 = root_26();
+      var node_21 = first_child(fragment_6);
+      each(node_21, 17, () => get(structure), index, ($$anchor3, node) => {
+        var div_81 = root_27();
+        var div_82 = child(div_81);
+        var span_18 = child(div_82);
+        var text_37 = child(span_18, true);
         reset(span_18);
         var span_19 = sibling(span_18, 2);
-        var text_36 = child(span_19, true);
+        var text_38 = child(span_19, true);
         reset(span_19);
         var span_20 = sibling(span_19, 2);
-        var text_37 = child(span_20);
+        var text_39 = child(span_20);
         reset(span_20);
-        reset(div_81);
-        var div_82 = sibling(div_81, 2);
-        var text_38 = child(div_82, true);
         reset(div_82);
         var div_83 = sibling(div_82, 2);
-        var text_39 = child(div_83);
+        var text_40 = child(div_83, true);
         reset(div_83);
-        reset(div_80);
+        var div_84 = sibling(div_83, 2);
+        var text_41 = child(div_84);
+        reset(div_84);
+        reset(div_81);
         template_effect(
           ($0, $1, $2, $3, $4) => {
             var _a3;
-            set_class(div_80, 1, `structure-node ${(_a3 = get(node).type) != null ? _a3 : ""}`, "svelte-1wfho06");
-            set_text(text_35, $0);
-            set_text(text_36, get(node).title);
+            set_class(div_81, 1, `structure-node ${(_a3 = get(node).type) != null ? _a3 : ""}`, "svelte-1wfho06");
+            set_text(text_37, $0);
+            set_text(text_38, get(node).title);
             set_class(span_20, 1, `node-tension ${$1 != null ? $1 : ""}`, "svelte-1wfho06");
             set_style(span_20, `color: ${$2 != null ? $2 : ""}`);
-            set_text(text_37, `\u26A1 ${$3 != null ? $3 : ""}`);
-            set_text(text_38, get(node).description);
-            set_text(text_39, `ACTORS: ${$4 != null ? $4 : ""}`);
+            set_text(text_39, `\u26A1 ${$3 != null ? $3 : ""}`);
+            set_text(text_40, get(node).description);
+            set_text(text_41, `ACTORS: ${$4 != null ? $4 : ""}`);
           },
           [
             () => get(node).type.toUpperCase(),
@@ -29731,88 +29789,88 @@ function CriticDisplay($$anchor, $$props) {
             () => get(node).characters.join(", ")
           ]
         );
-        append($$anchor3, div_80);
-      });
-      var node_20 = sibling(node_19, 2);
-      {
-        var consequent_13 = ($$anchor3) => {
-          var div_84 = root_25();
-          append($$anchor3, div_84);
-        };
-        if_block(node_20, ($$render) => {
-          if (get(structure).length === 0)
-            $$render(consequent_13);
-        });
-      }
-      append($$anchor2, fragment_4);
-    };
-    var alternate_2 = ($$anchor2) => {
-      var fragment_5 = root_26();
-      var node_21 = first_child(fragment_5);
-      each(node_21, 17, () => get(structure), index, ($$anchor3, beat) => {
-        var div_85 = root_27();
-        var div_86 = sibling(child(div_85), 2);
-        var text_40 = child(div_86, true);
-        reset(div_86);
-        reset(div_85);
-        template_effect(() => set_text(text_40, get(beat)));
-        append($$anchor3, div_85);
+        append($$anchor3, div_81);
       });
       var node_22 = sibling(node_21, 2);
       {
         var consequent_15 = ($$anchor3) => {
-          var div_87 = root_28();
-          append($$anchor3, div_87);
+          var div_85 = root_28();
+          append($$anchor3, div_85);
         };
         if_block(node_22, ($$render) => {
           if (get(structure).length === 0)
             $$render(consequent_15);
         });
       }
-      append($$anchor2, fragment_5);
+      append($$anchor2, fragment_6);
     };
-    if_block(node_18, ($$render) => {
-      if (get(isUniversalOutline))
-        $$render(consequent_14);
-      else
-        $$render(alternate_2, false);
-    });
-  }
-  reset(div_79);
-  var node_23 = sibling(div_79, 2);
-  {
-    var consequent_17 = ($$anchor2) => {
-      var fragment_6 = root_29();
-      var button = first_child(fragment_6);
-      button.__click = () => set(showRaw, !get(showRaw));
-      var text_41 = child(button, true);
-      reset(button);
-      var node_24 = sibling(button, 2);
+    var alternate_3 = ($$anchor2) => {
+      var fragment_7 = root_29();
+      var node_23 = first_child(fragment_7);
+      each(node_23, 17, () => get(structure), index, ($$anchor3, beat) => {
+        var div_86 = root_30();
+        var div_87 = sibling(child(div_86), 2);
+        var text_42 = child(div_87, true);
+        reset(div_87);
+        reset(div_86);
+        template_effect(() => set_text(text_42, get(beat)));
+        append($$anchor3, div_86);
+      });
+      var node_24 = sibling(node_23, 2);
       {
-        var consequent_16 = ($$anchor3) => {
-          var div_88 = root_30();
-          var pre = child(div_88);
-          var text_42 = child(pre, true);
-          reset(pre);
-          reset(div_88);
-          template_effect(() => set_text(text_42, $$props.data.thought_process));
-          transition(3, div_88, () => slide);
+        var consequent_17 = ($$anchor3) => {
+          var div_88 = root_31();
           append($$anchor3, div_88);
         };
         if_block(node_24, ($$render) => {
-          if (get(showRaw))
-            $$render(consequent_16);
+          if (get(structure).length === 0)
+            $$render(consequent_17);
         });
       }
-      template_effect(() => set_text(text_41, get(showRaw) ? "[-] HIDE RAW LOGIC" : "[+] SHOW TRUBY LOGIC"));
-      append($$anchor2, fragment_6);
+      append($$anchor2, fragment_7);
     };
-    if_block(node_23, ($$render) => {
-      if ($$props.data.thought_process)
-        $$render(consequent_17);
+    if_block(node_20, ($$render) => {
+      if (get(isUniversalOutline))
+        $$render(consequent_16);
+      else
+        $$render(alternate_3, false);
     });
   }
-  var button_1 = sibling(node_23, 2);
+  reset(div_80);
+  var node_25 = sibling(div_80, 2);
+  {
+    var consequent_19 = ($$anchor2) => {
+      var fragment_8 = root_322();
+      var button = first_child(fragment_8);
+      button.__click = () => set(showRaw, !get(showRaw));
+      var text_43 = child(button, true);
+      reset(button);
+      var node_26 = sibling(button, 2);
+      {
+        var consequent_18 = ($$anchor3) => {
+          var div_89 = root_33();
+          var pre = child(div_89);
+          var text_44 = child(pre, true);
+          reset(pre);
+          reset(div_89);
+          template_effect(() => set_text(text_44, $$props.data.thought_process));
+          transition(3, div_89, () => slide);
+          append($$anchor3, div_89);
+        };
+        if_block(node_26, ($$render) => {
+          if (get(showRaw))
+            $$render(consequent_18);
+        });
+      }
+      template_effect(() => set_text(text_43, get(showRaw) ? "[-] HIDE RAW LOGIC" : "[+] SHOW TRUBY LOGIC"));
+      append($$anchor2, fragment_8);
+    };
+    if_block(node_25, ($$render) => {
+      if ($$props.data.thought_process)
+        $$render(consequent_19);
+    });
+  }
+  var button_1 = sibling(node_25, 2);
   button_1.__click = function(...$$args) {
     var _a3;
     (_a3 = $$props.onRunMeta) == null ? void 0 : _a3.apply(this, $$args);
@@ -29983,7 +30041,7 @@ function Win95ProgressBar($$anchor, $$props) {
 }
 
 // GradingPanel.svelte
-var root_110 = from_html(`<button class="reset-btn svelte-1ykavxi" title="Force Format / Stop">RST</button>`);
+var root_15 = from_html(`<button class="reset-btn svelte-1ykavxi" title="Force Format / Stop">RST</button>`);
 var root_210 = from_html(`<div class="empty-state svelte-1ykavxi">INSERT DISK (OPEN MARKDOWN FILE)</div>`);
 var root_102 = from_html(`<div class="dd-item svelte-1ykavxi">Fix Warning</div>`);
 var root_112 = from_html(`<div class="dd-item svelte-1ykavxi">Logic Repair</div>`);
@@ -30005,7 +30063,7 @@ var root_212 = from_html(`<div class="panel-forge"><button class="action-btn pri
 var root5 = from_html(`<div class="compu-container theme-win95 svelte-1ykavxi"><div class="title-bar svelte-1ykavxi"><div class="title-bar-text"> </div> <!></div> <div class="tab-strip svelte-1ykavxi"><button>CRITIC</button> <button>WIZARD</button> <button>SYNTH</button> <button>FORGE</button></div> <div class="window-body svelte-1ykavxi"><!></div> <div class="status-bar svelte-1ykavxi"><span> </span> <span class="spacer svelte-1ykavxi"></span> <span>DISK ACT</span></div></div>`);
 var $$css5 = {
   hash: "svelte-1ykavxi",
-  code: ":root {--cj-accent: #000080;--cj-bg: #c0c0c0;--cj-text: #000000;--cj-dim: #808080;}.compu-container.svelte-1ykavxi {height:100%;display:flex;flex-direction:column;font-family:'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;font-size:11px;font-weight:normal;}.window-body.svelte-1ykavxi {flex:1;overflow-y:auto;padding:12px;background:var(--cj-bg);border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;}.title-bar.svelte-1ykavxi {background:linear-gradient(90deg, #000080 0%, #1084d0 100%);color:#fff;padding:4px 8px;display:flex;justify-content:space-between;font-weight:bold;}.tab-strip.svelte-1ykavxi {display:flex;padding:6px 4px 0 4px;gap:2px;}.tab-strip.svelte-1ykavxi button:where(.svelte-1ykavxi) {background:var(--cj-bg);color:var(--cj-text);border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;padding:4px 10px;font-weight:bold;cursor:pointer;border-bottom:none;font-size:11px;}.tab-strip.svelte-1ykavxi button.active:where(.svelte-1ykavxi) {padding-bottom:6px;margin-top:-2px;z-index:10;border-top:2px solid #dfdfdf;}.action-btn.svelte-1ykavxi {width:100%;padding:6px;font-weight:bold;cursor:pointer;border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;background:var(--cj-bg);color:var(--cj-text);margin-bottom:8px;font-size:11px;}.action-btn.svelte-1ykavxi:active {border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;padding:7px 5px 5px 7px;}.outline-fieldset.svelte-1ykavxi {margin-bottom:20px;border:2px groove var(--cj-dim);padding:10px;}.repair-focus-area.svelte-1ykavxi {margin-bottom:15px;}.input-label.svelte-1ykavxi {display:block;font-weight:900;margin-bottom:4px;color:var(--cj-dim);font-size:0.9em;}.archivist-prompt.svelte-1ykavxi {margin-bottom:8px;}.forge-report.svelte-1ykavxi {margin-top:20px;color:var(--cj-text);font-weight:bold;}.weakness-alert.svelte-1ykavxi {background:var(--cj-text);color:var(--cj-bg);padding:8px;font-weight:900;text-align:center;margin-bottom:10px;border:2px solid #fff;}.repair-item.svelte-1ykavxi {margin-bottom:15px;border-bottom:2px dashed var(--cj-dim);padding-bottom:10px;}.repair-header.svelte-1ykavxi {font-weight:900;color:var(--cj-accent);text-transform:uppercase;margin-bottom:4px;}.repair-body.svelte-1ykavxi {margin-bottom:4px;line-height:1.4;font-weight:bold;}.repair-why.svelte-1ykavxi {font-size:0.9em;font-style:italic;color:var(--cj-dim);font-weight:bold;}.legacy-mode.svelte-1ykavxi {opacity:0.7;border:1px dashed red;padding:10px;}.legacy-note.svelte-1ykavxi {color:red;font-weight:bold;font-size:10px;margin-bottom:5px;}.memory-core.svelte-1ykavxi {margin-bottom:10px;background:rgba(0,0,0,0.05);padding:5px;border:2px solid var(--cj-dim);}.memory-status.svelte-1ykavxi {display:flex;justify-content:space-between;align-items:center;background:#000;color:#00ff00;padding:5px 8px;font-size:12px;border:2px inset #808080;margin-bottom:5px;font-weight:bold;}.status-indicator.svelte-1ykavxi {display:flex;gap:8px;align-items:center;font-weight:900;}.led.svelte-1ykavxi {width:8px;height:8px;border-radius:50%;background:#004400;border:1px solid #00ff00;}.led.on.svelte-1ykavxi {background:#00ff00;box-shadow:0 0 5px #00ff00;}.context-controls.svelte-1ykavxi {display:flex;gap:5px;}.upload-btn.svelte-1ykavxi {flex:1;padding:4px;font-size:11px;background:var(--cj-bg);border:2px outset #fff;cursor:pointer;font-weight:bold;}.upload-btn.svelte-1ykavxi:active {border-style:inset;}.upload-btn.synced.svelte-1ykavxi {opacity:0.6;cursor:default;}.scrub-btn.svelte-1ykavxi {width:30px;padding:0;background:var(--cj-bg);border:2px outset #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;}.thought-trace.svelte-1ykavxi {margin-bottom:8px;border:1px dashed var(--cj-dim);padding:2px;}.thought-header.svelte-1ykavxi {cursor:pointer;font-weight:bold;font-size:11px;padding:4px;color:var(--cj-dim);list-style:none;}.thought-content.svelte-1ykavxi {padding:8px;font-family:'Courier New', monospace;font-size:11px;white-space:pre-wrap;max-height:200px;overflow-y:auto;border-top:1px dashed var(--cj-dim);background:var(--cj-bg);color:var(--cj-text);opacity:0.8;font-weight:bold;}.status-bar.svelte-1ykavxi {border-top:2px solid var(--cj-dim);padding:4px 8px;background:var(--cj-bg);color:var(--cj-text);display:flex;gap:15px;font-size:12px;align-items:center;font-weight:900;}.spacer.svelte-1ykavxi {flex:1;}.disk-led.svelte-1ykavxi {font-weight:900;color:#808080;border:2px inset #808080;padding:0 4px;background:#c0c0c0;transition:all 0.1s;}.active-led.svelte-1ykavxi {background:#ff0000;color:#fff;border-color:#ff0000;box-shadow:0 0 5px #ff0000;}.empty-state.svelte-1ykavxi {padding:40px;text-align:center;opacity:0.5;font-weight:900;}.reset-btn.svelte-1ykavxi {font-size:10px;padding:0 4px;background:#ff0000;color:white;border:2px outset #ffaaaa;cursor:pointer;}.reset-btn.svelte-1ykavxi:active {border-style:inset;}\n\n    @media (max-width: 600px) {.button-row.svelte-1ykavxi {flex-direction:column;gap:5px;}.action-btn.svelte-1ykavxi {padding:12px;margin-bottom:5px;}\n    }.grid-2.svelte-1ykavxi {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}\n    \n    /* DROPDOWN MENU */.dropdown-list.svelte-1ykavxi {position:absolute;top:100%;left:0;background:#c0c0c0;border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:2px 2px 5px rgba(0,0,0,0.5);z-index:9999;min-width:150px;padding:2px;}.dd-item.svelte-1ykavxi {padding:4px 8px;cursor:pointer;color:#000;}.dd-item.svelte-1ykavxi:hover {background:#000080;color:#fff;}"
+  code: ":root {--cj-accent: #000080;--cj-bg: #c0c0c0;--cj-text: #000000;--cj-dim: #808080;}.compu-container.svelte-1ykavxi {height:100%;display:flex;flex-direction:column;font-family:'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;font-size:11px;font-weight:normal;}.window-body.svelte-1ykavxi {flex:1;overflow-y:auto;padding:12px;background:var(--cj-bg);border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;}.title-bar.svelte-1ykavxi {background:linear-gradient(90deg, #000080 0%, #1084d0 100%);color:#fff;padding:4px 8px;display:flex;justify-content:space-between;font-weight:bold;}.tab-strip.svelte-1ykavxi {display:flex;padding:6px 4px 0 4px;gap:2px;}.tab-strip.svelte-1ykavxi button:where(.svelte-1ykavxi) {background:var(--cj-bg);color:var(--cj-text);border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;padding:4px 10px;font-weight:bold;cursor:pointer;border-bottom:none;font-size:11px;}.tab-strip.svelte-1ykavxi button.active:where(.svelte-1ykavxi) {padding-bottom:6px;margin-top:-2px;z-index:10;border-top:2px solid #dfdfdf;}.action-btn.svelte-1ykavxi {width:100%;padding:6px;font-weight:bold;cursor:pointer;border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;background:var(--cj-bg);color:var(--cj-text);margin-bottom:8px;font-size:11px;}.action-btn.svelte-1ykavxi:active {border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;padding:7px 5px 5px 7px;}.outline-fieldset.svelte-1ykavxi {margin-bottom:20px;border:2px groove var(--cj-dim);padding:10px;}.repair-focus-area.svelte-1ykavxi {margin-bottom:15px;}.input-label.svelte-1ykavxi {display:block;font-weight:900;margin-bottom:4px;color:var(--cj-dim);font-size:0.9em;}.archivist-prompt.svelte-1ykavxi {margin-bottom:8px;}.forge-report.svelte-1ykavxi {margin-top:20px;color:var(--cj-text);font-weight:bold;}.weakness-alert.svelte-1ykavxi {background:var(--cj-text);color:var(--cj-bg);padding:8px;font-weight:900;text-align:center;margin-bottom:10px;border:2px solid #fff;}.repair-item.svelte-1ykavxi {margin-bottom:15px;border-bottom:2px dashed var(--cj-dim);padding-bottom:10px;}.repair-header.svelte-1ykavxi {font-weight:900;color:var(--cj-accent);text-transform:uppercase;margin-bottom:4px;}.repair-body.svelte-1ykavxi {margin-bottom:4px;line-height:1.4;font-weight:bold;}.repair-why.svelte-1ykavxi {font-size:0.9em;font-style:italic;color:var(--cj-dim);font-weight:bold;}.legacy-mode.svelte-1ykavxi {opacity:0.7;border:1px dashed red;padding:10px;}.legacy-note.svelte-1ykavxi {color:red;font-weight:bold;font-size:10px;margin-bottom:5px;}.memory-core.svelte-1ykavxi {margin-bottom:10px;background:rgba(0,0,0,0.05);padding:5px;border:2px solid var(--cj-dim);}.memory-status.svelte-1ykavxi {display:flex;justify-content:space-between;align-items:center;background:#000;color:#00ff00;padding:5px 8px;font-size:12px;border:2px inset #808080;margin-bottom:5px;font-weight:bold;}.status-indicator.svelte-1ykavxi {display:flex;gap:8px;align-items:center;font-weight:900;}.led.svelte-1ykavxi {width:8px;height:8px;border-radius:50%;background:#004400;border:1px solid #00ff00;}.led.on.svelte-1ykavxi {background:#00ff00;box-shadow:0 0 5px #00ff00;}.context-controls.svelte-1ykavxi {display:flex;gap:5px;}.upload-btn.svelte-1ykavxi {flex:1;padding:4px;font-size:11px;background:var(--cj-bg);border:2px outset #fff;cursor:pointer;font-weight:bold;}.upload-btn.svelte-1ykavxi:active {border-style:inset;}.upload-btn.synced.svelte-1ykavxi {opacity:0.6;cursor:default;}.scrub-btn.svelte-1ykavxi {width:30px;padding:0;background:var(--cj-bg);border:2px outset #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;}.thought-trace.svelte-1ykavxi {margin-bottom:8px;border:1px dashed var(--cj-dim);padding:2px;}.thought-header.svelte-1ykavxi {cursor:pointer;font-weight:bold;font-size:11px;padding:4px;color:var(--cj-dim);list-style:none;}.thought-content.svelte-1ykavxi {padding:8px;font-family:'Courier New', monospace;font-size:11px;white-space:pre-wrap;max-height:200px;overflow-y:auto;border-top:1px dashed var(--cj-dim);background:var(--cj-bg);color:var(--cj-text);opacity:0.8;font-weight:bold;}.status-bar.svelte-1ykavxi {border-top:2px solid var(--cj-dim);padding:4px 8px;background:var(--cj-bg);color:var(--cj-text);display:flex;gap:15px;font-size:12px;align-items:center;font-weight:900;}.spacer.svelte-1ykavxi {flex:1;}.disk-led.svelte-1ykavxi {font-weight:900;color:#808080;border:2px inset #808080;padding:0 4px;background:#c0c0c0;transition:all 0.1s;}.active-led.svelte-1ykavxi {background:#ff0000;color:#fff;border-color:#ff0000;box-shadow:0 0 5px #ff0000;}.empty-state.svelte-1ykavxi {padding:40px;text-align:center;opacity:0.5;font-weight:900;}.reset-btn.svelte-1ykavxi {font-size:10px;padding:0 4px;background:#ff0000;color:white;border:2px outset #ffaaaa;cursor:pointer;}.reset-btn.svelte-1ykavxi:active {border-style:inset;}\n\n    @media (max-width: 600px) {.button-row.svelte-1ykavxi {flex-direction:column;gap:5px;}.action-btn.svelte-1ykavxi {padding:12px;margin-bottom:5px;}\n    }.grid-2.svelte-1ykavxi {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}\n\n    /* DROPDOWN MENU */.dropdown-list.svelte-1ykavxi {position:absolute;top:100%;left:0;background:#c0c0c0;border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:2px 2px 5px rgba(0,0,0,0.5);z-index:9999;min-width:150px;padding:2px;}.dd-item.svelte-1ykavxi {padding:4px 8px;cursor:pointer;color:#000;}.dd-item.svelte-1ykavxi:hover {background:#000080;color:#fff;}"
 };
 function GradingPanel($$anchor, $$props) {
   push($$props, true);
@@ -30637,7 +30695,7 @@ ${entry}` : entry;
   var node = sibling(div_2, 2);
   {
     var consequent = ($$anchor2) => {
-      var button = root_110();
+      var button = root_15();
       button.__click = resetCurrentDisc;
       append($$anchor2, button);
     };
@@ -31445,11 +31503,15 @@ var NigsSettingTab = class extends import_obsidian8.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.createEl("h2", { text: "BIOS SETUP" });
-    new import_obsidian8.Setting(containerEl).setName("AI Provider").setDesc("Select your intelligence engine.").addDropdown((drop) => drop.addOption("gemini", "Google Gemini").addOption("openai", "OpenAI (ChatGPT)").addOption("anthropic", "Anthropic (Claude)").setValue(this.plugin.settings.aiProvider).onChange(async (val) => {
+    const providerSetting = new import_obsidian8.Setting(containerEl).setName("AI Provider").setDesc("Select your intelligence engine.").addDropdown((drop) => drop.addOption("gemini", "Google Gemini").addOption("openai", "OpenAI (ChatGPT)").addOption("anthropic", "Anthropic (Claude)").setValue(this.plugin.settings.aiProvider).onChange(async (val) => {
       this.plugin.settings.aiProvider = val;
       await this.plugin.saveSettings();
       this.display();
     }));
+    const dropdownEl = providerSetting.controlEl.querySelector("select");
+    if (dropdownEl) {
+      dropdownEl.addClass("retro-select");
+    }
     containerEl.createEl("h4", { text: "Connection Settings" });
     if (this.plugin.settings.aiProvider === "gemini") {
       new import_obsidian8.Setting(containerEl).setName("Gemini API Key").addText((text2) => text2.setPlaceholder("AIzaSy...").setValue(this.plugin.settings.apiKey).onChange(async (val) => {
@@ -31546,6 +31608,28 @@ var NigsSettingTab = class extends import_obsidian8.PluginSettingTab {
     }));
     new import_obsidian8.Setting(containerEl).setName("Enable Tribunal (Multi-Agent Consensus)").setDesc("Uses 3 specialized agents (Market, Logic, Lit) instead of brute-force averaging. (More tokens, better quality).").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableTribunal).onChange(async (val) => {
       this.plugin.settings.enableTribunal = val;
+      await this.plugin.saveSettings();
+    }));
+    containerEl.createEl("h4", { text: "Chief Justice Arbitration" });
+    new import_obsidian8.Setting(containerEl).setName("Enable Chief Justice").setDesc("Activates the Arbitration layer to weigh Soul vs Logic and penalize Deus Ex Machina.").addToggle((toggle) => toggle.setValue(this.plugin.settings.arbitrationEnabled).onChange(async (val) => {
+      this.plugin.settings.arbitrationEnabled = val;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Luck Tolerance (0-10)").setDesc('How much "good luck" is allowed before it counts as Deus Ex Machina.').addSlider((slider) => slider.setLimits(0, 10, 1).setValue(this.plugin.settings.luckTolerance).setDynamicTooltip().onChange(async (val) => {
+      this.plugin.settings.luckTolerance = val;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Disable Rainbows").setDesc('Turn off the "Masterpiece" rainbow animation for a flatter look.').addToggle((toggle) => toggle.setValue(this.plugin.settings.disableRainbows).onChange(async (val) => {
+      this.plugin.settings.disableRainbows = val;
+      await this.plugin.saveSettings();
+    }));
+    containerEl.createEl("div", { text: "Agent Weighting (Influence)", cls: "setting-item-description", style: "margin-bottom: 10px; font-weight: bold;" });
+    new import_obsidian8.Setting(containerEl).setName("Logic Weight").addSlider((slider) => slider.setLimits(0, 2, 0.1).setValue(this.plugin.settings.agentWeights.logic).setDynamicTooltip().onChange(async (v2) => {
+      this.plugin.settings.agentWeights.logic = v2;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Soul Weight").addSlider((slider) => slider.setLimits(0, 2, 0.1).setValue(this.plugin.settings.agentWeights.soul).setDynamicTooltip().onChange(async (v2) => {
+      this.plugin.settings.agentWeights.soul = v2;
       await this.plugin.saveSettings();
     }));
     containerEl.createEl("h4", { text: "Grading Palette (Gradient Map)" });
