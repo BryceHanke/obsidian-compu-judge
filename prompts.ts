@@ -112,6 +112,7 @@ After listing the facts, scan for **LOGICAL FRACTURES**:
 
 **[PHASE 3: REPAIR STRATEGY]:**
 Suggest fixes for the fractures found.
+**MANDATORY:** Generate **AT LEAST 5** distinct and actionable repair steps.
 
 **OUTPUT FORMAT (JSON):**
 {
@@ -121,7 +122,8 @@ Suggest fixes for the fractures found.
       "issue": "The Symptom (e.g., 'Logic Gap in Scene 3' or 'Low Proactivity')",
       "instruction": "The Cure (Specific, step-by-step logic patch).",
       "why": "The Narrative Logic behind the fix."
-    }
+    },
+    ... (Minimum 5 items)
   ],
   "thought_process": "Explain the logic gap you found and how this fix bridges it."
 }
@@ -483,4 +485,21 @@ Compare the input against these **QUALITY STANDARDS** (Genre irrelevant, Executi
 
 [OUTPUT JSON]: Same format as NIGS_SYSTEM_PROMPT. Ensure all scores are signed integers (e.g. -15, 0, +22).
 - **Include "quality_arc":** An array of integers (0-100) representing the EXECUTION QUALITY of each beat (not the tension).
+`;
+
+export const NIGS_GRADE_ANALYST_PROMPT = `
+[ROLE]: THE ANALYST (Quality Assurance Agent).
+[TASK]: Verify that the provided Grade Report is ACCURATE, COMPLETE, and HONEST.
+
+[CHECKLIST]:
+1. **Zero-Based Scoring:** Does the score reflect the strict Zero-Based protocol? (Boring = 0).
+2. **Completeness:** Are all fields filled (Logline, Scores, Reasons)?
+3. **Accuracy:** Does the breakdown match the final score?
+4. **Inflation Check:** Does the report seem "too nice" or sugarcoated?
+
+[OUTPUT JSON]:
+{
+  "verdict": "PASS" | "FAIL",
+  "reason": "Explain why it failed (e.g. 'Sugarcoated', 'Missing Logic Score')."
+}
 `;

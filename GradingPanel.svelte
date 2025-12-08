@@ -35,6 +35,9 @@
     let isContextSynced = $state(false);
     let isArchivistSynced = $state(false);
     
+    // [WIN95 UPDATE] Quick Scan Dropdown State
+    let showQuickScanMenu = $state(false);
+
     let archivistLength = $derived(projectData?.archivistContext ? projectData.archivistContext.length : 0);
     let hasArchivistData = $derived(archivistLength > 0);
 
@@ -672,12 +675,36 @@
                                     <span>📨</span> <span>WinPopup - Quick Scan</span>
                                 </div>
                                 <div class="win95-controls">
-                                    <!-- No functional buttons, just visual placeholder if needed or empty -->
                                 </div>
                             </div>
-                            <div class="win95-menubar">
+                            <div class="win95-menubar" style="position: relative;">
+                                <!-- [WIN95 UPDATE]: 'Help' Replaced with Dynamic Smart Repair -->
                                 <span class="win95-menu-item">Messages</span>
-                                <span class="win95-menu-item">Help</span>
+                                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                                <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); showQuickScanMenu = !showQuickScanMenu; }}>
+                                    Smart Repair...
+                                </span>
+
+                                {#if showQuickScanMenu}
+                                    <div class="dropdown-list">
+                                        <!-- Quick Scan specific improvement -->
+                                        <div class="dd-item" onclick={() => { handleAddRepairInstruction(projectData?.lastLightResult?.key_improvement || "General Fix"); showQuickScanMenu = false; }}>
+                                            Inject Fix: {projectData.lastLightResult.key_improvement.substring(0, 30)}...
+                                        </div>
+
+                                        <!-- Deep Scan Issues if Available -->
+                                        {#if projectData.lastAiResult}
+                                            <div style="border-top:1px dashed #000; margin:2px 0;"></div>
+                                            {#if projectData.lastAiResult.content_warning && projectData.lastAiResult.content_warning !== 'None'}
+                                                <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Fix Critical: ${projectData?.lastAiResult?.content_warning}`); showQuickScanMenu = false; }}>Fix Warning</div>
+                                            {/if}
+                                            {#if projectData.lastAiResult.tribunal_breakdown?.logic.content_warning}
+                                                <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Logic Fix: ${projectData?.lastAiResult?.tribunal_breakdown?.logic.content_warning}`); showQuickScanMenu = false; }}>Logic Repair</div>
+                                            {/if}
+                                        {/if}
+                                    </div>
+                                {/if}
                             </div>
                             <div class="win95-info-area">
                                 Message from <b>CRITIC_SYS</b> to <b>USER</b><br/>
@@ -933,4 +960,31 @@
     }
     
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+
+    /* DROPDOWN MENU */
+    .dropdown-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background: #c0c0c0;
+        border-top: 1px solid #fff;
+        border-left: 1px solid #fff;
+        border-right: 1px solid #000;
+        border-bottom: 1px solid #000;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+        z-index: 9999;
+        min-width: 150px;
+        padding: 2px;
+    }
+
+    .dd-item {
+        padding: 4px 8px;
+        cursor: pointer;
+        color: #000;
+    }
+
+    .dd-item:hover {
+        background: #000080;
+        color: #fff;
+    }
 </style>
