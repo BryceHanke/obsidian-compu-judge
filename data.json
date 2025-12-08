@@ -1,5 +1,5 @@
 {
-  "apiKey": "AIzaSyAHOz0C6TlUAZAeQUgEEWbSbjl8pXK1TgY",
+  "apiKey": "AIzaSyB6iwQBxYcEuVy6V5QlAREslLkUWu5bzHc",
   "modelId": "gemini-3-pro-preview",
   "searchModelId": "gemini-2.5-pro",
   "aiProvider": "gemini",
@@ -9,28 +9,33 @@
   "anthropicModel": "claude-3-opus-20240229",
   "aiThinkingLevel": 5,
   "defaultTargetQuality": 100,
-  "tempMultiplier": 0.7,
-  "tempCritic": 0.1,
+  "tempMultiplier": 0.8,
+  "tempCritic": 0.2,
   "tempWizard": 0.25,
-  "tempArchitect": 0.75,
-  "tempRepair": 0.75,
+  "tempArchitect": 0.5,
+  "tempRepair": 0.7,
   "tempSynth": 0.1,
   "wizardNegativeConstraints": "Avoid: Deus Ex Machina, Talking Animals, Dream Sequences, Modern Slang, Memories, Life Force, Naming people Kaelen or Elara. Hol",
   "namePool": "",
   "negativeNamePool": "Elias, Thorne, Vance, Castellano, Frost,  Marcus, Hale, Elena, Liam, Carter, Sophie, Webb, Jonah, Creed, Isabella, Rossi, Silas, Graham, Ava, Knox, Roman, Pierce, Lily, Chen, Wyatt, Flynn, Harper, Sloan, Kaelen, Dathris, Elara, Moonwhisper, Garrick, Ironhelm, Seraphina, Valerius, Thane, Blackwood, Isolde, Lightbringer, Draven, Nightshade, Lyra, Silversong, Roderic, Stormwind, Vaelora, Sunstrike, Bram, Stonefist, Caelia, Runeweaver, Fenris, Wolfsbane, Alaric, The, Bold, Rowena, Ravenwood, Torin, Oakenshield, Eowyn, Starfall, Gareth, Dragontamer, Sylas, Shadowstep, Mirella, Goldleaf, Jaxon, Steele, Nova, Prime, Kian, Varr, Zyla, Trix, Ryker, Sol, Orion, Pax, Vega, Starr, Cade, Runner, Lyra, Zen, Jaxom, Krell, Cyra, Volt, Zenon, Flux, Kael, Corvus, Ryla, Ven, Tybalt, Chrome, Saren, Arterius, Eris, Void, Dax, Haron, Vrea, Solus, Kellan, Tech, Pennyworth, Beatrice, Shaw, Walter, Higgins, Clara, Bow, Cavendish, Edith, Wharton, Theodore, Finch, Florence, Vane, Crane, Hazel, Grace, Felix, Unger, Mabel, Pines, Jasper, Hale, Vance, Chester, Copperpot, Agatha, Prynne, Sage, Barnaby, Jones, Greenwood, Victor, Krell, Malakai, Black, Lilith, Crimson, Damien, Thorn, Darkholme, Lucius, Vane, Belladonna, Night, Hannibal, Kane, Cruella, Vesper, Volkan, Death, Jarek, Sand, Ursula, Trench, Scar, Vex, Hades, Thorne, Mordecai, Black, Saron, Void, Thanatos, Steel, Loki, Shade, Hela, Frost, Vlad, Dracul",
   "agentWeights": {
-    "logic": 1,
-    "soul": 1,
+    "logic": 1.5,
+    "soul": 0.5,
     "market": 1
   },
   "arbitrationEnabled": true,
   "disableRainbows": false,
-  "luckTolerance": 5,
+  "luckTolerance": 1,
   "maxOutputTokens": 8192,
-  "analysisPasses": 5,
+  "criticCores": 1,
   "enableTribunal": true,
+  "tribunalConfiguration": "Parallel",
   "tribunalMaxRetries": 2,
   "showThinking": false,
+  "wizardAgentEnabled": true,
+  "wizardAgentMaxRetries": 1,
+  "synthAgentEnabled": true,
+  "synthAgentMaxRetries": 1,
   "customSystemPrompt": "",
   "customOutlinePrompt": "",
   "customRepairPrompt": "",
@@ -41,6 +46,11 @@
     "good": "#38614a",
     "excellent": "#00b315",
     "masterpiece": "#66ff00"
+  },
+  "gradientMap": {
+    "startColor": "#ff0000",
+    "midColor": "#ffff00",
+    "endColor": "#00ff00"
   },
   "projects": {},
   "drives": [
@@ -87,6 +97,7 @@
       "expanded": true
     }
   ],
+  "analysisPasses": 5,
   "msDosColor": "#ffffff",
   "theme": "win95",
   "autoCheckGrammar": true,
