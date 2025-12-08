@@ -391,7 +391,7 @@
                                     background-size: 200% auto;
                                     animation: none;
                                     border: {isMasterpieceEffect(beat.val) ? 'none' : '1px solid rgba(0,0,0,0.5)'};
-                                    box-shadow: {isMasterpieceEffect(beat.val) ? '0 0 4px #ff00ff' : '1px 1px 0 rgba(0,0,0,0.2)'};
+                                    box-shadow: {isMasterpieceEffect(beat.val) ? 'none' : '1px 1px 0 rgba(0,0,0,0.2)'};
                                  ">
                                  {#if isMasterpieceEffect(beat.val)}
                                     <div style="position:absolute; inset: -2px; border: 2px solid transparent; border-image: linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet) 1; animation: rainbow-border 2s linear infinite;"></div>

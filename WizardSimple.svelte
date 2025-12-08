@@ -403,8 +403,8 @@
         overflow-y: auto;
     }
 
-    .step-content h3 { margin-top: 0; font-family: 'Times New Roman', serif; font-size: 20px; margin-bottom: 10px; }
-    .step-content p { font-family: 'Arial', sans-serif; font-size: 12px; margin-bottom: 10px; }
+    .step-content h3 { margin-top: 0; font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif; font-size: 16px; margin-bottom: 10px; font-weight: bold; }
+    .step-content p { font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif; font-size: 11px; margin-bottom: 10px; }
 
     .wizard-footer {
         padding: 10px;
@@ -460,6 +460,10 @@
     
     .drive-title-row { display: flex; align-items: center; gap: 5px; flex: 1; }
     .drive-name-input { background: transparent; border: none; color: #fff; width: 100%; font-weight: bold; }
+
+    .led { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #00ff00; }
+    .led.on { background: radial-gradient(circle at 30% 30%, #e0ffe0, #00ff00); border-color: #00ff00; }
+    .led.off { background: #111; border-color: #555; }
     
     .win95-btn.small { min-width: 20px; padding: 0 4px; font-size: 10px; }
     .win95-btn.dashed-btn { border: 1px dashed #000; background: transparent; width: 100%; margin-top: 5px; }

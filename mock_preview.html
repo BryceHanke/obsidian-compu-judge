@@ -3,8 +3,7 @@
 <html>
 <head>
     <style>
-/* PASTE STYLES.CSS HERE */
-/* COMPU-JUDGE 98 GLOBAL STYLES (v8.0.0 - REFINED) */
+/* COMPU-JUDGE 98 GLOBAL STYLES (v9.0.0 - OSFrame Edition) */
 
 :root {
   /* Default Win95 (Light) Values */
@@ -18,16 +17,6 @@
   --cj-user-color: #000080;
   --cj-grade-masterpiece: #FFFFFF; 
   --cj-bsod-blue: #0000AA;
-
-  /* --- PALETTE: TACTICAL HUD --- */
-  --cj-adverb: #ff0000;
-  --cj-filter: #ffd700;
-  --cj-weak: #a9a9a9;
-
-  /* --- PALETTE: TRIBUNAL AGENTS --- */
-  --cj-agent-market: #008000;
-  --cj-agent-logic: #000080;
-  --cj-agent-lit: #800080;
 }
 
 /* Obsidian Leaf Override to remove padding for full immersion */
@@ -49,9 +38,9 @@
     position: relative;
 }
 
-/* --- VISUAL POLISH: CLEANER BEVELS --- */
-.bevel-up {
-    /* TRUE WIN95 BORDER LOGIC */
+/* --- VISUAL POLISH: SHARP BEVELS (OSFrame Style) --- */
+.compu-container .bevel-up,
+.nigs-settings-container .bevel-up, .bevel-up {
     border-top: 1px solid #fff;
     border-left: 1px solid #fff;
     border-right: 1px solid #000;
@@ -60,7 +49,8 @@
     background: var(--cj-bg);
 }
 
-.bevel-down {
+.compu-container .bevel-down,
+.nigs-settings-container .bevel-down, .bevel-down {
     border-top: 1px solid #404040;
     border-left: 1px solid #404040;
     border-right: 1px solid #fff;
@@ -69,15 +59,21 @@
     background: #fff;
 }
 
-.bevel-groove {
-    border: 2px solid var(--cj-dim);
-    border-right-color: #fff;
+.compu-container .bevel-groove,
+.nigs-settings-container .bevel-groove, .bevel-groove {
+    border: 2px groove #dfdfdf; /* Standard CSS groove approximates it well enough, or use solid borders */
+    border: 2px solid #808080;
     border-bottom-color: #fff;
-    background: transparent;
+    border-right-color: #fff;
+    border-top-color: #808080;
+    border-left-color: #808080;
 }
 
-/* --- BUTTONS (Win95 Authentic) --- */
-.win95-btn, .action-btn {
+/* --- BUTTONS (Win95 Authentic - OSFrame) --- */
+.compu-container .win95-btn,
+.compu-container .action-btn,
+.nigs-settings-container .win95-btn,
+.nigs-settings-container .action-btn, .win95-btn {
     /* TRUE WIN95 BUTTON OUTLINE */
     border-top: 1px solid #fff;
     border-left: 1px solid #fff;
@@ -88,283 +84,304 @@
 
     color: #000;
     font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
-    font-weight: bold;
+    font-weight: normal; /* Buttons in OSFrame image are not bold */
     cursor: pointer;
-    padding: 4px 10px;
-    text-transform: uppercase;
+    padding: 4px 6px;
     font-size: 11px;
     transition: none;
-    border-radius: 0; /* NO ROUNDED CORNERS */
+    border-radius: 0;
+    min-height: 22px;
 }
 
-.win95-btn:active, .action-btn:active {
+.compu-container .win95-btn:active,
+.compu-container .action-btn:active,
+.nigs-settings-container .win95-btn:active,
+.nigs-settings-container .action-btn:active, .win95-btn:active {
     border-top: 1px solid #000;
     border-left: 1px solid #000;
     border-right: 1px solid #fff;
     border-bottom: 1px solid #fff;
     box-shadow: inset 1px 1px 0 #808080;
-    padding: 5px 9px 3px 11px; /* The physical text shift */
+    padding: 5px 5px 3px 7px; /* The physical text shift */
 }
 
-.win95-btn:disabled, .action-btn:disabled {
+.compu-container .win95-btn:disabled,
+.compu-container .action-btn:disabled,
+.nigs-settings-container .win95-btn:disabled,
+.nigs-settings-container .action-btn:disabled, .win95-btn:disabled {
     color: #808080;
     text-shadow: 1px 1px 0 #fff;
     cursor: default;
 }
 
-.win95-btn.primary, .action-btn.primary {
-    font-weight: bold;
-    padding: 6px 12px;
+.compu-container .win95-btn.primary,
+.compu-container .action-btn.primary,
+.nigs-settings-container .win95-btn.primary,
+.nigs-settings-container .action-btn.primary {
+    font-weight: bold; /* Primary actions can be bold */
 }
 
-.win95-btn.dashed-btn {
-    border: 1px dashed #808080;
-    background: transparent;
-    color: #555;
-    box-shadow: none;
+/* --- TITLE BAR (OSFrame Deep Blue) --- */
+.compu-container .title-bar,
+.compu-container .win95-titlebar,
+.nigs-settings-container .title-bar,
+.nigs-settings-container .win95-titlebar, .title-bar, .win95-titlebar {
+    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+    color: #fff;
+    padding: 2px 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
+    font-size: 11px;
+    height: 18px;
+    margin-bottom: 2px;
 }
-.win95-btn.dashed-btn:hover {
-    border: 1px solid #000;
+
+.compu-container .win95-titlebar-text,
+.nigs-settings-container .win95-titlebar-text, .win95-titlebar-text {
+    display: flex; gap: 5px; align-items: center;
+}
+
+/* NEW: Controls Container */
+.compu-container .win95-controls,
+.nigs-settings-container .win95-controls, .win95-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.compu-container .win95-close-btn,
+.nigs-settings-container .win95-close-btn, .win95-close-btn {
+    width: 14px; height: 12px;
+    background: #c0c0c0;
+    border-top: 1px solid #fff; border-left: 1px solid #fff; border-right: 1px solid #000; border-bottom: 1px solid #000;
+    box-shadow: inset -1px -1px 0 #808080;
+    font-size: 9px; line-height: 9px; padding: 0;
+    color: #000; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; margin-left: 2px;
+}
+.compu-container .win95-close-btn:active,
+.nigs-settings-container .win95-close-btn:active, .win95-close-btn:active {
+    border-style: inset; padding: 1px 0 0 1px;
+}
+
+/* --- WIN95 POPUP WINDOW (OSFrame Style) --- */
+.compu-container .win95-popup-window,
+.nigs-settings-container .win95-popup-window, .win95-popup-window {
+    background: #c0c0c0;
+    border-top: 1px solid #fff;
+    border-left: 1px solid #fff;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
+    box-shadow: 2px 2px 0 #000; /* Drop shadow */
+    padding: 2px;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+}
+
+.compu-container .win95-menubar,
+.nigs-settings-container .win95-menubar, .win95-menubar {
+    display: flex;
+    gap: 12px;
+    padding: 2px 6px;
+    font-size: 11px;
     color: #000;
-    background: rgba(255,255,255,0.2);
+}
+
+.compu-container .win95-menu-item,
+.nigs-settings-container .win95-menu-item, .win95-menu-item {
+    cursor: default;
+    position: relative;
+}
+.compu-container .win95-menu-item:first-letter,
+.nigs-settings-container .win95-menu-item:first-letter, .win95-menu-item:first-letter { text-decoration: underline; }
+.compu-container .win95-menu-item:hover,
+.nigs-settings-container .win95-menu-item:hover, .win95-menu-item:hover {
+    background-color: #000080; color: #fff;
+}
+
+.compu-container .win95-info-area,
+.nigs-settings-container .win95-info-area, .win95-info-area {
+    padding: 4px 8px; font-size: 11px; color: #000;
+}
+
+/* Content Inset (White Box) */
+.compu-container .win95-content-inset,
+.nigs-settings-container .win95-content-inset, .win95-content-inset {
+    background: #fff;
+    border-top: 1px solid #404040;
+    border-left: 1px solid #404040;
+    border-right: 1px solid #fff;
+    border-bottom: 1px solid #fff;
+    box-shadow: inset 1px 1px 0 #808080;
+    padding: 8px; margin: 2px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    color: #000;
+}
+
+/* Status Bar */
+.compu-container .win95-statusbar,
+.nigs-settings-container .win95-statusbar, .win95-statusbar {
+    display: flex; gap: 2px; padding: 2px; margin-top: 2px; border-top: 1px solid #808080;
+}
+.compu-container .win95-status-field,
+.nigs-settings-container .win95-status-field, .win95-status-field {
+    flex: 1;
+    border-top: 1px solid #808080; border-left: 1px solid #808080; border-right: 1px solid #fff; border-bottom: 1px solid #fff;
+    padding: 2px 4px; font-size: 11px; color: #000; background: #c0c0c0;
 }
 
 /* --- GLOBAL INPUT OVERRIDES --- */
-.retro-input, select, .retro-select {
+.compu-container .retro-input,
+.compu-container select,
+.compu-container .retro-select,
+.nigs-settings-container .retro-input,
+.nigs-settings-container select,
+.nigs-settings-container .retro-select, .retro-input {
     width: 100%;
     background-color: #fff !important;
     color: #000 !important;
-
-    /* Input Areas need to be Courier New/Consolas */
     font-family: 'Courier New', 'Consolas', monospace;
 
+    /* Sunken Field */
     border-top: 1px solid #404040 !important;
     border-left: 1px solid #404040 !important;
     border-right: 1px solid #fff !important;
     border-bottom: 1px solid #fff !important;
     box-shadow: inset 1px 1px 0 #808080 !important;
 
-    padding: 4px 6px;
-    font-size: 13px;
+    padding: 3px 4px;
+    font-size: 12px;
     font-weight: normal;
     border-radius: 0 !important;
     resize: none;
     line-height: 1.4;
-    -webkit-appearance: none; /* Remove native OS rounded styling */
+    -webkit-appearance: none;
     appearance: none;
 }
 
-/* Dropdown Arrow Hack for non-native appearance */
-.retro-select {
-    background-image: url('data:image/svg+xml;utf8,<svg width="10" height="10" viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><path d="M0 0 L10 0 L5 5 Z" fill="black" /></svg>');
-    background-repeat: no-repeat;
-    background-position: right 10px center;
+/* WIN95 SLIDER (Range Input) */
+.compu-container input[type=range],
+.nigs-settings-container input[type=range], input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+  background: transparent;
+  margin: 10px 0;
 }
 
-.retro-input:focus, .retro-select:focus {
-    outline: 1px dotted #000;
-    background-color: #fff !important;
+.compu-container input[type=range]:focus,
+.nigs-settings-container input[type=range]:focus, input[type=range]:focus {
+  outline: none;
 }
 
-/* --- TITLE BAR --- */
-.title-bar {
-    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
-    color: #fff;
-    padding: 4px 8px;
-    display: flex;
-    justify-content: space-between;
-    font-weight: bold;
-    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
-    font-size: 11px;
+.compu-container input[type=range]::-webkit-slider-thumb,
+.nigs-settings-container input[type=range]::-webkit-slider-thumb, input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 20px;
+  width: 10px;
+  background: #c0c0c0;
+  cursor: pointer;
+  margin-top: -8px;
+
+  /* Bevel Up (Physical Fader) */
+  border-top: 1px solid #fff;
+  border-left: 1px solid #fff;
+  border-right: 1px solid #000;
+  border-bottom: 1px solid #000;
+  box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
+  border-radius: 0;
 }
 
-/* --- SCROLLBARS --- */
-.window-body::-webkit-scrollbar { width: 16px; background: #dfdfdf; }
+.compu-container input[type=range]::-webkit-slider-runnable-track,
+.nigs-settings-container input[type=range]::-webkit-slider-runnable-track, input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  cursor: pointer;
+  background: #fff;
 
-.window-body::-webkit-scrollbar-thumb { 
-    background: var(--cj-bg); 
-    border-top: 1px solid #fff;
-    border-left: 1px solid #fff;
-    border-right: 1px solid #000;
-    border-bottom: 1px solid #000;
+  /* Bevel Down / Sunken Groove */
+  border-top: 1px solid #808080;
+  border-left: 1px solid #808080;
+  border-right: 1px solid #fff;
+  border-bottom: 1px solid #fff;
+  box-shadow: inset 1px 1px 0 #000;
 }
 
-.window-body::-webkit-scrollbar-track {
-    background: repeating-linear-gradient(45deg, #ddd, #ddd 2px, #fff 2px, #fff 4px);
-}
-
-/* --- TRIBUNAL DASHBOARD (POLISHED) --- */
-.tribunal-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-/* --- WIN95 POPUP WINDOW --- */
-.win95-popup-window {
-    background: #c0c0c0;
-    border-top: 2px solid #dfdfdf;
-    border-left: 2px solid #dfdfdf;
-    border-right: 2px solid #000;
-    border-bottom: 2px solid #000;
-    box-shadow: 1px 1px 0 #000;
-    padding: 2px;
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 15px;
-    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
-}
-
-.win95-titlebar {
-    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
-    color: #fff;
-    padding: 2px 4px;
-    font-weight: bold;
-    font-size: 11px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 18px;
-    margin-bottom: 1px;
-}
-
-.win95-titlebar.inactive {
-    background: #808080;
-    color: #c0c0c0;
-}
-
-.win95-titlebar-text {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-/* Menu Bar Area - Where dropdowns live */
-.win95-menubar {
-    display: flex;
-    gap: 10px;
-    padding: 2px 6px;
-    font-size: 11px;
-    color: #000;
-    border-bottom: 1px solid #808080; /* Slight separator */
-}
-
-.win95-menu-item {
-    cursor: pointer;
-    text-decoration: underline; /* Standard alt-key hint style */
-    position: relative;
-}
-
-.win95-menu-item:hover {
-    background-color: #000080;
-    color: #fff;
-}
-
-.win95-info-area {
-    padding: 6px 8px;
-    font-size: 11px;
-    color: #000;
-}
-
-/* The Sunken Content Box */
-.win95-content-inset {
+/* --- PROGRESS BAR --- */
+.compu-container .win95-progress-container,
+.nigs-settings-container .win95-progress-container {
     background: #fff;
-    border-top: 2px solid #404040;
-    border-left: 2px solid #404040;
-    border-right: 2px solid #fff;
-    border-bottom: 2px solid #fff;
-    padding: 8px;
-    margin: 4px;
-    overflow-y: auto;
-    font-family: 'Courier New', monospace; /* As per image content */
-    color: #000;
-}
-
-/* Status Bar */
-.win95-statusbar {
-    display: flex;
-    gap: 2px;
-    padding: 2px;
-    margin-top: 2px;
-}
-
-.win95-status-field {
-    flex: 1;
     border-top: 1px solid #808080;
     border-left: 1px solid #808080;
     border-right: 1px solid #fff;
     border-bottom: 1px solid #fff;
-    padding: 2px 4px;
-    font-size: 10px;
-    color: #000;
-    background: #c0c0c0;
-}
-
-/* --- DITHER GRADIENT --- */
-/* Using a radial gradient to simulate a glowing center without soft shadow blur */
-.dither-radial {
-    background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 20%, rgba(255,255,255,0) 70%);
-}
-
-/* --- MASTERPIECE & CRITICAL (Retained) --- */
-.masterpiece-text {
-    background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: rainbow-text-scroll 3s linear infinite;
-    filter: drop-shadow(1px 1px 0px rgba(0,0,0,0.5));
-}
-
-@keyframes rainbow-text-scroll { to { background-position: 200% center; } }
-
-.critical-crack {
-    border: 4px double #550000 !important;
-    animation: shake-hard 0.5s cubic-bezier(.36,.07,.19,.97) both;
-}
-
-@keyframes shake-hard {
-  10%, 90% { transform: translate3d(-2px, 0, 0); }
-  20%, 80% { transform: translate3d(3px, 0, 0); }
-  30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
-  40%, 60% { transform: translate3d(5px, 0, 0); }
-}
-
-/* --- RESPONSIVE --- */
-@media (max-width: 600px) {
-    .tribunal-grid { grid-template-columns: 1fr; }
-    .score-main { font-size: 42px !important; }
-}
-
-/* --- SCORE CONTAINER Z-INDEX FIX --- */
-.score-container {
-    background: #d4d4d4;
-    padding-bottom: 25px;
+    box-shadow: inset 1px 1px 0 #000;
+    height: 18px;
     position: relative;
-    z-index: 100; /* Ensure tooltips are above following sections */
+    padding: 0;
 }
 
-.sub-score-row {
-    position: relative;
-    z-index: 101; /* Ensure sub-scores are even higher */
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    padding-top: 5px;
+.compu-container .win95-progress-fill,
+.nigs-settings-container .win95-progress-fill {
+    height: 100%;
+    background: #000080; /* Standard Blue Fill */
 }
 
-/* Ensure tooltips break out of any potential clipping */
-.tooltip-container {
-    position: relative;
-    overflow: visible;
+/* --- MASTERPIECE TEXT --- */
+.compu-container .masterpiece-text,
+.nigs-settings-container .masterpiece-text {
+    /* BLACK TEXT with RAINBOW STROKE/SHADOW */
+    color: #000 !important;
+    text-shadow:
+        2px 0px 0 #ff0000,
+       -2px 0px 0 #00ffff,
+        0px 2px 0 #00ff00,
+        0px -2px 0 #ff00ff;
+    /* Optional Animation */
+    animation: rainbow-pulse 0.2s infinite alternate;
+}
+@keyframes rainbow-pulse {
+    from { text-shadow: 2px 0px 0 #ff0000, -2px 0px 0 #00ffff; }
+    to { text-shadow: 2px 0px 0 #ff00ff, -2px 0px 0 #ffff00; }
 }
 
-/* --- CHART BOX Z-INDEX FIX --- */
-.chart-box {
-    position: relative;
-    z-index: 50; /* Lower than score but above normal flow if needed */
+/* --- SCROLLBARS (Webkit) --- */
+.compu-container .window-body::-webkit-scrollbar,
+.nigs-settings-container .window-body::-webkit-scrollbar { width: 16px; background: #dfdfdf; }
+.compu-container .window-body::-webkit-scrollbar-thumb,
+.nigs-settings-container .window-body::-webkit-scrollbar-thumb {
+    background: var(--cj-bg);
+    border-top: 1px solid #fff; border-left: 1px solid #fff; border-right: 1px solid #000; border-bottom: 1px solid #000;
+}
+.compu-container .window-body::-webkit-scrollbar-track,
+.nigs-settings-container .window-body::-webkit-scrollbar-track {
+    background: repeating-linear-gradient(45deg, #ddd, #ddd 2px, #fff 2px, #fff 4px);
+}
+
+/* CRITICAL FAILURE EFFECT (Hollow Dotted) */
+.critical-bar,
+.critical-bar .win95-progress-container,
+.critical-bar .score-track {
+    background: transparent !important;
+    border: 2px dotted #ff0000 !important; /* Red dotted outline */
+    box-shadow: none !important;
+}
+
+.critical-bar .win95-progress-fill,
+.critical-bar .score-fill {
+    display: none !important; /* Hollow - no fill */
+}
+
+/* Ensure text is visible and red/black indicating failure */
+.critical-text {
+    color: #ff0000 !important;
+    text-shadow: none !important;
+    font-weight: 900;
 }
 
 /* MOCK PREVIEW SPECIFIC OVERRIDES */
