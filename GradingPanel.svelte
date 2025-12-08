@@ -31,7 +31,7 @@
     let isSaving = $state(false);
     let estimatedDuration = $state(4000);
     let wizardLoadingField: string | null = $state(null);
-    let uploadedImage: { data: string, mimeType: string } | null = $state(null);
+    let uploadedImages: { data: string, mimeType: string }[] = $state([]);
     
     // Sync States
     let isContextSynced = $state(false);
@@ -42,6 +42,7 @@
 
     let archivistLength = $derived(forgeData?.archivistContext ? forgeData.archivistContext.length : 0);
     let hasArchivistData = $derived(archivistLength > 0);
+    let hasImages = $derived(uploadedImages.length > 0);
 
     // [FIX]: Moved logic from template to script to prevent build errors with Optional Chaining in HTML
     let activeFileStatus = $derived(
@@ -246,26 +247,30 @@
     // New function to handle image upload
     function handleImageUpload(event: Event) {
         const target = event.target as HTMLInputElement;
-        const file = target.files?.[0];
-        if (!file) return;
+        const files = target.files;
+        if (!files || files.length === 0) return;
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const result = e.target?.result as string;
-            // result is data:image/jpeg;base64,....
-            const parts = result.split(',');
-            if (parts.length === 2) {
-                const mimeType = parts[0].split(':')[1].split(';')[0];
-                const base64 = parts[1];
-                uploadedImage = { data: base64, mimeType };
-                new Notice("Image Loaded into Buffer.");
-            }
-        };
-        reader.readAsDataURL(file);
+        let loadedCount = 0;
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const result = e.target?.result as string;
+                // result is data:image/jpeg;base64,....
+                const parts = result.split(',');
+                if (parts.length === 2) {
+                    const mimeType = parts[0].split(':')[1].split(';')[0];
+                    const base64 = parts[1];
+                    uploadedImages = [...uploadedImages, { data: base64, mimeType }];
+                    loadedCount++;
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+        setTimeout(() => new Notice(`${files.length} Images Loaded into Buffer.`), 500);
     }
 
-    function clearImage() {
-        uploadedImage = null;
+    function clearImages() {
+        uploadedImages = [];
         new Notice("Image Buffer Cleared.");
     }
 
@@ -273,7 +278,7 @@
         if (!forgeData) return;
         if (confirm("Clear Archivist Memory?")) {
             forgeData.archivistContext = "";
-            uploadedImage = null;
+            uploadedImages = [];
             saveAll(false);
             new Notice("Archivist Memory Cleared.");
         }
@@ -526,7 +531,7 @@
         try { 
             const sourceText = forgeData.archivistContext ? forgeData.archivistContext.trim() : "";
             const instructions = forgeData.archivistPrompt ? forgeData.archivistPrompt.trim() : "";
-            const hasImage = !!uploadedImage;
+            const hasImage = uploadedImages.length > 0;
 
             if (sourceText.length === 0 && instructions.length === 0 && !hasImage) throw new Error("ARCHIVIST IDLE: Please Upload Text, Image, OR enter a Title/Concept.");
 
@@ -542,7 +547,7 @@
                 startLoading(path, estTime, modeLabel);
                 outputFilename = "TEXT_ANALYSIS.md";
             } else if (hasImage) {
-                 modeLabel = "ANALYZING VISUAL DATA...";
+                 modeLabel = `ANALYZING ${uploadedImages.length} IMAGES...`;
                  combinedInput = `INSTRUCTIONS: ${instructions}\n\n[VISUAL INPUT PROVIDED]`;
                  startLoading(path, estTime, modeLabel);
                  outputFilename = "VISUAL_ANALYSIS.md";
@@ -556,7 +561,7 @@
             }
             new Notice(modeLabel);
 
-            const images = uploadedImage ? [uploadedImage] : undefined;
+            const images = uploadedImages.length > 0 ? uploadedImages : undefined;
             const outlineText = await cloud.generateOutline(combinedInput, useSearch, undefined, images);
 
             await safeCreateFile(outputFilename, outlineText);
@@ -815,10 +820,10 @@
                             <div class="memory-core bevel-down">
                                 <div class="memory-status">
                                     <div class="status-indicator">
-                                        <span class="led {hasArchivistData || uploadedImage ? 'on' : 'off'}"></span>
-                                        <span>{hasArchivistData || uploadedImage ? 'BUFFER LOADED' : 'BUFFER EMPTY'}</span>
+                                        <span class="led {hasArchivistData || uploadedImages.length > 0 ? 'on' : 'off'}"></span>
+                                        <span>{hasArchivistData || uploadedImages.length > 0 ? 'BUFFER LOADED' : 'BUFFER EMPTY'}</span>
                                     </div>
-                                    <div class="status-details">{archivistLength} CHARS {uploadedImage ? '+ IMAGE' : ''}</div>
+                                    <div class="status-details">{archivistLength} CHARS {uploadedImages.length > 0 ? `+ ${uploadedImages.length} IMG` : ''}</div>
                                 </div>
                                 <div class="context-controls">
                                     <button
@@ -829,18 +834,18 @@
                                     >
                                         {isArchivistSynced ? '✅ SYNCED' : '📥 LOAD BUFFER'}
                                     </button>
-                                     <button class="scrub-btn" onclick={handleScrubArchivist} disabled={!hasArchivistData && !uploadedImage}>🗑️</button>
+                                     <button class="scrub-btn" onclick={handleScrubArchivist} disabled={!hasArchivistData && uploadedImages.length === 0}>🗑️</button>
                                  </div>
                             </div>
 
                             <!-- IMAGE UPLOAD -->
                             <div style="margin-bottom: 8px; display: flex; gap: 5px; align-items: center;">
                                 <label class="action-btn secondary" style="margin: 0; text-align: center; cursor: pointer;">
-                                    📷 LOAD IMAGE / WEBTOON
-                                    <input type="file" accept="image/*" onchange={handleImageUpload} style="display: none;">
+                                    📷 LOAD IMAGES ({uploadedImages.length})
+                                    <input type="file" accept="image/*" multiple onchange={handleImageUpload} style="display: none;">
                                 </label>
-                                {#if uploadedImage}
-                                    <button class="scrub-btn" onclick={clearImage} title="Clear Image">X</button>
+                                {#if uploadedImages.length > 0}
+                                    <button class="scrub-btn" onclick={clearImages} title="Clear Images">X</button>
                                 {/if}
                             </div>
 
@@ -854,7 +859,7 @@
 
                             <div class="grid-2">
                                 <button class="action-btn tertiary outline-btn" onclick={runOutlineGeneration}>
-                                    {hasArchivistData || uploadedImage ? 'ANALYZE BUFFER' : 'GENERATE FROM TITLE'}
+                                    {hasArchivistData || uploadedImages.length > 0 ? 'ANALYZE BUFFER' : 'GENERATE FROM TITLE'}
                                 </button>
                                 <button class="action-btn secondary outline-btn" onclick={runDeepRename}>
                                     🏷️ RENAME CAST (DEEP)
