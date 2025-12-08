@@ -508,3 +508,48 @@
     word-wrap: break-word;
     font-family: 'Courier New', monospace;
 }
+
+/* --- SLIDER OVERHAUL (Physical Fader) --- */
+input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    margin: 8px 0;
+    background: transparent;
+}
+
+input[type=range]:focus {
+    outline: none;
+}
+
+/* TRACK: Sunken Groove */
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 8px;
+    cursor: pointer;
+    background: #c0c0c0;
+    border-top: 2px solid #808080;
+    border-left: 2px solid #808080;
+    border-right: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    box-shadow: inset 1px 1px 0 #000;
+}
+
+/* THUMB: Physical Fader Cap */
+input[type=range]::-webkit-slider-thumb {
+    height: 20px;
+    width: 12px;
+    background: #c0c0c0;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-right: 2px solid #000;
+    border-bottom: 2px solid #000;
+    box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
+    cursor: grab;
+    -webkit-appearance: none;
+    margin-top: -8px; /* Offset to center on track */
+}
+
+input[type=range]::-webkit-slider-thumb:active {
+    cursor: grabbing;
+    background: #a0a0a0;
+}

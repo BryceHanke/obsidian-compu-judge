@@ -344,7 +344,10 @@
                         <span class="s-val">{formatUnsignedScore(s.val)}%</span>
                     </div>
                     <div class="win95-progress-container">
-                        <div class="win95-progress-fill" style="width: {getSliderMetrics(s.val)}%;"></div>
+                        <!-- DISABLED RAINBOWS FOR CHARACTER STATS AS REQUESTED -->
+                         <div class="win95-progress-fill"
+                              style="width: {getSliderMetrics(s.val)}%; background: {getBarColor(s.val)};">
+                         </div>
                     </div>
                 </div>
             {/each}
@@ -490,21 +493,26 @@
                     {/if}
                 </div>
                 <div class="win95-info-area">
-                    <b>COHESION: {formatScoreDisplay(data.tribunal_breakdown.logic.cohesion_score)}</b>
+                    <b>COHESION: {formatScoreDisplay(data.tribunal_breakdown.logic.score)}</b>
                 </div>
                 <div class="win95-content-inset" style="color: #800000;">
-                   {data.tribunal_breakdown.logic.content_warning || "No Logic Holes Detected."}<br/><br/>
-                   <span style="color:#000;"><i>"{data.tribunal_breakdown.logic.cohesion_reason || ""}"</i></span>
+                    {#if data.tribunal_breakdown.logic.inconsistencies && data.tribunal_breakdown.logic.inconsistencies.length > 0}
+                        {data.tribunal_breakdown.logic.inconsistencies[0]}
+                    {:else}
+                        No Logic Holes Detected.
+                    {/if}
+                    <br/><br/>
+                    <span style="color:#000;"><i>Deus Ex Machinas: {data.tribunal_breakdown.logic.deus_ex_machina_count || 0}</i></span>
                 </div>
             </div>
 
-            <!-- LIT -->
+            <!-- SOUL (Replacing Lit in the 3-col grid) -->
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <!-- svelte-ignore a11y-no-static-element-interactions -->
             <div class="win95-popup-window" onclick={() => selectedAgent = 'lit'}>
                  <div class="win95-titlebar {selectedAgent === 'lit' ? '' : 'inactive'}">
                     <div class="win95-titlebar-text">
-                        <span>✒️</span> <span>LITERARY CRITIC</span>
+                        <span>✨</span> <span>THE SOUL</span>
                     </div>
                 </div>
                  <div class="win95-menubar" style="position:relative;">
@@ -513,20 +521,33 @@
                      <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); openDropdown = openDropdown === 'lit' ? null : 'lit'; }}>Actions</span>
                      {#if openDropdown === 'lit'}
                         <div class="dropdown-list">
-                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Refine Theme: ${data.tribunal_breakdown?.lit.niche_reason}`); openDropdown = null; }}>Inject Thematic Repair</div>
-                             <div class="dd-item" onclick={() => { onAddRepairInstruction(`Boost Novelty`); openDropdown = null; }}>Focus on Novelty</div>
+                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Refine Vibe: ${data.tribunal_breakdown?.lit.critique}`); openDropdown = null; }}>Inject Vibe Repair</div>
                         </div>
                     {/if}
                 </div>
                 <div class="win95-info-area">
-                    <b>NOVELTY: {formatScoreDisplay(data.tribunal_breakdown.lit.novelty_score)}</b>
+                    <b>SCORE: {formatScoreDisplay(data.tribunal_breakdown.lit.score)}</b>
                 </div>
                 <div class="win95-content-inset">
-                    Theme Strength: {formatScoreDisplay(data.tribunal_breakdown.lit.niche_score)}<br/><br/>
-                    <i>"{data.tribunal_breakdown.lit.niche_reason || ""}"</i>
+                    Mood: {data.tribunal_breakdown.lit.mood || "N/A"}<br/><br/>
+                    <i>"{data.tribunal_breakdown.lit.critique || ""}"</i>
                 </div>
             </div>
         </div>
+    {/if}
+
+    {#if data.arbitration_log}
+    <div class="section-header" style="margin-top:20px;">CHIEF JUSTICE ARBITRATION LOG</div>
+    <div class="win95-popup-window">
+        <div class="win95-titlebar">
+            <div class="win95-titlebar-text">
+                <span>⚖️</span> <span>FINAL VERDICT</span>
+            </div>
+        </div>
+        <div class="win95-content-inset" style="font-family: 'Courier New', monospace; font-weight: bold;">
+            {data.arbitration_log.ruling}
+        </div>
+    </div>
     {/if}
 
 <div class="section-header">

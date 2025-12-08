@@ -120,7 +120,7 @@ class NigsSettingTab extends PluginSettingTab {
         containerEl.createEl('h2', { text: 'BIOS SETUP' });
 
         // --- 1. AI IDENTITY ---
-        new Setting(containerEl)
+        const providerSetting = new Setting(containerEl)
             .setName('AI Provider')
             .setDesc('Select your intelligence engine.')
             .addDropdown(drop => drop
@@ -134,6 +134,12 @@ class NigsSettingTab extends PluginSettingTab {
                     this.display(); 
                 }));
         
+        // APPLY RETRO STYLE TO DROPDOWN
+        const dropdownEl = providerSetting.controlEl.querySelector('select');
+        if (dropdownEl) {
+            dropdownEl.addClass('retro-select');
+        }
+
         containerEl.createEl('h4', { text: 'Connection Settings' });
 
         if (this.plugin.settings.aiProvider === 'gemini') {
@@ -358,6 +364,55 @@ class NigsSettingTab extends PluginSettingTab {
                     this.plugin.settings.enableTribunal = val;
                     await this.plugin.saveSettings();
                 }));
+
+        // --- 5B. ARBITRATION & CONTROL ---
+        containerEl.createEl('h4', { text: 'Chief Justice Arbitration' });
+
+        new Setting(containerEl)
+            .setName('Enable Chief Justice')
+            .setDesc('Activates the Arbitration layer to weigh Soul vs Logic and penalize Deus Ex Machina.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.arbitrationEnabled)
+                .onChange(async (val) => {
+                    this.plugin.settings.arbitrationEnabled = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Luck Tolerance (0-10)')
+            .setDesc('How much "good luck" is allowed before it counts as Deus Ex Machina.')
+            .addSlider(slider => slider
+                .setLimits(0, 10, 1)
+                .setValue(this.plugin.settings.luckTolerance)
+                .setDynamicTooltip()
+                .onChange(async (val) => {
+                    this.plugin.settings.luckTolerance = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Disable Rainbows')
+            .setDesc('Turn off the "Masterpiece" rainbow animation for a flatter look.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.disableRainbows)
+                .onChange(async (val) => {
+                    this.plugin.settings.disableRainbows = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        containerEl.createEl('div', { text: 'Agent Weighting (Influence)', cls: 'setting-item-description', style: 'margin-bottom: 10px; font-weight: bold;' });
+
+        new Setting(containerEl)
+            .setName('Logic Weight')
+            .addSlider(slider => slider.setLimits(0, 2, 0.1).setValue(this.plugin.settings.agentWeights.logic)
+            .setDynamicTooltip()
+            .onChange(async v => { this.plugin.settings.agentWeights.logic = v; await this.plugin.saveSettings(); }));
+
+        new Setting(containerEl)
+            .setName('Soul Weight')
+            .addSlider(slider => slider.setLimits(0, 2, 0.1).setValue(this.plugin.settings.agentWeights.soul)
+            .setDynamicTooltip()
+            .onChange(async v => { this.plugin.settings.agentWeights.soul = v; await this.plugin.saveSettings(); }));
 
         // --- 6. GRADING PALETTE ---
         containerEl.createEl('h4', { text: 'Grading Palette (Gradient Map)' });
