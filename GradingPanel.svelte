@@ -12,7 +12,7 @@
     import WizardView from './WizardView.svelte';
     import CriticDisplay from './CriticDisplay.svelte';
     import Win95ProgressBar from './Win95ProgressBar.svelte';
-    import { processRegistry, processOrigin, setFileLoading, setStatus } from './store';
+    import { processRegistry, processOrigin, startProcess, updateProcessStatus, activeProcesses, finishProcess, cancelProcess } from './store';
 
     interface Props {
         app: App;
@@ -52,6 +52,9 @@
     // [FIX]: Loading state for project data
     let isProjectDataLoading = $derived(activeFile && !projectData);
 
+    // Tracks active process IDs for UI placement
+    let processMap: Record<string, string> = $state({}); // key: context (e.g. 'critic_main'), value: processId
+
     // [OPTIMIZATION] Debounced save for text inputs
     const debouncedSave = debounce(() => saveAll(false), 1000);
 
@@ -67,7 +70,7 @@
         saveAll(false);
     }
 
-    function handleError(context: string, error: any) {
+    function handleError(context: string, error: any, processId?: string) {
         console.error(`[Compu-Judge] ${context} Error:`, error);
         let msg = error instanceof Error ? error.message : String(error);
         msg = msg.replace(/^Error:\s*/i, "").replace(/^Gemini Error:\s*/i, "");
@@ -77,6 +80,10 @@
         
         new Notice(`❌ ${context}: ${msg}`, 6000);
         wizardLoadingField = null;
+
+        if (processId) {
+            cancelProcess(processId);
+        }
     }
 
     export const updateActiveFile = async (file: TFile | null) => {
@@ -284,15 +291,29 @@
         }
     }
 
-    function startLoading(path: string, duration = 4000, label = "PROCESSING...") { 
+    // Modified startLoading to support new process system
+    function startLoading(contextKey: string, duration = 4000, label = "PROCESSING...") {
         estimatedDuration = duration;
-        setStatus(label);
-        setFileLoading(path, true, currentTab); 
+
+        // Generate a unique ID for this run
+        const pid = `${contextKey}_${Date.now()}`;
+
+        // Start process in store
+        const controller = startProcess(pid, label, duration);
+
+        // Track locally to render the correct bar
+        processMap[contextKey] = pid;
+
+        return { pid, controller };
     }
     
-    function stopLoading(path: string) { 
-        setTimeout(() => setFileLoading(path, false), 200);
-        wizardLoadingField = null;
+    function stopLoading(contextKey: string) {
+        const pid = processMap[contextKey];
+        if (pid) {
+            finishProcess(pid);
+            delete processMap[contextKey];
+            wizardLoadingField = null;
+        }
     }
 
     async function safeCreateFile(filename: string, content: string) {
@@ -308,29 +329,39 @@
 
     async function handleGradeCharacter(char: CharacterBlock): Promise<CharacterBlock> {
         if (!wizardData) return char;
-        const path = "WIZARD_GLOBAL"; // Independent of file
-        startLoading(path, 3000, `ANALYZING ${char.name.toUpperCase()}...`);
+        const contextKey = "WIZARD_GLOBAL"; // Independent of file
+        const { pid, controller } = startLoading(contextKey, 3000, `ANALYZING ${char.name.toUpperCase()}...`);
         try {
             const context = wizardData.inspirationContext || "No context provided.";
-            const updated = await cloud.gradeCharacter(char, context);
+            const updated = await cloud.gradeCharacter(
+                char,
+                context,
+                controller.signal,
+                (msg) => updateProcessStatus(pid, msg)
+            );
             new Notice(`Metrics Updated for ${char.name}`);
             return updated;
-        } catch(e: any) { handleError("Character Grading", e); return char; } 
-        finally { stopLoading(path);
+        } catch(e: any) { handleError("Character Grading", e, pid); return char; }
+        finally { stopLoading(contextKey);
         }
     }
 
     async function handleGradeStructure(beat: StoryBlock): Promise<StoryBlock> {
         if (!wizardData) return beat;
-        const path = "WIZARD_GLOBAL";
-        startLoading(path, 3000, `ANALYZING ${beat.type.toUpperCase()}...`);
+        const contextKey = "WIZARD_GLOBAL";
+        const { pid, controller } = startLoading(contextKey, 3000, `ANALYZING ${beat.type.toUpperCase()}...`);
         try {
             const context = wizardData.inspirationContext || "No context provided.";
-            const updated = await cloud.gradeStructureBeat(beat, context);
+            const updated = await cloud.gradeStructureBeat(
+                beat,
+                context,
+                controller.signal,
+                (msg) => updateProcessStatus(pid, msg)
+            );
             new Notice(`Tension Calculated for ${beat.title}`);
             return updated;
-        } catch(e: any) { handleError("Structure Grading", e); return beat; }
-        finally { stopLoading(path);
+        } catch(e: any) { handleError("Structure Grading", e, pid); return beat; }
+        finally { stopLoading(contextKey);
         }
     }
 
@@ -339,21 +370,34 @@
         if (!file || !projectData || !wizardData) return;
         const content = await app.vault.read(file);
         const estTime = cloud.estimateDuration(content, 'scan');
-        startLoading(file.path, estTime, "CALCULATING METRICS...");
+
+        // Use file path as context key for critic operations
+        const contextKey = file.path + "_CRITIC";
+
+        const { pid, controller } = startLoading(contextKey, estTime, "CALCULATING METRICS...");
         try { 
             const nlpStats = NlpService.analyze(content);
-            setStatus("SYNTHESIZING DEEP SCAN...");
+            updateProcessStatus(pid, "SYNTHESIZING DEEP SCAN...");
             const context = { inspiration: wizardData.inspirationContext, target: wizardData.targetScore };
-            const result = await cloud.gradeContent(content, context, nlpStats);
+
+            const result = await cloud.gradeContent(
+                content,
+                context,
+                nlpStats,
+                undefined, // wizardState
+                controller.signal,
+                (msg) => updateProcessStatus(pid, msg)
+            );
+
             if (activeFile?.path !== file.path) return;
             projectData.lastAiResult = result; 
             projectData.lastAnalysisMtime = file.stat.mtime;
             await updateFrontMatter(result);
             await saveAll(true);
             new Notice("Deep Scan Complete.");
-        } catch (e: any) { handleError("Deep Scan", e);
+        } catch (e: any) { handleError("Deep Scan", e, pid);
         } 
-        finally { stopLoading(file.path);
+        finally { stopLoading(contextKey);
         } 
     }
 
@@ -362,42 +406,61 @@
         if (!file || !projectData) return; 
         const content = await app.vault.read(file);
         const estTime = cloud.estimateDuration(content, 'quick');
-        startLoading(file.path, estTime, "QUICK SCANNING...");
+
+        const contextKey = file.path + "_CRITIC";
+        const { pid, controller } = startLoading(contextKey, estTime, "QUICK SCANNING...");
+
         try { 
-            const aiGrade = await cloud.getLightGrade(content);
+            const aiGrade = await cloud.getLightGrade(
+                content,
+                controller.signal,
+                (msg) => updateProcessStatus(pid, msg)
+            );
             if (activeFile?.path !== file.path) return;
             const summary = `${aiGrade.summary_line}`;
             projectData.lastLightResult = { ...aiGrade, summary_line: summary };
             await updateFrontMatter(aiGrade);
             await saveAll(false);
-        } catch (e: any) { handleError("Quick Scan", e);
+        } catch (e: any) { handleError("Quick Scan", e, pid);
         } 
-        finally { stopLoading(file.path);
+        finally { stopLoading(contextKey);
         } 
     }
 
     async function runMeta() { 
         if (!activeFile || !projectData) return;
         const path = activeFile.path; 
-        startLoading(path, 4000, "META-ANALYSIS..."); 
+        const contextKey = path + "_CRITIC";
+        const { pid, controller } = startLoading(contextKey, 4000, "META-ANALYSIS...");
+
         try { 
             const content = await app.vault.read(activeFile);
-            const meta = await cloud.getMetaAnalysis(content); 
+            const meta = await cloud.getMetaAnalysis(
+                content,
+                controller.signal,
+                (msg) => updateProcessStatus(pid, msg)
+            );
             if (activeFile.path !== path) return;
             projectData.lastMetaResult = meta;
             await saveAll(false);
-        } catch (e: any) { handleError("System Diagnostics", e); } 
-        finally { stopLoading(path);
+        } catch (e: any) { handleError("System Diagnostics", e, pid); }
+        finally { stopLoading(contextKey);
         } 
     }
 
     async function runWizardAssist(fieldPath: string) { 
         if (!wizardData) return;
-        const path = "WIZARD_GLOBAL";
+        const contextKey = "WIZARD_GLOBAL";
         wizardLoadingField = fieldPath;
-        startLoading(path, 3000, "CONSULTING...");
+        const { pid, controller } = startLoading(contextKey, 3000, "CONSULTING...");
+
         try { 
-            const suggestion = await cloud.assistWizard(fieldPath, wizardData);
+            const suggestion = await cloud.assistWizard(
+                fieldPath,
+                wizardData,
+                controller.signal,
+                (msg) => updateProcessStatus(pid, msg)
+            );
 
             const parts = fieldPath.split('.');
             let target: any = wizardData;
@@ -408,25 +471,30 @@
                 new Notice("Suggestion Applied.");
                 await saveAll(false);
             }
-        } catch(e: any) { handleError("Wizard Assist", e);
+        } catch(e: any) { handleError("Wizard Assist", e, pid);
         } 
-        finally { stopLoading(path);
+        finally { stopLoading(contextKey);
         } 
     }
 
     async function runGhostwriter() { 
         if (!wizardData) return;
-        const path = "WIZARD_GLOBAL";
+        const contextKey = "WIZARD_GLOBAL";
         const estTime = cloud.estimateDuration("generate comprehensive outline", 'architect');
-        startLoading(path, estTime, "ARCHITECTING FULL OUTLINE...");
+        const { pid, controller } = startLoading(contextKey, estTime, "ARCHITECTING FULL OUTLINE...");
+
         try { 
-            const synopsis = await cloud.wizardCompose(wizardData);
+            const synopsis = await cloud.wizardCompose(
+                wizardData,
+                controller.signal,
+                (msg) => updateProcessStatus(pid, msg)
+            );
             const outputName = (wizardData.concept ? wizardData.concept.substring(0, 20).replace(/[^a-z0-9]/gi, '_') : "Untitled") + "_FULL_OUTLINE.md";
             await safeCreateFile(outputName, synopsis);
             new Notice(`Full Outline Created.`);
-        } catch(e: any) { handleError("Ghostwriter", e);
+        } catch(e: any) { handleError("Ghostwriter", e, pid);
         } 
-        finally { stopLoading(path);
+        finally { stopLoading(contextKey);
         } 
     }
 
@@ -438,11 +506,17 @@
             return;
         }
         if (!confirm("AUTO-FILL WARNING:\nThis will overwrite your current characters, structure, and 3 Ps.\n\nContinue?")) return;
-        const path = "WIZARD_GLOBAL";
-        startLoading(path, 8000, "ARCHITECTING STORY BIBLE...");
+        const contextKey = "WIZARD_GLOBAL";
+        const { pid, controller } = startLoading(contextKey, 8000, "ARCHITECTING STORY BIBLE...");
+
         try {
             const context = wizardData.inspirationContext || "";
-            const generatedState = await cloud.autoFillWizard(concept, context);
+            const generatedState = await cloud.autoFillWizard(
+                concept,
+                context,
+                controller.signal,
+                (msg) => updateProcessStatus(pid, msg)
+            );
 
             wizardData = {
                 ...wizardData,
@@ -459,9 +533,9 @@
 
             await saveAll(false);
             new Notice("Story Bible Generated Successfully.");
-        } catch (e: any) { handleError("Auto-Fill", e);
+        } catch (e: any) { handleError("Auto-Fill", e, pid);
         } 
-        finally { stopLoading(path);
+        finally { stopLoading(contextKey);
         } 
     }
 
@@ -475,12 +549,18 @@
             return;
         }
         if (!confirm("INITIATE FUSION?\nThis will generate a new Universal Outline document from your drives.\n\nProceed?")) return;
-        const path = "WIZARD_GLOBAL";
-        startLoading(path, 10000, "FUSING NARRATIVE DRIVES...");
+        const contextKey = "WIZARD_GLOBAL";
+        const { pid, controller } = startLoading(contextKey, 10000, "FUSING NARRATIVE DRIVES...");
 
         try {
             // Returns MARKDOWN string
-            const outlineMarkdown = await cloud.synthesizeDrives(drives, customTitle);
+            const outlineMarkdown = await cloud.synthesizeDrives(
+                drives,
+                customTitle,
+                undefined, // targetQuality
+                controller.signal,
+                (msg) => updateProcessStatus(pid, msg)
+            );
             
             // [UPDATED] Filename Logic based on User Request
             let outputName = "";
@@ -496,9 +576,9 @@
 
             await safeCreateFile(outputName, outlineMarkdown);
             new Notice("Universal Outline Created.");
-        } catch (e: any) { handleError("Synthesis", e);
+        } catch (e: any) { handleError("Synthesis", e, pid);
         } 
-        finally { stopLoading(path);
+        finally { stopLoading(contextKey);
         }
     }
 
@@ -507,27 +587,32 @@
         const path = activeFile.path; 
         const content = await app.vault.read(activeFile);
         const estTime = cloud.estimateDuration(content, 'scan');
-        startLoading(path, estTime, "FORGING ACTION PLAN...");
+        const contextKey = "FORGE_GLOBAL";
+        const { pid, controller } = startLoading(contextKey, estTime, "FORGING ACTION PLAN...");
+
         try { 
             // [UPDATED] Pass Scan Results to getActionPlan
             const plan = await cloud.getActionPlan(
                 content, 
                 forgeData.repairFocus,
                 projectData.lastAiResult || undefined, 
-                projectData.lastLightResult || undefined
+                projectData.lastLightResult || undefined,
+                controller.signal,
+                (msg) => updateProcessStatus(pid, msg)
             );
             
             if (activeFile.path !== path) return;
             forgeData.lastActionPlan = plan;
             await saveAll(false);
-        } catch (e: any) { handleError("Forge", e); } 
-        finally { stopLoading(path);
+        } catch (e: any) { handleError("Forge", e, pid); }
+        finally { stopLoading(contextKey);
         } 
     }
 
     async function runOutlineGeneration() { 
         if (!forgeData) return;
-        const path = "FORGE_GLOBAL";
+        const contextKey = "FORGE_GLOBAL";
+
         try { 
             const sourceText = forgeData.archivistContext ? forgeData.archivistContext.trim() : "";
             const instructions = forgeData.archivistPrompt ? forgeData.archivistPrompt.trim() : "";
@@ -544,12 +629,10 @@
             if (sourceText.length > 0) {
                 modeLabel = "ANALYZING UPLOADED TEXT...";
                 combinedInput = `INSTRUCTIONS: ${instructions}\n\nTEXT TO ANALYZE:\n${sourceText}`;
-                startLoading(path, estTime, modeLabel);
                 outputFilename = "TEXT_ANALYSIS.md";
             } else if (hasImage) {
                  modeLabel = `ANALYZING ${uploadedImages.length} IMAGES...`;
                  combinedInput = `INSTRUCTIONS: ${instructions}\n\n[VISUAL INPUT PROVIDED]`;
-                 startLoading(path, estTime, modeLabel);
                  outputFilename = "VISUAL_ANALYSIS.md";
             } else {
                 modeLabel = "RESEARCHING & GENERATING...";
@@ -557,18 +640,29 @@
                 useSearch = true; 
                 const sanitizedTitle = instructions.replace(/[^a-z0-9\s]/gi, '').trim().replace(/\s+/g, '_').substring(0, 40);
                 if (sanitizedTitle.length > 0) outputFilename = sanitizedTitle + "_OUTLINE.md";
-                startLoading(path, estTime, modeLabel); 
             }
             new Notice(modeLabel);
 
-            const images = uploadedImages.length > 0 ? uploadedImages : undefined;
-            const outlineText = await cloud.generateOutline(combinedInput, useSearch, undefined, images);
+            const { pid, controller } = startLoading(contextKey, estTime, modeLabel);
 
-            await safeCreateFile(outputFilename, outlineText);
-            new Notice(`Archivist Created.`);
+            try {
+                const images = uploadedImages.length > 0 ? uploadedImages : undefined;
+                const outlineText = await cloud.generateOutline(
+                    combinedInput,
+                    useSearch,
+                    controller.signal,
+                    images,
+                    (msg) => updateProcessStatus(pid, msg)
+                );
+
+                await safeCreateFile(outputFilename, outlineText);
+                new Notice(`Archivist Created.`);
+            } catch (e: any) {
+                handleError("Archivist", e, pid);
+            } finally {
+                stopLoading(contextKey);
+            }
         } catch (e: any) { handleError("Archivist", e);
-        } 
-        finally { stopLoading(path);
         } 
     }
 
@@ -577,15 +671,22 @@
         const path = activeFile.path;
         const content = await app.vault.read(activeFile);
         const estTime = cloud.estimateDuration(content, 'repair');
-        startLoading(path, estTime, "APPLYING NARRATIVE PATCH...");
+        const contextKey = "FORGE_GLOBAL";
+        const { pid, controller } = startLoading(contextKey, estTime, "APPLYING NARRATIVE PATCH...");
+
         try {
-            const repairedText = await cloud.autoRepair(content, forgeData.lastActionPlan);
+            const repairedText = await cloud.autoRepair(
+                content,
+                forgeData.lastActionPlan,
+                controller.signal,
+                (msg) => updateProcessStatus(pid, msg)
+            );
             const outputName = activeFile.basename + "_REPAIRED.md";
             await safeCreateFile(outputName, repairedText);
             new Notice(`Repaired File Created.`);
-        } catch (e: any) { handleError("Auto-Patch", e);
+        } catch (e: any) { handleError("Auto-Patch", e, pid);
         } 
-        finally { stopLoading(path);
+        finally { stopLoading(contextKey);
         }
     }
 
@@ -599,12 +700,17 @@
         }
         if (!confirm("RENAME CAST WARNING:\nThis will permanently update character names in your Wizard based on Deep Nomenclature logic. Undo is not supported.\n\nProceed?")) return;
         
-        const path = "WIZARD_GLOBAL";
-        startLoading(path, 6000, "ETYMOLOGIST: RENAMING...");
+        const contextKey = "WIZARD_GLOBAL";
+        const { pid, controller } = startLoading(contextKey, 6000, "ETYMOLOGIST: RENAMING...");
         
         try {
             const context = wizardData.inspirationContext || "";
-            const nameMap = await cloud.generateDeepNames(chars, context);
+            const nameMap = await cloud.generateDeepNames(
+                chars,
+                context,
+                controller.signal,
+                (msg) => updateProcessStatus(pid, msg)
+            );
             
             // Apply updates
             let updateCount = 0;
@@ -629,13 +735,15 @@
             
             new Notice(`Renaming Complete. ${updateCount} characters updated.`);
             
-        } catch (e: any) { handleError("Deep Rename", e); }
-        finally { stopLoading(path); }
+        } catch (e: any) { handleError("Deep Rename", e, pid); }
+        finally { stopLoading(contextKey); }
     }
 
     async function resetCurrentDisc() { 
         if (activeFile) {
-            setFileLoading(activeFile.path, false);
+            // Cancel any active processes for this file
+            const contextKey = activeFile.path + "_CRITIC";
+            stopLoading(contextKey);
         }
 
         if (window.confirm("FORCE FORMAT DISC? Resets all data.")) { 
@@ -743,9 +851,10 @@
                  <WizardView
                     app={app}
                     settings={settings}
-                    activeFileStatus={!!($processRegistry['WIZARD_GLOBAL'])}
-                    processOrigin={$processOrigin['WIZARD_GLOBAL']}
+                    activeFileStatus={!!(processMap['WIZARD_GLOBAL'])}
+                    processOrigin={processMap['WIZARD_GLOBAL'] ? 'WIZARD_GLOBAL' : undefined}
                     estimatedDuration={estimatedDuration}
+                    processId={processMap['WIZARD_GLOBAL']}
 
                     wizardState={wizardData}
                     onSave={debouncedSave}
@@ -779,8 +888,8 @@
                         <div class="weakness-alert">INSERT DISK (OPEN FILE) FOR REPAIR TOOLS</div>
                      {/if}
                      
-                     {#if ($processRegistry[activeFile?.path || ""] && $processOrigin[activeFile?.path || ""] === 'forge') || $processRegistry['FORGE_GLOBAL']}
-                        <Win95ProgressBar label="FORGING..." estimatedDuration={estimatedDuration} /> 
+                     {#if processMap['FORGE_GLOBAL']}
+                        <Win95ProgressBar processId={processMap['FORGE_GLOBAL']} />
                      {/if}
 
                      <div class="repair-focus-area">
@@ -926,7 +1035,7 @@
                  <div class="empty-state">INSERT DISK (OPEN MARKDOWN FILE)</div>
             {:else if isProjectDataLoading}
                  <div class="empty-state">READING DISK SECTORS...</div>
-                 <Win95ProgressBar label="MOUNTING..." estimatedDuration={1000} />
+                 <Win95ProgressBar processId="MOUNTING" /> <!-- Placeholder -->
             {:else if projectData}
                 <div class="panel-critic">
                     <div class="button-row">
@@ -936,8 +1045,8 @@
                         <button class="action-btn secondary" onclick={runQuickScan}>QUICK SCAN</button>
                     </div>
 
-                    {#if $processRegistry[activeFile.path] && $processOrigin[activeFile.path] === 'critic'}
-                        <Win95ProgressBar label="ANALYZING..." estimatedDuration={estimatedDuration} />
+                    {#if activeFile && processMap[activeFile.path + "_CRITIC"]}
+                        <Win95ProgressBar processId={processMap[activeFile.path + "_CRITIC"]} />
                     {/if}
 
                     {#if projectData.lastLightResult}
@@ -1013,7 +1122,7 @@
                         <CriticDisplay
                             data={projectData.lastAiResult}
                             meta={projectData.lastMetaResult}
-                            isProcessing={$processRegistry[activeFile.path]}
+                            isProcessing={!!($processRegistry[activeFile.path])}
                             settings={settings}
                             onRunMeta={runMeta}
                             onAddRepairInstruction={handleAddRepairInstruction}

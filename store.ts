@@ -1,16 +1,87 @@
 import { writable } from 'svelte/store';
 
-// Tracks which files are currently being analyzed
-// Key: filePath, Value: boolean (is loading?)
+export interface ActiveProcess {
+    id: string;
+    label: string;
+    status: string;
+    startTime: number;
+    estimatedDuration: number;
+    abortController: AbortController;
+}
+
+// Global store for all active processes
+export const activeProcesses = writable<Record<string, ActiveProcess>>({});
+
+// Legacy stores (kept for compatibility if needed, but we should migrate)
 export const processRegistry = writable<Record<string, boolean>>({});
-
-// Tracks which tab initiated the process (critic, wizard, forge)
-// Key: filePath, Value: tabId
 export const processOrigin = writable<Record<string, string>>({});
-
-// Global status message for the loading bar text
 export const statusMessage = writable<string>("PROCESSING...");
 
+export function startProcess(id: string, label: string, duration: number): AbortController {
+    const controller = new AbortController();
+
+    activeProcesses.update(procs => ({
+        ...procs,
+        [id]: {
+            id,
+            label,
+            status: label,
+            startTime: Date.now(),
+            estimatedDuration: duration,
+            abortController: controller
+        }
+    }));
+
+    // Maintain legacy compatibility for now
+    processRegistry.update(p => ({ ...p, [id]: true }));
+    statusMessage.set(label);
+
+    return controller;
+}
+
+export function updateProcessStatus(id: string, status: string) {
+    activeProcesses.update(procs => {
+        if (procs[id]) {
+            return {
+                ...procs,
+                [id]: { ...procs[id], status }
+            };
+        }
+        return procs;
+    });
+    // Legacy
+    statusMessage.set(status);
+}
+
+export function cancelProcess(id: string) {
+    activeProcesses.update(procs => {
+        if (procs[id]) {
+            procs[id].abortController.abort();
+            // We don't remove it immediately, UI handles that or finishProcess does
+            // But usually cancellation implies finishing
+            const { [id]: _, ...rest } = procs;
+            return rest;
+        }
+        return procs;
+    });
+
+    // Legacy
+    processRegistry.update(p => ({ ...p, [id]: false }));
+    statusMessage.set("READY");
+}
+
+export function finishProcess(id: string) {
+    activeProcesses.update(procs => {
+        const { [id]: _, ...rest } = procs;
+        return rest;
+    });
+
+    // Legacy
+    processRegistry.update(p => ({ ...p, [id]: false }));
+    statusMessage.set("READY");
+}
+
+// Helpers for legacy support (if any components still use them directly)
 export function setFileLoading(path: string, isLoading: boolean, originTab?: string) {
     processRegistry.update(current => ({
         ...current,

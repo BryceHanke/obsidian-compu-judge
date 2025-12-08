@@ -1,19 +1,26 @@
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
-    import { statusMessage } from './store';
+    import { activeProcesses, cancelProcess } from './store';
     
     interface Props {
-        label?: string;
-        estimatedDuration?: number; 
+        processId: string;
     }
     
-    let { label = "INITIALIZING...", estimatedDuration = 5000 }: Props = $props();
+    let { processId }: Props = $props();
+
+    // Subscribe to the specific process
+    let process = $derived($activeProcesses[processId]);
     
     let progress = $state(0);
     let interval: NodeJS.Timeout;
     let timeDisplay = $state("");
-    let currentStatus = $state(label);
     
+    // Use the process status directly, or fallback to label
+    let currentStatus = $derived(process?.status || "PROCESSING...");
+    let label = $derived(process?.label || "PROCESSING...");
+    let estimatedDuration = $derived(process?.estimatedDuration || 5000);
+
+    // Fallback thoughts if status isn't updating (legacy behavior simulation if needed, but we prefer dynamic)
     const thoughts = [
         "PARSING NARRATIVE STRUCTURE...",
         "QUERYING TROPE DATABASE...",
@@ -29,27 +36,26 @@
         "EVALUATING MIDPOINT REVERSAL..."
     ];
 
-    $effect(() => {
-        if ($statusMessage && $statusMessage !== "READY") {
-            currentStatus = $statusMessage;
-        } else {
-            currentStatus = label;
-        }
-    });
-
     onMount(() => {
+        if (!process) return;
+
         const fps = 30;
         const intervalTime = 1000 / fps;
+        // Re-calculate steps based on when it started
+        const elapsed = Date.now() - process.startTime;
+        const remainingTime = Math.max(1000, estimatedDuration - elapsed);
+
         const totalSteps = estimatedDuration / intervalTime;
-        let currentStep = 0;
+        let currentStep = elapsed / intervalTime;
         let lastThoughtSwitch = 0;
 
-        const seconds = Math.ceil(estimatedDuration / 1000);
+        const seconds = Math.ceil(remainingTime / 1000);
         timeDisplay = `EST: ~${seconds}s`;
 
         interval = setInterval(() => {
             currentStep++;
             const t = currentStep / totalSteps;
+            // Asymptotic approach to 95%
             const targetProgress = 95 * (1 - Math.exp(-3 * t)); 
             
             if (targetProgress > progress) {
@@ -60,13 +66,9 @@
             const remaining = Math.max(0, Math.ceil((estimatedDuration - (currentStep * intervalTime)) / 1000));
             timeDisplay = remaining > 0 ? `EST: ~${remaining}s` : `FINALIZING...`;
 
-            if ($statusMessage === "PROCESSING..." || $statusMessage === label) {
-                lastThoughtSwitch += intervalTime;
-                if (lastThoughtSwitch > 2000) {
-                    lastThoughtSwitch = 0;
-                    currentStatus = thoughts[Math.floor(Math.random() * thoughts.length)];
-                }
-            }
+            // Note: We rely on the parent to update the status text now via the store
+            // But if status equals label (no update yet), we can cycle thoughts
+            // However, the user asked for "exactly what step", so we trust the store updates.
 
         }, intervalTime);
 
@@ -76,22 +78,60 @@
     onDestroy(() => {
         if (interval) clearInterval(interval);
     });
+
+    function handleCancel() {
+        if (confirm("Abort this process?")) {
+            cancelProcess(processId);
+        }
+    }
 </script>
 
-<div class="win95-loader">
-    <div class="loader-header">
-        <div class="loader-label">> {currentStatus}</div>
-        <div class="loader-time">{timeDisplay}</div>
+{#if process}
+<div class="win95-loader-row">
+    <div class="win95-loader">
+        <div class="loader-header">
+            <div class="loader-label">> {currentStatus}</div>
+            <div class="loader-time">{timeDisplay}</div>
+        </div>
+        <div class="progress-container bevel-down">
+            <!-- Uses a repeating gradient background instead of divs for perfect scaling -->
+            <div class="progress-bar-fill" style="width: {progress}%"></div>
+        </div>
     </div>
-    <div class="progress-container bevel-down">
-        <!-- Uses a repeating gradient background instead of divs for perfect scaling -->
-        <div class="progress-bar-fill" style="width: {progress}%"></div>
-    </div>
+
+    <button class="cancel-btn" onclick={handleCancel} title="Abort Process">
+        X
+    </button>
 </div>
+{/if}
 
 <style>
-    .win95-loader { padding: 15px 0; width: 100%; display: flex; flex-direction: column; gap: 6px; }
+    .win95-loader-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .win95-loader { padding: 15px 0; flex: 1; display: flex; flex-direction: column; gap: 6px; }
     
+    .cancel-btn {
+        width: 24px;
+        height: 24px;
+        background: #ff0000;
+        color: white;
+        font-weight: bold;
+        border: 2px outset #ffaaaa;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Pixelated MS Sans Serif', 'Tahoma', sans-serif;
+        font-size: 12px;
+        margin-top: 6px; /* Align roughly with bar */
+    }
+    .cancel-btn:active { border-style: inset; }
+
     .loader-header {
         display: flex;
         justify-content: space-between;
