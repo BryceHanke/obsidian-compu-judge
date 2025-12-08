@@ -1,7 +1,7 @@
 <script lang="ts">
     import { slide } from 'svelte/transition';
     import type { NigsResponse, NigsMetaResponse, NigsSettings, UniversalOutlineNode } from './types';
-    import { getContrastColor } from './utils';
+    import { getContrastColor, getGradientColor } from './utils'; // [UPDATED] Import gradient util
     import { IDEAL_ARCS } from './Glossary';
 
     interface Props {
@@ -26,19 +26,17 @@
 
     // --- UTILS ---
     
-    // Zero-Based Color Map
+    // [UPDATED] Universal Gradient Map Logic
     function getBarColor(val: number): string {
-        if (val >= 45) return settings.gradingColors.masterpiece; // Threshold 45 for Masterpiece
-        if (val >= 30) return settings.gradingColors.excellent;
-        if (val >= 10) return settings.gradingColors.good;
-        if (val === 0) return settings.gradingColors.average;
-        if (val >= -10) return settings.gradingColors.poor;
-        return settings.gradingColors.critical;
+        // Legacy override for Masterpiece special effect handling is done in template class logic
+        // But base color is now calculated from gradient map
+        // Min: -50, Max: 100 (approximate range for display logic)
+        return getGradientColor(val, -50, 100, settings.gradientMap);
     }
 
     // [UPDATED] Universal Masterpiece Check: Threshold 45
     function isMasterpieceEffect(val: number): boolean { 
-        return val >= 45;
+        return val >= 45 && !settings.disableRainbows;
     }
 
     // New Logic: Critical Failure is significantly negative
@@ -46,11 +44,6 @@
         return val <= -20; // Threshold for Cracked Effect
     }
     
-    // Helper to get the correct container class
-    function getContainerClass(val: number): string {
-        return 'score-container'; // Basic container, effects applied to text
-    }
-
     // Diverging Bar Logic (0 Center)
     // Returns a width percentage (0-50%) and a direction ('left' or 'right')
     function getBarMetrics(val: number) {
@@ -60,12 +53,6 @@
         const width = Math.abs(clamped) / cap * 50; // Max width is 50% (half the bar)
         const isNegative = val < 0;
         return { width, isNegative };
-    }
-
-    // Quality Bar Logic (Signed 0-50 cap) for Graph
-    function getQualityMetrics(val: number) {
-        // Same as Tension basically, centered around 0
-        return getBarMetrics(val);
     }
 
     // Slider Bar Logic (0-100)
@@ -107,9 +94,6 @@
 
     let averageScore = $derived.by(() => {
         const c = data.commercial_score || 0;
-        const n = data.niche_score || 0;
-        const co = data.cohesion_score || 0;
-        // Simple Average of Signed Integers (or just use Commercial Score as the main verdict if Tribunal is active)
         return data.commercial_score || 0;
     });
 

@@ -659,7 +659,9 @@
             {#if currentTab === 'critic'}
                 <div class="panel-critic">
                     <div class="button-row">
-                        <button class="action-btn primary" onclick={() => runAnalysis()}>DEEP SCAN ({settings.analysisPasses} CORE)</button>
+                        <button class="action-btn primary" onclick={() => runAnalysis()}>
+                            DEEP SCAN ({settings.enableTribunal ? 'TRIBUNAL' : `${settings.criticCores} CORES`})
+                        </button>
                         <button class="action-btn secondary" onclick={runQuickScan}>QUICK SCAN</button>
                     </div>
 
@@ -799,90 +801,116 @@
                         ></textarea>
                     </div>
 
-                    <fieldset class="outline-fieldset">
-                        <legend>PROSE TOOLS</legend>
-                        <div class="button-grid">
-                            <button class="action-btn secondary" onclick={runFixDialogue}>FIX DIALOGUE PUNCTUATION</button>
-                            <button class="action-btn secondary" onclick={() => runAdverbKiller('highlight')}>HIGHLIGHT ADVERBS (RED)</button>
-                            <button class="action-btn secondary" onclick={runFilterHighlight}>HIGHLIGHT FILTER WORDS (YELLOW)</button>
+                    <fieldset class="outline-fieldset win95-popup-window">
+                         <div class="win95-titlebar">
+                            <div class="win95-titlebar-text">
+                                <span>🔧</span> <span>Prose Tools</span>
+                            </div>
+                        </div>
+                        <div class="win95-content-inset" style="border:none; box-shadow:none; padding:10px;">
+                             <div class="button-grid">
+                                <button class="action-btn secondary" onclick={runFixDialogue}>FIX DIALOGUE PUNCTUATION</button>
+                                <button class="action-btn secondary" onclick={() => runAdverbKiller('highlight')}>HIGHLIGHT ADVERBS (RED)</button>
+                                <button class="action-btn secondary" onclick={runFilterHighlight}>HIGHLIGHT FILTER WORDS (YELLOW)</button>
+                            </div>
                         </div>
                     </fieldset>
 
-                    <fieldset class="outline-fieldset">
-                        <legend>STRUCTURAL ARCHIVIST</legend>
-                        <div class="memory-core bevel-down">
-                            <div class="memory-status">
-                                <div class="status-indicator">
-                                    <span class="led {hasArchivistData ? 'on' : 'off'}"></span>
-                                    <span>{hasArchivistData ? 'BUFFER LOADED' : 'BUFFER EMPTY'}</span>
-                                </div>
-                                <div class="status-details">{archivistLength} CHARS</div>
+                    <fieldset class="outline-fieldset win95-popup-window">
+                         <div class="win95-titlebar">
+                            <div class="win95-titlebar-text">
+                                <span>📚</span> <span>Structural Archivist</span>
                             </div>
-                            <div class="context-controls">
-                                <button 
-                                    class="upload-btn {isArchivistSynced ? 'synced' : ''}" 
-                                    onclick={handleUploadArchivist}
-                                    disabled={isArchivistSynced}
-                                    title="Load active file into buffer"
-                                >
-                                    {isArchivistSynced ? '✅ SYNCED' : '📥 LOAD BUFFER'}
-                                </button>
-                                <button class="scrub-btn" onclick={handleScrubArchivist} disabled={!hasArchivistData}>🗑️</button>
-                             </div>
                         </div>
+                        <div class="win95-content-inset" style="border:none; box-shadow:none; padding:10px;">
+                            <div class="memory-core bevel-down">
+                                <div class="memory-status">
+                                    <div class="status-indicator">
+                                        <span class="led {hasArchivistData ? 'on' : 'off'}"></span>
+                                        <span>{hasArchivistData ? 'BUFFER LOADED' : 'BUFFER EMPTY'}</span>
+                                    </div>
+                                    <div class="status-details">{archivistLength} CHARS</div>
+                                </div>
+                                <div class="context-controls">
+                                    <button
+                                        class="upload-btn {isArchivistSynced ? 'synced' : ''}"
+                                        onclick={handleUploadArchivist}
+                                        disabled={isArchivistSynced}
+                                        title="Load active file into buffer"
+                                    >
+                                        {isArchivistSynced ? '✅ SYNCED' : '📥 LOAD BUFFER'}
+                                    </button>
+                                    <button class="scrub-btn" onclick={handleScrubArchivist} disabled={!hasArchivistData}>🗑️</button>
+                                 </div>
+                            </div>
 
-                        <textarea 
-                            class="retro-input archivist-prompt" 
-                            rows="2" 
-                            placeholder="INSTRUCTIONS: Focus area OR Story Title (e.g. 'The Matrix')" 
-                            bind:value={projectData.archivistPrompt}
-                            use:autoResize={projectData.archivistPrompt}
-                        ></textarea>
-                    
-                        <div class="grid-2">
-                            <button class="action-btn tertiary outline-btn" onclick={runOutlineGeneration}>
-                                {hasArchivistData ? 'ANALYZE BUFFER' : 'GENERATE FROM TITLE'}
-                            </button>
-                            <!-- NEW BUTTON HERE -->
-                            <button class="action-btn secondary outline-btn" onclick={runDeepRename}>
-                                🏷️ RENAME CAST (DEEP)
-                            </button>
+                            <textarea
+                                class="retro-input archivist-prompt"
+                                rows="2"
+                                placeholder="INSTRUCTIONS: Focus area OR Story Title (e.g. 'The Matrix')"
+                                bind:value={projectData.archivistPrompt}
+                                use:autoResize={projectData.archivistPrompt}
+                            ></textarea>
+
+                            <div class="grid-2">
+                                <button class="action-btn tertiary outline-btn" onclick={runOutlineGeneration}>
+                                    {hasArchivistData ? 'ANALYZE BUFFER' : 'GENERATE FROM TITLE'}
+                                </button>
+                                <!-- NEW BUTTON HERE -->
+                                <button class="action-btn secondary outline-btn" onclick={runDeepRename}>
+                                    🏷️ RENAME CAST (DEEP)
+                                </button>
+                            </div>
                         </div>
                     </fieldset>
 
                     {#if projectData.lastActionPlan}
-                        <div class="forge-report">
-                            {#if projectData.lastActionPlan.thought_process}
-                                <details class="thought-trace bevel-groove">
-                                    <summary class="thought-header">COGNITIVE TRACE (RAW)</summary>
-                                    <div class="thought-content">{projectData.lastActionPlan.thought_process}</div>
-                                </details>
-                              {/if}
-   
-                                <div class="weakness-alert">WEAK LINK: {projectData.lastActionPlan.weakest_link}</div>
-                       
-                            {#if projectData.lastActionPlan.repairs}
-                                <div class="repair-list">
-                                      {#each projectData.lastActionPlan.repairs as repair, i}
-                                        <div class="repair-item">
-                                          <div class="repair-header">ISSUE {i+1}: {repair.issue}</div>
-                                           <div class="repair-body">{repair.instruction}</div>
-                                          <div class="repair-why">RATIONALE: {repair.why}</div>
-                                        </div>
-                                    {/each}
+                        <div class="forge-report win95-popup-window">
+                             <div class="win95-titlebar">
+                                <div class="win95-titlebar-text">
+                                    <span>🛡️</span> <span>Repair Plan</span>
                                 </div>
-                            {:else if projectData.lastActionPlan.steps}
-                                <div class="repair-list legacy-mode">
-                                   <p class="legacy-note">[LEGACY REPORT DETECTED - RE-RUN FOR DETAILS]</p>
-                                    <ol class="forge-steps">
-                                        {#each projectData.lastActionPlan.steps as step} 
-                                            <li>{step}</li> 
+                                 <div class="win95-controls">
+                                    <button class="win95-close-btn">X</button>
+                                </div>
+                            </div>
+                            <div class="win95-menubar">
+                                <span class="win95-menu-item">Actions</span>
+                            </div>
+
+                            <div class="win95-content-inset">
+                                {#if projectData.lastActionPlan.thought_process}
+                                    <details class="thought-trace bevel-groove">
+                                        <summary class="thought-header">COGNITIVE TRACE (RAW)</summary>
+                                        <div class="thought-content">{projectData.lastActionPlan.thought_process}</div>
+                                    </details>
+                                  {/if}
+
+                                    <div class="weakness-alert">WEAK LINK: {projectData.lastActionPlan.weakest_link}</div>
+
+                                {#if projectData.lastActionPlan.repairs}
+                                    <div class="repair-list">
+                                          {#each projectData.lastActionPlan.repairs as repair, i}
+                                            <div class="repair-item">
+                                              <div class="repair-header">ISSUE {i+1}: {repair.issue}</div>
+                                               <div class="repair-body">{repair.instruction}</div>
+                                              <div class="repair-why">RATIONALE: {repair.why}</div>
+                                            </div>
                                         {/each}
-                                    </ol>
-                                </div>
-                            {/if}
-             
-                             <button class="action-btn secondary" onclick={runAutoRepair}>EXECUTE REPAIR PROTOCOL (AUTO-PATCH)</button>
+                                    </div>
+                                {:else if projectData.lastActionPlan.steps}
+                                    <div class="repair-list legacy-mode">
+                                       <p class="legacy-note">[LEGACY REPORT DETECTED - RE-RUN FOR DETAILS]</p>
+                                        <ol class="forge-steps">
+                                            {#each projectData.lastActionPlan.steps as step}
+                                                <li>{step}</li>
+                                            {/each}
+                                        </ol>
+                                    </div>
+                                {/if}
+
+                                 <button class="action-btn secondary" onclick={runAutoRepair}>EXECUTE REPAIR PROTOCOL (AUTO-PATCH)</button>
+                            </div>
                         </div>
                     {/if}
                  </div>
@@ -910,7 +938,9 @@
     .action-btn { width: 100%; padding: 6px; font-weight: bold; cursor: pointer; border-top: 1px solid #fff; border-left: 1px solid #fff; border-right: 1px solid #000; border-bottom: 1px solid #000; box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf; background: var(--cj-bg); color: var(--cj-text); margin-bottom: 8px; font-size: 11px; }
     .action-btn:active { border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #fff; border-bottom: 1px solid #fff; box-shadow: inset 1px 1px 0 #808080; padding: 7px 5px 5px 7px; }
     
-    .outline-fieldset { margin-bottom: 20px; border: 2px groove var(--cj-dim); padding: 10px; }
+    .outline-fieldset { margin-bottom: 20px; border: 2px groove var(--cj-dim); padding: 0; }
+    .outline-fieldset legend { margin-left: 5px; }
+
     .repair-focus-area { margin-bottom: 15px; }
     .input-label { display: block; font-weight: 900; margin-bottom: 4px; color: var(--cj-dim); font-size: 0.9em; }
     .archivist-prompt { margin-bottom: 8px; }

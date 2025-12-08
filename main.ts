@@ -81,6 +81,7 @@ export default class CompuJudgePlugin extends Plugin {
         }
 
         this.settings.gradingColors = { ...DEFAULT_SETTINGS.gradingColors, ...this.settings.gradingColors };
+        this.settings.gradientMap = { ...DEFAULT_SETTINGS.gradientMap, ...this.settings.gradientMap };
         
         if (!this.settings.drives) {
             this.settings.drives = [];
@@ -96,6 +97,10 @@ export default class CompuJudgePlugin extends Plugin {
 
         // Ensure Tribunal Config exists
         if (this.settings.tribunalConfiguration === undefined) this.settings.tribunalConfiguration = 'Parallel';
+
+        // Ensure new Agent settings exist
+        if (this.settings.wizardAgentEnabled === undefined) this.settings.wizardAgentEnabled = true;
+        if (this.settings.synthAgentEnabled === undefined) this.settings.synthAgentEnabled = true;
     }
 
     async saveSettings() {
@@ -199,13 +204,15 @@ class NigsSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Tribunal Retries')
-            .setDesc('Max retries for consensus (1-5).')
+            .setName('Critic Cores')
+            .setDesc('Number of parallel analysis cores (Legacy) or Max Retries (Tribunal).')
             .addSlider(slider => slider
-                .setLimits(1, 5, 1)
-                .setValue(this.plugin.settings.tribunalMaxRetries)
+                .setLimits(1, 10, 1)
+                .setValue(this.plugin.settings.criticCores)
                 .setDynamicTooltip()
                 .onChange(async (val) => {
+                    this.plugin.settings.criticCores = val;
+                    // Map this to maxRetries for Tribunal to keep consistency with user request
                     this.plugin.settings.tribunalMaxRetries = val;
                     await this.plugin.saveSettings();
                 }));
@@ -219,6 +226,30 @@ class NigsSettingTab extends PluginSettingTab {
                     this.plugin.settings.arbitrationEnabled = val;
                     await this.plugin.saveSettings();
                 }));
+
+        // --- NEW AGENTS CONFIG ---
+        this.addSectionHeader(containerEl, 'THINKING AGENTS');
+
+        new Setting(containerEl)
+            .setName('Wizard "Creative Consultant"')
+            .setDesc('Enable a secondary agent to critique wizard suggestions before showing them.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.wizardAgentEnabled)
+                .onChange(async (val) => {
+                    this.plugin.settings.wizardAgentEnabled = val;
+                    await this.plugin.saveSettings();
+                }));
+
+         new Setting(containerEl)
+            .setName('Synth "Structural Architect"')
+            .setDesc('Enable a secondary agent to review the fusion plan before final output.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.synthAgentEnabled)
+                .onChange(async (val) => {
+                    this.plugin.settings.synthAgentEnabled = val;
+                    await this.plugin.saveSettings();
+                }));
+
 
         // --- AGENT WEIGHTS ---
         this.addSectionHeader(containerEl, 'AGENT WEIGHTS');
@@ -350,11 +381,29 @@ class NigsSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        // --- 6. GRADING PALETTE ---
-        this.addSectionHeader(containerEl, 'GRADING PALETTE');
+        // --- 6. GRADING PALETTE (GRADIENT MAP) ---
+        this.addSectionHeader(containerEl, 'GRADING PALETTE (GRADIENT MAP)');
         
+        new Setting(containerEl)
+            .setName('Score Gradient Start (Min)')
+            .setDesc('Color for lowest scores.')
+            .addColorPicker(col => col.setValue(this.plugin.settings.gradientMap.startColor)
+            .onChange(async v => { this.plugin.settings.gradientMap.startColor = v; await this.plugin.saveSettings(); }));
+
+        new Setting(containerEl)
+            .setName('Score Gradient Mid (Avg)')
+            .setDesc('Color for average scores.')
+            .addColorPicker(col => col.setValue(this.plugin.settings.gradientMap.midColor)
+            .onChange(async v => { this.plugin.settings.gradientMap.midColor = v; await this.plugin.saveSettings(); }));
+
+        new Setting(containerEl)
+            .setName('Score Gradient End (Max)')
+            .setDesc('Color for masterpiece scores.')
+            .addColorPicker(col => col.setValue(this.plugin.settings.gradientMap.endColor)
+            .onChange(async v => { this.plugin.settings.gradientMap.endColor = v; await this.plugin.saveSettings(); }));
+
         const colors = this.plugin.settings.gradingColors;
-        new Setting(containerEl).setName('Masterpiece (90%+)').addColorPicker(col => col.setValue(colors.masterpiece)
+        new Setting(containerEl).setName('Legacy Masterpiece (90%+)').addColorPicker(col => col.setValue(colors.masterpiece)
             .onChange(async v => { colors.masterpiece = v; await this.plugin.saveSettings(); }));
 
         // --- 7. SYSTEM OVERRIDE ---
