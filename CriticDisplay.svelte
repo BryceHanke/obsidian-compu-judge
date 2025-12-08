@@ -19,6 +19,7 @@
     // [WIN95 UPDATE] Selected Agent Logic (Now handled per window or summary if needed)
     let selectedAgent = $state<string | null>(null);
     let openDropdown = $state<string | null>(null);
+    let expandedBeats = $state<number[]>([]);
 
     // [UPDATED] Graph Toggle
     let graphMode = $state<'tension' | 'quality'>('tension');
@@ -59,6 +60,11 @@
     function getSliderMetrics(val: number) {
         const clamped = Math.max(0, Math.min(100, val));
         return clamped; // 0-100
+    }
+
+    // Force score to be positive (0 floor)
+    function getPositiveScore(val: number): number {
+        return Math.max(0, val);
     }
 
     function formatScoreDisplay(val: number): string {
@@ -210,14 +216,20 @@
         </div>
         
         <div class="win95-menubar">
-            <span class="win95-menu-item">File</span>
-            <span class="win95-menu-item">Edit</span>
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <!-- svelte-ignore a11y-no-static-element-interactions -->
-            <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); openDropdown = openDropdown === 'actions' ? null : 'actions'; }}>Actions</span>
-            {#if openDropdown === 'actions'}
+            <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); openDropdown = openDropdown === 'smart-repairs' ? null : 'smart-repairs'; }}>
+                Smart Repairs...
+            </span>
+
+            {#if openDropdown === 'smart-repairs'}
                 <div class="dropdown-list">
-                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Address Warning: ${warning}`); openDropdown = null; }}>Inject Critical Repair</div>
+                    {#if warning && warning !== 'None'}
+                         <div class="dd-item" onclick={() => { onAddRepairInstruction(`Address Warning: ${warning}`); openDropdown = null; }}>
+                            Fix Warning: {warning.substring(0, 20)}...
+                        </div>
+                    {/if}
+                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`General Fix`); openDropdown = null; }}>Inject General Repair</div>
                 </div>
             {/if}
         </div>
@@ -375,12 +387,15 @@
                                     bottom: {bar.isNegative ? 'auto' : '50%'};
                                     height: {bar.width}%;
                                     position: absolute;
-                                    background: {isMasterpieceEffect(beat.val) ? 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' : getBarColor(beat.val)};
+                                    background: {isMasterpieceEffect(beat.val) ? '#000' : getBarColor(beat.val)};
                                     background-size: 200% auto;
-                                    animation: {isMasterpieceEffect(beat.val) ? 'rainbow-bar-scroll 3s linear infinite' : 'none'};
-                                    border: 1px solid rgba(0,0,0,0.5);
-                                    box-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+                                    animation: none;
+                                    border: {isMasterpieceEffect(beat.val) ? 'none' : '1px solid rgba(0,0,0,0.5)'};
+                                    box-shadow: {isMasterpieceEffect(beat.val) ? '0 0 4px #ff00ff' : '1px 1px 0 rgba(0,0,0,0.2)'};
                                  ">
+                                 {#if isMasterpieceEffect(beat.val)}
+                                    <div style="position:absolute; inset: -2px; border: 2px solid transparent; border-image: linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet) 1; animation: rainbow-border 2s linear infinite;"></div>
+                                 {/if}
                             </div>
                         </div>
 
@@ -405,62 +420,45 @@
         </div>
     </div>
 
-    <!-- METRICS -->
-    <div class="section-header">SANDERSON ENGINE METRICS</div>
-    <div class="modules-grid bevel-down">
-        {#if sanderson.competence !== undefined}
-        <div class="slider-group">
-            <div class="slider-label">PROTAGONIST SCALE</div>
+    <!-- METRICS (SANDERSON) -->
+    <div class="win95-popup-window">
+        <div class="win95-titlebar">
+            <div class="win95-titlebar-text">
+                <span>⚡</span> <span>Sanderson Engine Metrics</span>
+            </div>
+        </div>
+        <div class="modules-grid bevel-down" style="padding: 10px; background: #c0c0c0;">
+            <!-- CORE LAWS -->
             {#each [
-                { label: 'COMPETENCE', val: sanderson.competence ?? 50 },
-                { label: 'PROACTIVITY', val: sanderson.proactivity ?? 50 },
-                { label: 'LIKABILITY', val: sanderson.likability ?? 50 }
-            ] as s}
-                <div class="slider-item">
-                    <div class="slider-text-row">
-                        <span class="s-label">{s.label}</span>
-                        <span class="s-val">{formatUnsignedScore(s.val)}%</span>
+                { label: 'PROMISE/PAYOFF', val: getPositiveScore(sanderson.promise_payoff) },
+                { label: 'LAWS OF MAGIC', val: getPositiveScore(sanderson.laws_of_magic) },
+                { label: 'AGENCY', val: getPositiveScore(sanderson.character_agency) }
+            ] as m}
+                <!-- Bottom out at 0 logic is applied in getPositiveScore -->
+                {@const bar = getBarMetrics(m.val)}
+                <!-- Note: getBarMetrics centers at 0, but since we floor at 0, it will just be positive bars -->
+
+                <div class="module-item" style="display:flex; align-items:center; gap:10px; margin-bottom: 5px;">
+                    <span class="mod-label" style="width: 100px; font-weight: bold; font-size: 10px;">{m.label}</span>
+                    <div class="win95-progress-container" style="flex: 1;">
+                        <div class="win95-progress-fill"
+                             style="
+                                width: {m.val > 100 ? 100 : m.val}%;
+                                background: {isMasterpieceEffect(m.val) ? '#000' : getBarColor(m.val)};
+                                position: relative;
+                             ">
+                             {#if isMasterpieceEffect(m.val)}
+                                <div style="position:absolute; inset: 0; border: 2px solid transparent; border-image: linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet) 1; animation: rainbow-border 2s linear infinite;"></div>
+                             {/if}
+                        </div>
                     </div>
-                    <div class="win95-progress-container">
-                         <div class="win95-progress-fill"
-                              style="width: {getSliderMetrics(s.val)}%; background: {getBarColor(s.val)};">
-                         </div>
-                    </div>
+                    <span class="mod-score {isMasterpieceEffect(m.val) ? 'masterpiece-text' : ''}"
+                          style="color: {isMasterpieceEffect(m.val) ? '#000' : getBarColor(m.val)}; width: 30px; text-align: right; font-weight: bold;">
+                        {formatScoreDisplay(m.val)}
+                    </span>
                 </div>
             {/each}
         </div>
-        {/if}
-
-        <div class="divider-line"></div>
-
-        <!-- CORE LAWS -->
-        {#each [
-            { label: 'PROMISE/PAYOFF', val: sanderson.promise_payoff },
-            { label: 'LAWS OF MAGIC', val: sanderson.laws_of_magic },
-            { label: 'AGENCY', val: sanderson.character_agency }
-        ] as m}
-            {@const bar = getBarMetrics(m.val)}
-            <div class="module-item">
-                <span class="mod-label">{m.label}</span>
-                <div class="win95-progress-container" style="flex: 1;">
-                    <div class="center-line" style="position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed #555; z-index:2;"></div>
-                    <div class="win95-progress-fill"
-                         style="
-                            position: absolute;
-                            width: {bar.width}%; 
-                            left: {bar.isNegative ? (50 - bar.width) + '%' : '50%'};
-                            background: {isMasterpieceEffect(m.val) ? 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' : getBarColor(m.val)};
-                            background-size: 200% auto;
-                            animation: {isMasterpieceEffect(m.val) ? 'rainbow-bar-scroll 3s linear infinite' : 'none'};
-                         ">
-                    </div>
-                </div>
-                <span class="mod-score {isMasterpieceEffect(m.val) ? 'masterpiece-text' : ''}" 
-                      style="color: {isMasterpieceEffect(m.val) ? '#000' : getBarColor(m.val)}">
-                    {formatScoreDisplay(m.val)}
-                </span>
-            </div>
-        {/each}
     </div>
 
     <!-- UNIVERSAL OUTLINE (Tree View Style) -->
@@ -473,14 +471,30 @@
         <div class="structure-box bevel-down" style="background:#fff; height: 200px; overflow-y:auto; border: 2px inset #808080;">
              {#if isUniversalOutline}
                 <ul class="tree-view">
-                    {#each structure as node}
-                        <li class="tree-item">
-                            <span class="tree-line"></span>
-                            <div class="tree-content">
-                                <span class="node-icon">{node.type === 'beat' ? '📄' : '⭐'}</span>
-                                <span class="node-title">{node.title}</span>
-                                <span class="node-meta" style="color:#000080;">(Tens: {formatScoreDisplay(node.tension)})</span>
+                    {#each structure as node, i}
+                        <li class="tree-item-container">
+                             <!-- svelte-ignore a11y-click-events-have-key-events -->
+                             <!-- svelte-ignore a11y-no-static-element-interactions -->
+                            <div class="tree-item" onclick={() => {
+                                if (expandedBeats.includes(i)) expandedBeats = expandedBeats.filter(idx => idx !== i);
+                                else expandedBeats = [...expandedBeats, i];
+                            }} style="cursor: pointer;">
+                                <span class="tree-line"></span>
+                                <div class="tree-content">
+                                    <span class="node-icon">{expandedBeats.includes(i) ? '📂' : (node.type === 'beat' ? '📄' : '⭐')}</span>
+                                    <span class="node-title">{node.title}</span>
+                                    <span class="node-meta" style="color:#000080;">(Tens: {formatScoreDisplay(node.tension)})</span>
+                                </div>
                             </div>
+
+                            {#if expandedBeats.includes(i)}
+                                <div class="node-summary" transition:slide>
+                                    <div class="summary-text">{node.description}</div>
+                                    {#if node.characters && node.characters.length > 0}
+                                        <div class="summary-chars">Cast: {node.characters.join(', ')}</div>
+                                    {/if}
+                                </div>
+                            {/if}
                         </li>
                     {/each}
                 </ul>
@@ -564,30 +578,23 @@
     .masterpiece-text {
         color: #000 !important;
         text-shadow:
-            -1px -1px 0 #ff0000,
-             1px -1px 0 #ffff00,
-            -1px  1px 0 #0000ff,
-             1px  1px 0 #00ff00;
-        /* Note: Full rainbow stroke isn't standard CSS, using multi-shadow approximation or webkit stroke */
-        -webkit-text-stroke: 1px transparent; /* Can't gradient stroke easily */
-        position: relative;
-    }
-
-    /* Optional: An overlay for the stroke if needed, but text-shadow is safer for retro look */
-    /* Using background clip on text for the stroke is tricky.
-       Let's use a layered shadow to simulate the "Rainbow Outline" requested. */
-    .masterpiece-text {
-        text-shadow:
              2px  0px 0px #ff0000,
             -2px  0px 0px #00ffff,
              0px  2px 0px #00ff00,
              0px -2px 0px #ff00ff;
         animation: rainbow-shadow-pulse 0.5s infinite alternate;
+        -webkit-text-stroke: 1px transparent;
+        position: relative;
     }
 
     @keyframes rainbow-shadow-pulse {
         0% { text-shadow: 2px 0px 0 #ff0000, -2px 0px 0 #00ffff; }
         100% { text-shadow: 2px 0px 0 #ff00ff, -2px 0px 0 #ffff00; }
+    }
+
+    @keyframes rainbow-border {
+        0% { border-image-source: linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet); }
+        100% { border-image-source: linear-gradient(to right, violet, indigo, blue, green, yellow, orange, red); }
     }
 
     /* DROPDOWN MENU */
@@ -609,11 +616,16 @@
 
     /* TREE VIEW */
     .tree-view { list-style: none; padding-left: 5px; margin: 0; }
+    .tree-item-container { display: flex; flex-direction: column; }
     .tree-item { display: flex; align-items: center; padding: 2px 0; }
+    .tree-item:hover { background-color: #000080; color: #fff; }
     .tree-line { width: 10px; border-bottom: 1px dotted #808080; margin-right: 5px; }
     .tree-content { display: flex; align-items: center; gap: 5px; font-size: 11px; }
     .node-title { font-weight: bold; }
     .node-meta { font-size: 9px; }
+    .node-summary { padding-left: 20px; font-size: 10px; color: #333; margin-bottom: 4px; border-left: 1px dotted #808080; margin-left: 5px; }
+    .summary-text { font-style: italic; }
+    .summary-chars { font-weight: bold; color: #000080; margin-top: 2px; }
 
     /* MISC */
     .section-header { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 11px; color: #000080; margin-top: 10px; margin-bottom: 5px; }
