@@ -59,6 +59,7 @@ export interface NigsSettings {
     maxOutputTokens: number;    
     analysisPasses: number;     
     enableTribunal: boolean;    // Toggle 3-Agent Consensus (Market, Logic, Lit)
+    tribunalConfiguration: 'Iterative' | 'Parallel'; // [NEW] Tribunal Run Configuration
     tribunalMaxRetries: number; // [NEW] Number of retries for Tribunal loop
     showThinking: boolean;      
     
@@ -113,6 +114,7 @@ export const DEFAULT_SETTINGS: NigsSettings = {
     maxOutputTokens: 8192,
     analysisPasses: 1,
     enableTribunal: true,
+    tribunalConfiguration: 'Parallel', // Default to Parallel
     tribunalMaxRetries: 2, // Default 2 retries
     showThinking: false,
     customSystemPrompt: "",
@@ -203,7 +205,7 @@ export interface NigsResponse {
     log_line: string;         
     structure_map: UniversalOutlineNode[]; 
     tension_arc: number[];
-    quality_arc?: number[]; // [UPDATED] Beat Quality 0-100
+    quality_arc?: number[]; // [UPDATED] Beat Quality (Signed Integers)
     third_act_score: number;
     novelty_score: number;
     sanderson_metrics: SandersonMetrics;
@@ -219,7 +221,9 @@ export interface NigsResponse {
     tribunal_breakdown?: {
         market: any;
         logic: any;
-        lit: any;
+        soul: any; // [NEW] Separate Soul (Enjoyment)
+        lit: any;  // [NEW] Separate Lit (Writing Quality)
+        jester?: any; // [NEW] Optional Jester
     };
     arbitration_log?: NigsArbitrationLog;
 }
@@ -259,6 +263,7 @@ export interface UniversalOutlineNode {
     type: 'promise' | 'progress' | 'payoff' | 'beat'; 
     characters: string[];   
     tension: number;        
+    duration?: number; // [NEW] Relative duration/weight (1-10)
 }
 
 export interface CharacterBlock {

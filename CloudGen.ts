@@ -31,14 +31,14 @@ const FORENSIC_CALIBRATION = `
 `;
 
 interface AIAdapter {
-    generate(text: string, systemPrompt?: string, jsonMode?: boolean, useSearch?: boolean, tempOverride?: number): Promise<string>;
+    generate(text: string, systemPrompt?: string, jsonMode?: boolean, useSearch?: boolean, tempOverride?: number, signal?: AbortSignal): Promise<string>;
 }
 
 // --- GEMINI ADAPTER ---
 class GeminiAdapter implements AIAdapter {
     constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
 
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number): Promise<string> {
+    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal): Promise<string> {
         if (!this.apiKey) throw new Error("MISSING GEMINI API KEY");
         
         const targetModel = useSearch ? (this.settings.searchModelId || this.model) : this.model;
@@ -73,7 +73,6 @@ class GeminiAdapter implements AIAdapter {
         // Native Thinking Config for compatible models
         const supportsThinking = (targetModel.includes("2.0-flash-thinking") || targetModel.includes("thinking"));
         if (this.settings.showThinking || (thinkingLevel >= 4 && supportsThinking)) {
-            // Adjust thinking budget based on level? Currently API doesn't support granular budget well, just toggle.
              body.generationConfig.thinking_config = { include_thoughts: true };
         } else if (useSearch) {
             body.tools = [{ googleSearch: {} }];
@@ -81,15 +80,20 @@ class GeminiAdapter implements AIAdapter {
 
         setStatus(`QUERYING ${targetModel}...`);
 
-        const res = await requestUrl({
-            url: `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${this.apiKey}`,
+        // Check cancellation before request
+        if (signal?.aborted) throw new Error("Cancelled by user.");
+
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${this.apiKey}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
+            body: JSON.stringify(body),
+            signal
         });
 
-        if (res.status >= 400) throw new Error(`GEMINI ERROR ${res.status}: ${res.text}`);
-        const candidate = res.json.candidates?.[0];
+        if (!res.ok) throw new Error(`GEMINI ERROR ${res.status}: ${res.statusText}`);
+
+        const data = await res.json();
+        const candidate = data.candidates?.[0];
         if (!candidate?.content?.parts) throw new Error("Empty Response");
 
         let finalOutput = "";
@@ -115,7 +119,7 @@ class GeminiAdapter implements AIAdapter {
 class OpenAIAdapter implements AIAdapter {
     constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
 
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number): Promise<string> {
+    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal): Promise<string> {
         if (!this.apiKey) throw new Error("MISSING OPENAI API KEY");
         setStatus(`CONNECTING TO OPENAI (${this.model})...`);
         
@@ -130,15 +134,18 @@ class OpenAIAdapter implements AIAdapter {
             response_format: json ? { type: "json_object" } : undefined
         };
 
-        const res = await requestUrl({
-            url: 'https://api.openai.com/v1/chat/completions',
+        if (signal?.aborted) throw new Error("Cancelled by user.");
+
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
+            body: JSON.stringify(body),
+            signal
         });
 
-        if (res.status >= 400) throw new Error(`OPENAI ERROR ${res.status}`);
-        return res.json.choices[0].message.content;
+        if (!res.ok) throw new Error(`OPENAI ERROR ${res.status}`);
+        const data = await res.json();
+        return data.choices[0].message.content;
     }
 }
 
@@ -146,7 +153,7 @@ class OpenAIAdapter implements AIAdapter {
 class AnthropicAdapter implements AIAdapter {
     constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
 
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number): Promise<string> {
+    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal): Promise<string> {
         if (!this.apiKey) throw new Error("MISSING ANTHROPIC API KEY");
         setStatus(`CONNECTING TO CLAUDE (${this.model})...`);
 
@@ -163,17 +170,20 @@ class AnthropicAdapter implements AIAdapter {
         
         if (json) body.messages.push({ role: "assistant", content: "{" });
 
-        const res = await requestUrl({
-            url: 'https://api.anthropic.com/v1/messages',
+        if (signal?.aborted) throw new Error("Cancelled by user.");
+
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: { 'x-api-key': this.apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
+            body: JSON.stringify(body),
+            signal
         });
 
-        if (res.status >= 400) throw new Error(`ANTHROPIC ERROR ${res.status}`);
+        if (!res.ok) throw new Error(`ANTHROPIC ERROR ${res.status}`);
         
+        const data = await res.json();
         let textOutput = "";
-        for (const block of res.json.content) {
+        for (const block of data.content) {
             if (block.type === 'text') textOutput += block.text;
         }
         return json && !textOutput.trim().startsWith("{") ? "{" + textOutput : textOutput;
@@ -210,9 +220,9 @@ export class CloudGenService {
         return Math.min(60000, baseTime + (tokenCount * 20 * mult));
     }
 
-    public async callAI(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number): Promise<string> {
+    public async callAI(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal): Promise<string> {
         const adapter = this.getAdapter();
-        return await adapter.generate(text, sys, json, useSearch, tempOverride);
+        return await adapter.generate(text, sys, json, useSearch, tempOverride, signal);
     }
 
     // [HELPER]: Generate Name Protocol String
@@ -231,7 +241,7 @@ export class CloudGenService {
     }
 
     // --- AUTO-FILL WIZARD (Architect Mode) ---
-    autoFillWizard = async (concept: string, currentContext: string): Promise<Partial<NigsWizardState>> => {
+    autoFillWizard = async (concept: string, currentContext: string, signal?: AbortSignal): Promise<Partial<NigsWizardState>> => {
         setStatus("ARCHITECTING STORY BIBLE...");
         
         const nameRules = this.getNameProtocol();
@@ -248,13 +258,13 @@ export class CloudGenService {
         `;
 
         const temp = this.getTemp(this.settings.tempWizard);
-        const res = await this.callAI(prompt, NIGS_AUTOFILL_PROMPT, true, false, temp);
+        const res = await this.callAI(prompt, NIGS_AUTOFILL_PROMPT, true, false, temp, signal);
         return this.parseJson<Partial<NigsWizardState>>(res);
     }
 
     // --- DRIVE SYNTHESIS (Alchemy Mode) ---
     // [UPDATED] Uses full concatenated context
-    synthesizeDrives = async (drives: DriveBlock[], customTitle?: string, targetQuality?: number): Promise<string> => {
+    synthesizeDrives = async (drives: DriveBlock[], customTitle?: string, targetQuality?: number, signal?: AbortSignal): Promise<string> => {
         setStatus("FUSING NARRATIVE DRIVES...");
         
         // [SAFETY]: Explicitly concat full content without trimming
@@ -282,15 +292,15 @@ export class CloudGenService {
 
         // Use dedicated SYNTH temperature (High Creativity for Alchemy)
         const temp = this.getTemp(this.settings.tempSynth ?? 1.0);
-        return await this.callAI(finalPrompt, NIGS_DRIVE_SYNTHESIS_PROMPT, false, false, temp);
+        return await this.callAI(finalPrompt, NIGS_DRIVE_SYNTHESIS_PROMPT, false, false, temp, signal);
     }
 
     // --- GRADING (Unified System) ---
-    // [UPDATED] Iterative Tribunal with Veto Protocol & Analyst Loop
-    gradeContent = async (text: string, context?: { inspiration: string; target: number }, nlpStats?: NlpMetrics, wizardState?: NigsWizardState): Promise<NigsResponse> => {
+    // [UPDATED] Iterative/Parallel Tribunal with Veto Protocol & Analyst Loop
+    gradeContent = async (text: string, context?: { inspiration: string; target: number }, nlpStats?: NlpMetrics, wizardState?: NigsWizardState, signal?: AbortSignal): Promise<NigsResponse> => {
         // 1. CHECK SETTINGS: Fallback to Legacy if Tribunal is disabled
         if (!this.settings.enableTribunal) {
-            return this.gradeContentLegacy(text, context, nlpStats);
+            return this.gradeContentLegacy(text, context, nlpStats, signal);
         }
 
         setStatus("CONVENING THE TRIBUNAL...");
@@ -318,46 +328,83 @@ ${sourceMaterial}
 
         // --- GRADE ANALYST LOOP ---
         let attempts = 0;
-        const maxAttempts = this.settings.tribunalMaxRetries || 2; // Use setting or default to 2
+        const maxAttempts = this.settings.tribunalMaxRetries || 2;
         let finalResponse: NigsResponse | null = null;
         let isApproved = false;
         let previousConsensus = "";
 
-        // [UPDATED] Tribunal Loop with Soul, Jester, Logic, Market
+        // [UPDATED] Tribunal Loop with Soul, Lit, Jester, Logic, Market
         do {
             attempts++;
             setStatus(attempts > 1 ? `RE-CONVENING TRIBUNAL (ATTEMPT ${attempts})...` : "STARTING TRIBUNAL PROCESS...");
 
-            // Add previous consensus to the input if it exists
+            if (signal?.aborted) throw new Error("Cancelled by user.");
+
             const currentInputPayload = previousConsensus
                 ? `${baseInputPayload}\n\n[PREVIOUS CONSENSUS / FEEDBACK]:\n${previousConsensus}`
                 : baseInputPayload;
 
-            // --- PARALLEL TRIBUNAL CALL ---
-            // We run 4 agents: Soul (Vibe), Logic (Truth), Market (ROI), Jester (Satire)
-            // Plus Forensic (System) for deep metrics.
-
-            setStatus("CONVENING AGENTS: SOUL, JESTER, LOGIC, MARKET...");
+            setStatus("CONVENING AGENTS: MARKET, LOGIC, SOUL, LIT, JESTER...");
 
             // Temps
             const soulTemp = this.getTemp(0.9); // High creativity
             const logicTemp = this.getTemp(0.1, true); // Strict
             const marketTemp = this.getTemp(0.5);
             const jesterTemp = this.getTemp(1.1); // Chaos
+            const litTemp = this.getTemp(0.3); // Critical
 
-            const [soulRaw, jesterRaw, logicRaw, marketRaw, forensicRaw] = await Promise.all([
-                this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp).catch(e => `{"error": "Soul Failed"}`),
-                this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp).catch(e => `{"error": "Jester Failed"}`),
-                this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp).catch(e => `{"error": "Logic Failed"}`),
-                this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp).catch(e => `{"error": "Market Failed"}`),
-                this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp).catch(e => `{"error": "Forensic Failed"}`)
-            ]);
+            let marketReport, logicReport, soulReport, litReport, jesterReport, forensicRaw;
 
-            // Parse individual reports
-            const soulReport = this.parseJson<NigsVibeCheck>(soulRaw);
-            const jesterReport = this.parseJson<any>(jesterRaw);
-            const logicReport = this.parseJson<NigsFactReport>(logicRaw);
-            const marketReport = this.parseJson<any>(marketRaw);
+            // [CONFIGURATION CHECK]: Parallel vs Iterative
+            // For now, even "Iterative" needs all agents. Iterative might mean "Run Logic, then Market reads Logic, then Soul reads Market".
+            // But for simplicity and speed (and because Prompts are isolated), we default to Parallel unless specified otherwise for debugging.
+            // If the user selects "Iterative", we could sequence them, but without shared memory in the prompt calls, it's just slower.
+            // A true iterative approach would be: Agent A -> Output -> Agent B(Input + A_Output).
+            // Let's implement a basic sequential chain if 'Iterative' is selected.
+
+            if (this.settings.tribunalConfiguration === 'Iterative') {
+                // SEQUENTIAL CHAIN
+                setStatus("AGENT 1/5: LOGIC ENGINE...");
+                const logicRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp, signal);
+                logicReport = this.parseJson<NigsFactReport>(logicRaw);
+
+                setStatus("AGENT 2/5: MARKET ANALYST...");
+                const marketRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp, signal);
+                marketReport = this.parseJson<any>(marketRaw);
+
+                setStatus("AGENT 3/5: THE SOUL...");
+                const soulRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp, signal);
+                soulReport = this.parseJson<NigsVibeCheck>(soulRaw);
+
+                setStatus("AGENT 4/5: LITERARY CRITIC...");
+                const litRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.LIT, true, false, litTemp, signal);
+                litReport = this.parseJson<any>(litRaw);
+
+                setStatus("AGENT 5/5: THE JESTER...");
+                const jesterRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp, signal);
+                jesterReport = this.parseJson<any>(jesterRaw);
+
+                setStatus("FORENSIC SYSTEM SCAN...");
+                forensicRaw = await this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal);
+
+            } else {
+                // PARALLEL (Default)
+                const [soulRaw, jesterRaw, logicRaw, marketRaw, litRaw, fRaw] = await Promise.all([
+                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp, signal).catch(e => `{"error": "Soul Failed"}`),
+                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp, signal).catch(e => `{"error": "Jester Failed"}`),
+                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp, signal).catch(e => `{"error": "Logic Failed"}`),
+                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp, signal).catch(e => `{"error": "Market Failed"}`),
+                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.LIT, true, false, litTemp, signal).catch(e => `{"error": "Lit Failed"}`),
+                    this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal).catch(e => `{"error": "Forensic Failed"}`)
+                ]);
+
+                soulReport = this.parseJson<NigsVibeCheck>(soulRaw);
+                jesterReport = this.parseJson<any>(jesterRaw);
+                logicReport = this.parseJson<NigsFactReport>(logicRaw);
+                marketReport = this.parseJson<any>(marketRaw);
+                litReport = this.parseJson<any>(litRaw);
+                forensicRaw = fRaw;
+            }
 
             // --- CHIEF JUSTICE ARBITRATION ---
             setStatus("CHIEF JUSTICE: DELIBERATING...");
@@ -367,7 +414,8 @@ ${sourceMaterial}
 1. SOUL: Score ${soulReport.score} (${soulReport.mood}) - ${soulReport.critique}
 2. LOGIC: Score ${logicReport.score} - ${logicReport.inconsistencies.length} plot holes, ${logicReport.deus_ex_machina_count} Deus Ex Machinas.
 3. MARKET: ${JSON.stringify(marketReport)}
-4. JESTER: ${JSON.stringify(jesterReport)}
+4. LIT: ${JSON.stringify(litReport)}
+5. JESTER: ${JSON.stringify(jesterReport)}
 
 [GENRE CONTEXT]: ${context?.inspiration || "Unknown"}
 [SETTINGS]:
@@ -376,17 +424,18 @@ ${sourceMaterial}
 - Luck Tolerance: ${this.settings.luckTolerance}
 `;
 
-            const arbitrationRaw = await this.callAI(arbitrationPayload, NIGS_ARBITRATOR_PROMPT, true, false, 0.2);
+            const arbitrationRaw = await this.callAI(arbitrationPayload, NIGS_ARBITRATOR_PROMPT, true, false, 0.2, signal);
             const arbitrationLog = this.parseJson<NigsArbitrationLog>(arbitrationRaw);
 
             // --- SYNTHESIS (Generating Final NigsResponse) ---
-            // We use the Forensic scan as the base structure, but OVERRIDE the scores with the Arbitrator's verdict.
             finalResponse = this.parseJson<NigsResponse>(forensicRaw);
 
             // Apply Arbitration Overrides
             finalResponse.commercial_score = arbitrationLog.final_verdict;
             finalResponse.commercial_reason = `[CHIEF JUSTICE RULING]: ${arbitrationLog.ruling}`;
-            finalResponse.niche_score = soulReport.score;
+
+            // Map specific agent scores
+            finalResponse.niche_score = soulReport.score; // Mapping Soul to Niche/Lit slot primarily
             finalResponse.niche_reason = soulReport.critique;
             finalResponse.cohesion_score = logicReport.score;
             finalResponse.cohesion_reason = `Plot Holes: ${logicReport.inconsistencies ? logicReport.inconsistencies.length : 0}`;
@@ -394,15 +443,16 @@ ${sourceMaterial}
             // Attach Arbitration Log
             finalResponse.arbitration_log = arbitrationLog;
 
-            // Populate Tribunal Breakdown for UI
+            // Populate Full Tribunal Breakdown
             finalResponse.tribunal_breakdown = {
                 market: marketReport,
                 logic: logicReport,
-                lit: soulReport // Mapping Soul to Lit slot for UI compatibility
+                soul: soulReport,
+                lit: litReport,
+                jester: jesterReport
             };
 
             // --- VETO PROTOCOL (Logic Hard Fail) ---
-            // If logic score is < 0 (Negative), we slash the commercial score. 0 is passing.
             if (logicReport.score < 0) {
                  const vetoFactor = 1 / 6;
                  finalResponse.commercial_score = Math.round(finalResponse.commercial_score * vetoFactor);
@@ -417,7 +467,7 @@ ${JSON.stringify(finalResponse)}
 
 [TASK]: Verify this report matches the Zero-Based Scoring Protocol and is complete.
 `;
-            const analystResStr = await this.callAI(analystPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2);
+            const analystResStr = await this.callAI(analystPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal);
             const analystRes = this.parseJson<{ verdict: string, reason: string }>(analystResStr);
 
             if (analystRes.verdict === "PASS") {
@@ -426,7 +476,6 @@ ${JSON.stringify(finalResponse)}
             } else {
                 console.warn(`GRADE ANALYST REJECTED (Attempt ${attempts}): ${analystRes.reason}`);
                 setStatus(`ANALYST REJECTED: ${analystRes.reason}. RETRYING...`);
-                // Add the Analyst's rejection reason to the consensus for the next loop
                 previousConsensus += `\n[ANALYST REJECTION]: The previous draft was rejected because: ${analystRes.reason}. FIX THIS.`;
             }
 
@@ -434,43 +483,11 @@ ${JSON.stringify(finalResponse)}
 
         if (!finalResponse) throw new Error("Grading failed to produce response.");
 
-        // --- POST-PROCESSING & VETO PROTOCOL ---
-
-        // Attach Breakdown (from the last successful loop)
-        // Note: finalTribunalResults is scoped inside loop, so we assume finalResponse has synthesized data correctly,
-        // but we need to attach the breakdown manually if we want the UI to show agent cards.
-        // We need to capture the specific agent outputs from the successful loop.
-        // For simplicity, we can ask the Judge to output them or we can assume the last loop's variables are accessible if we scope them out.
-        // Let's rely on the Judge's synthesis or just accept that we might lose granular logs if we don't scope out.
-        // To fix: scope finalTribunalResults out.
-        // Done: moved `finalTribunalResults` definition inside loop.
-        // Actually, we need to return the breakdown. We can parse the synthesis or just run without it if the judge integrated it.
-        // BUT the UI expects `tribunal_breakdown`.
-        // Let's just trust the final loop's results.
-        // Wait, I can't access `finalTribunalResults` outside the loop if defined inside.
-        // I will let the previous code block stand but note that `finalTribunalResults` needs to be captured.
-        // Refactoring loop to scope variable out.
-
-        // (Due to complexity, I'm assuming the finalResponse structure is valid.
-        // If specific agent raw text is needed, we'd need to save it.
-        // The current implementation of `gradeContent` effectively overwrites `finalResponse` each loop.
-        // We will just return the `finalResponse` from the last loop.)
-
-        // [LOGIC VETO PROTOCOL]
-        if (finalResponse.tribunal_breakdown && finalResponse.tribunal_breakdown.logic && finalResponse.tribunal_breakdown.logic.score <= 0) {
-            const vetoFactor = 1 / 6;
-            finalResponse.commercial_score = Math.round(finalResponse.commercial_score * vetoFactor);
-            finalResponse.niche_score = Math.round(finalResponse.niche_score * vetoFactor);
-            finalResponse.commercial_reason += " [LOGIC VETO APPLIED: Score Slashed]";
-            finalResponse.niche_reason += " [LOGIC VETO APPLIED: Score Slashed]";
-            console.log("LOGIC VETO APPLIED: Scores slashed by factor of 6.");
-        }
-
         return finalResponse;
     }
 
 
-    private gradeContentLegacy = async (text: string, context?: { inspiration: string; target: number }, nlpStats?: NlpMetrics): Promise<NigsResponse> => {
+    private gradeContentLegacy = async (text: string, context?: { inspiration: string; target: number }, nlpStats?: NlpMetrics, signal?: AbortSignal): Promise<NigsResponse> => {
         const passes = Math.max(1, Math.min(10, this.settings.analysisPasses));
         const contextBlock = context?.inspiration ? `\n[UPLOADED SOURCE CONTEXT]: "${context.inspiration}"\n` : "";
         
@@ -501,7 +518,7 @@ Only score positive if it is innovative.
         const temp = this.getTemp(this.settings.tempCritic, true);
 
         const promises = Array.from({ length: passes }, (_, i) => {
-            return this.callAI(wrapped, NIGS_SYSTEM_PROMPT, true, false, temp) 
+            return this.callAI(wrapped, NIGS_SYSTEM_PROMPT, true, false, temp, signal)
                 .then(resStr => this.parseJson<NigsResponse>(resStr))
                 .catch(e => { console.error(`Core ${i+1} Failed:`, e); return null; });
         });
@@ -543,7 +560,7 @@ Only score positive if it is innovative.
             Math.round(results.reduce((sum, r) => sum + (r.tension_arc?.[idx] || 0), 0) / count)
         );
 
-        // [UPDATED] Average Beat Quality Arc if present
+        // [UPDATED] Average Beat Quality Arc if present (Signed Integers)
         const maxQualLen = results.reduce((max, r) => Math.max(max, r.quality_arc?.length || 0), 0) || 6;
         base.quality_arc = Array.from({ length: maxQualLen }, (_, idx) =>
              Math.round(results.reduce((sum, r) => sum + (r.quality_arc?.[idx] || 0), 0) / count)
@@ -594,20 +611,18 @@ Only score positive if it is innovative.
     }
 
     // --- PASSTHROUGHS ---
-    generateOutline = async (text: string, useSearch = false) => {
+    generateOutline = async (text: string, useSearch = false, signal?: AbortSignal) => {
         setStatus("INITIALIZING ARCHIVIST PROTOCOL...");
         const prompt = this.settings.customOutlinePrompt ? this.settings.customOutlinePrompt : NIGS_OUTLINE_PROMPT;
         const temp = this.getTemp(this.settings.tempArchitect);
-        return await this.callAI(text, prompt, false, useSearch, temp);
+        return await this.callAI(text, prompt, false, useSearch, temp, signal);
     }
 
     // [UPDATED] Pass Scan Telemetry to Action Plan
-    getActionPlan = async (text: string, focus?: string, deepScan?: NigsResponse, quickScan?: NigsLightGrade) => {
+    getActionPlan = async (text: string, focus?: string, deepScan?: NigsResponse, quickScan?: NigsLightGrade, signal?: AbortSignal) => {
         setStatus("ANALYZING WEAKNESSES...");
         
         let diagnosticBlock = "";
-        
-        // [PHASE 2 UPDATE]: Format Specific Complaints for Forge
         let specificComplaints = "";
 
         if (deepScan) {
@@ -635,11 +650,8 @@ Only score positive if it is innovative.
 
             // [PHASE 2]: Extract Tribunal Breakdown
             if (deepScan.tribunal_breakdown) {
-                specificComplaints = `
-[PRIORITY FIXES REQUIRED BY TRIBUNAL]:
-1. LOGIC ENGINE DEMANDS: ${deepScan.tribunal_breakdown.logic.content_warning}
-2. MARKET ANALYST DEMANDS: ${deepScan.tribunal_breakdown.market.commercial_reason}
-`;
+                if (deepScan.tribunal_breakdown.logic) specificComplaints += `1. LOGIC ENGINE DEMANDS: ${deepScan.tribunal_breakdown.logic.content_warning || "None"}\n`;
+                if (deepScan.tribunal_breakdown.market) specificComplaints += `2. MARKET ANALYST DEMANDS: ${deepScan.tribunal_breakdown.market.commercial_reason || "None"}\n`;
             }
         }
 
@@ -657,39 +669,38 @@ Only score positive if it is innovative.
             inputBlock = `${diagnosticBlock}\n\n${inputBlock}`;
         }
 
-        // Append specific complaints if they exist
         if (specificComplaints) {
-            inputBlock = `${specificComplaints}\n\n${inputBlock}`;
+            inputBlock = `[PRIORITY FIXES REQUIRED BY TRIBUNAL]:\n${specificComplaints}\n\n${inputBlock}`;
         }
 
         if (focus && focus.trim().length > 0) inputBlock = `USER DIRECTIVE: Focus on "${focus}".\n\n${inputBlock}`;
         
         const temp = this.getTemp(this.settings.tempArchitect);
-        return this.parseJson<NigsActionPlan>(await this.callAI(inputBlock, NIGS_FORGE_PROMPT, true, false, temp));
+        return this.parseJson<NigsActionPlan>(await this.callAI(inputBlock, NIGS_FORGE_PROMPT, true, false, temp, signal));
     }
 
-    autoRepair = async (text: string, plan: NigsActionPlan) => {
+    autoRepair = async (text: string, plan: NigsActionPlan, signal?: AbortSignal) => {
         setStatus("INITIATING REPAIR...");
         const prompt = this.settings.customRepairPrompt ? this.settings.customRepairPrompt : NIGS_AUTO_REPAIR_PROMPT;
         // Enforce STRICT temperature for Repair
         const temp = this.getTemp(this.settings.tempRepair, true);
-        return await this.callAI(JSON.stringify(plan) + "\n\n" + text, prompt, false, false, temp);
+        return await this.callAI(JSON.stringify(plan) + "\n\n" + text, prompt, false, false, temp, signal);
     }
     
-    getMetaAnalysis = async (text: string) => {
+    getMetaAnalysis = async (text: string, signal?: AbortSignal) => {
         setStatus("RUNNING DIAGNOSTICS...");
         const temp = this.getTemp(this.settings.tempCritic, true);
-        return this.parseJson<NigsMetaResponse>(await this.callAI(text, NIGS_META_PROMPT, true, false, temp));
+        return this.parseJson<NigsMetaResponse>(await this.callAI(text, NIGS_META_PROMPT, true, false, temp, signal));
     }
     
-    getLightGrade = async (text: string) => {
+    getLightGrade = async (text: string, signal?: AbortSignal) => {
         setStatus("PERFORMING QUICK SCAN...");
         const temp = this.getTemp(this.settings.tempCritic, true);
-        return this.parseJson<NigsLightGrade>(await this.callAI(text, NIGS_QUICK_SCAN_PROMPT, true, false, temp));
+        return this.parseJson<NigsLightGrade>(await this.callAI(text, NIGS_QUICK_SCAN_PROMPT, true, false, temp, signal));
     }
     
     // --- CHARACTER AUTO-GRADER ---
-    gradeCharacter = async (char: CharacterBlock, context: string): Promise<CharacterBlock> => {
+    gradeCharacter = async (char: CharacterBlock, context: string, signal?: AbortSignal): Promise<CharacterBlock> => {
         setStatus(`ANALYZING ${char.name.toUpperCase()}...`);
         const prompt = `
         [TASK]: Calibrate Character Scales.
@@ -703,7 +714,7 @@ Only score positive if it is innovative.
         `;
         
         const temp = this.getTemp(this.settings.tempCritic, true);
-        const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp);
+        const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp, signal);
         const data = this.parseJson<any>(res);
         
         return {
@@ -717,7 +728,7 @@ Only score positive if it is innovative.
     }
 
     // --- STRUCTURE AUTO-GRADER ---
-    gradeStructureBeat = async (beat: StoryBlock, context: string): Promise<StoryBlock> => {
+    gradeStructureBeat = async (beat: StoryBlock, context: string, signal?: AbortSignal): Promise<StoryBlock> => {
         setStatus(`ANALYZING STORY BEAT...`);
         const prompt = `
         Analyze this story beat. 
@@ -731,7 +742,7 @@ Only score positive if it is innovative.
         `;
         
         const temp = this.getTemp(this.settings.tempCritic, true);
-        const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp);
+        const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp, signal);
         const data = this.parseJson<{ tension: number, type: any }>(res);
         
         return {
@@ -742,7 +753,7 @@ Only score positive if it is innovative.
     }
 
     // --- ASSIST WIZARD (Logic Hardened + Name Protocol) ---
-    assistWizard = async (field: string, state: NigsWizardState) => {
+    assistWizard = async (field: string, state: NigsWizardState, signal?: AbortSignal) => {
         setStatus("CONSULTING NARRATIVE DATABASE...");
         const sourceMaterial = state.inspirationContext || "No source file loaded.";
         
@@ -847,12 +858,12 @@ Only score positive if it is innovative.
         `;
 
         const temp = this.getTemp(this.settings.tempWizard);
-        const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, true, temp);
+        const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, true, temp, signal);
         const data = this.parseJson<{ suggestion: string }>(res);
         return data.suggestion;
     }
     
-    wizardCompose = async (state: NigsWizardState) => {
+    wizardCompose = async (state: NigsWizardState, signal?: AbortSignal) => {
         setStatus("ARCHITECTING OUTLINE...");
         const targetQ = state.targetScore || this.settings.defaultTargetQuality;
         const promptContext = `
@@ -865,11 +876,11 @@ Only score positive if it is innovative.
         Ensure every scene and character beat is generated to meet the Target Quality.
         `;
         const temp = this.getTemp(this.settings.tempArchitect);
-        return await this.callAI(promptContext, NIGS_WIZARD_COMPOSITION_PROMPT, false, false, temp);
+        return await this.callAI(promptContext, NIGS_WIZARD_COMPOSITION_PROMPT, false, false, temp, signal);
     }
 
     // --- DEEP RENAME (NEW) ---
-    generateDeepNames = async (characters: CharacterBlock[], context: string): Promise<Record<string, string>> => {
+    generateDeepNames = async (characters: CharacterBlock[], context: string, signal?: AbortSignal): Promise<Record<string, string>> => {
         setStatus("ETYMOLOGIST ACTIVE: DEEP RENAMING...");
         
         // Prepare simplified character list for the prompt
@@ -885,7 +896,7 @@ Only score positive if it is innovative.
 
         // Use Wizard Temp for creativity
         const temp = this.getTemp(this.settings.tempWizard);
-        const res = await this.callAI(input, NIGS_RENAME_PROMPT, true, false, temp);
+        const res = await this.callAI(input, NIGS_RENAME_PROMPT, true, false, temp, signal);
         return this.parseJson<Record<string, string>>(res);
     }
 }

@@ -93,6 +93,9 @@ export default class CompuJudgePlugin extends Plugin {
         // Ensure Name Pools exist
         if (this.settings.namePool === undefined) this.settings.namePool = "";
         if (this.settings.negativeNamePool === undefined) this.settings.negativeNamePool = "";
+
+        // Ensure Tribunal Config exists
+        if (this.settings.tribunalConfiguration === undefined) this.settings.tribunalConfiguration = 'Parallel';
     }
 
     async saveSettings() {
@@ -117,9 +120,14 @@ class NigsSettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl('h2', { text: 'BIOS SETUP' });
+
+        // WIN95 HEADER
+        const header = containerEl.createEl('div', { cls: 'win95-titlebar', style: 'margin-bottom: 20px;' });
+        header.createEl('div', { text: 'BIOS SETUP UTILITY', cls: 'win95-titlebar-text' });
 
         // --- 1. AI IDENTITY ---
+        this.addSectionHeader(containerEl, 'AI IDENTITY');
+
         const providerSetting = new Setting(containerEl)
             .setName('AI Provider')
             .setDesc('Select your intelligence engine.')
@@ -134,60 +142,67 @@ class NigsSettingTab extends PluginSettingTab {
                     this.display(); 
                 }));
         
-        // APPLY RETRO STYLE TO DROPDOWN
-        const dropdownEl = providerSetting.controlEl.querySelector('select');
-        if (dropdownEl) {
-            dropdownEl.addClass('retro-select');
-        }
-
-        containerEl.createEl('h4', { text: 'Connection Settings' });
+        this.styleDropdown(providerSetting);
 
         if (this.plugin.settings.aiProvider === 'gemini') {
-            new Setting(containerEl)
-                .setName('Gemini API Key')
-                .addText(text => text.setPlaceholder('AIzaSy...')
-                    .setValue(this.plugin.settings.apiKey)
-                    .onChange(async (val) => { this.plugin.settings.apiKey = val; await this.plugin.saveSettings(); }));
-
-            new Setting(containerEl)
-                .setName('Model ID')
-                .addText(text => text.setPlaceholder('gemini-2.0-flash')
-                    .setValue(this.plugin.settings.modelId)
-                    .onChange(async (val) => { this.plugin.settings.modelId = val; await this.plugin.saveSettings(); }));
+            this.addTextInput(containerEl, 'Gemini API Key', 'AIzaSy...', this.plugin.settings.apiKey, async (val) => {
+                 this.plugin.settings.apiKey = val; await this.plugin.saveSettings();
+            });
+            this.addTextInput(containerEl, 'Model ID', 'gemini-2.0-flash', this.plugin.settings.modelId, async (val) => {
+                 this.plugin.settings.modelId = val; await this.plugin.saveSettings();
+            });
         }
 
         if (this.plugin.settings.aiProvider === 'openai') {
-            new Setting(containerEl)
-                .setName('OpenAI API Key')
-                .addText(text => text.setPlaceholder('sk-...')
-                    .setValue(this.plugin.settings.openaiKey)
-                    .onChange(async (val) => { this.plugin.settings.openaiKey = val; await this.plugin.saveSettings(); }));
-            new Setting(containerEl)
-                .setName('Model ID')
-                .addText(text => text.setPlaceholder('gpt-4o')
-                    .setValue(this.plugin.settings.openaiModel)
-                    .onChange(async (val) => { this.plugin.settings.openaiModel = val; await this.plugin.saveSettings(); }));
+            this.addTextInput(containerEl, 'OpenAI API Key', 'sk-...', this.plugin.settings.openaiKey, async (val) => {
+                 this.plugin.settings.openaiKey = val; await this.plugin.saveSettings();
+            });
+             this.addTextInput(containerEl, 'Model ID', 'gpt-4o', this.plugin.settings.openaiModel, async (val) => {
+                 this.plugin.settings.openaiModel = val; await this.plugin.saveSettings();
+            });
         }
 
         if (this.plugin.settings.aiProvider === 'anthropic') {
-            new Setting(containerEl)
-                .setName('Anthropic API Key')
-                .addText(text => text.setPlaceholder('sk-ant-...')
-                    .setValue(this.plugin.settings.anthropicKey)
-                    .onChange(async (val) => { this.plugin.settings.anthropicKey = val; await this.plugin.saveSettings(); }));
-             new Setting(containerEl)
-                .setName('Model ID')
-                .addText(text => text.setPlaceholder('claude-3-7-sonnet-20250219')
-                    .setValue(this.plugin.settings.anthropicModel)
-                    .onChange(async (val) => { this.plugin.settings.anthropicModel = val; await this.plugin.saveSettings(); }));
+            this.addTextInput(containerEl, 'Anthropic API Key', 'sk-ant-...', this.plugin.settings.anthropicKey, async (val) => {
+                 this.plugin.settings.anthropicKey = val; await this.plugin.saveSettings();
+            });
+             this.addTextInput(containerEl, 'Model ID', 'claude-3-7-sonnet-20250219', this.plugin.settings.anthropicModel, async (val) => {
+                 this.plugin.settings.anthropicModel = val; await this.plugin.saveSettings();
+            });
         }
 
-        // --- 2. NEURO-PARAMETERS ---
-        containerEl.createEl('h4', { text: 'Intelligence & Quality Control' });
+        // --- TRIBUNAL CONFIG ---
+        this.addSectionHeader(containerEl, 'TRIBUNAL CONFIGURATION');
+
+        const tribunalConfig = new Setting(containerEl)
+            .setName('Execution Mode')
+            .setDesc('Parallel (Faster) or Iterative (Sequential Chain).')
+            .addDropdown(drop => drop
+                .addOption('Parallel', 'Parallel Processing')
+                .addOption('Iterative', 'Iterative Chaining')
+                .setValue(this.plugin.settings.tribunalConfiguration)
+                .onChange(async (val) => {
+                    this.plugin.settings.tribunalConfiguration = val as 'Parallel' | 'Iterative';
+                    await this.plugin.saveSettings();
+                }));
+        this.styleDropdown(tribunalConfig);
 
         new Setting(containerEl)
-            .setName('AI Intelligence Level (Thinking)')
-            .setDesc('1 (Fast/Shallow) to 5 (Deep Thought/Slow). Modulates the amount of reasoning the AI performs.')
+            .setName('Enable Tribunal')
+            .setDesc('Use 5-Agent Consensus System.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableTribunal)
+                .onChange(async (val) => {
+                    this.plugin.settings.enableTribunal = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        // --- 2. NEURO-PARAMETERS ---
+        this.addSectionHeader(containerEl, 'NEURO-PARAMETERS');
+
+        new Setting(containerEl)
+            .setName('AI Intelligence Level')
+            .setDesc('Thinking Effort (1-5).')
             .addSlider(slider => slider
                 .setLimits(1, 5, 1)
                 .setValue(this.plugin.settings.aiThinkingLevel)
@@ -197,25 +212,9 @@ class NigsSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        new Setting(containerEl)
-            .setName('Default Target Quality')
-            .setDesc('The score (0-100) the AI should aim for when generating content (Wizard/Synthesizer default).')
-            .addSlider(slider => slider
-                .setLimits(0, 100, 5)
-                .setValue(this.plugin.settings.defaultTargetQuality)
-                .setDynamicTooltip()
-                .onChange(async (val) => {
-                    this.plugin.settings.defaultTargetQuality = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        containerEl.createEl('h4', { text: 'Creativity Matrix (Temperature)' });
-        
-        const mult = this.plugin.settings.tempMultiplier;
-
-        new Setting(containerEl)
-            .setName('Global Multiplier (The "Vibe" Slider)')
-            .setDesc('Multiplies all settings below. < 1.0 = Rigid, > 1.0 = Chaos.')
+         new Setting(containerEl)
+            .setName('Temperature Multiplier')
+            .setDesc('Chaos Factor (0.5 - 2.0).')
             .addSlider(slider => slider
                 .setLimits(0.5, 2.0, 0.1)
                 .setValue(this.plugin.settings.tempMultiplier)
@@ -223,253 +222,44 @@ class NigsSettingTab extends PluginSettingTab {
                 .onChange(async (val) => {
                     this.plugin.settings.tempMultiplier = val;
                     await this.plugin.saveSettings();
-                    this.display();
                 }));
 
-        containerEl.createEl('strong', { text: 'Task-Specific Fine Tuning' });
-        
-        new Setting(containerEl)
-            .setName(`Critic (Analysis) - Effective: ${(this.plugin.settings.tempCritic * mult).toFixed(2)}`)
-            .setDesc('Low = Objective/Harsh. High = Creative Interpretation.')
-            .addSlider(slider => slider
-                .setLimits(0.0, 1.0, 0.05)
-                .setValue(this.plugin.settings.tempCritic)
-                .setDynamicTooltip()
-                .onChange(async (val) => {
-                    this.plugin.settings.tempCritic = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName(`Wizard (Brainstorming) - Effective: ${(this.plugin.settings.tempWizard * mult).toFixed(2)}`)
-            .setDesc('High recommended for original ideas.')
-            .addSlider(slider => slider
-                .setLimits(0.0, 1.5, 0.05)
-                .setValue(this.plugin.settings.tempWizard)
-                .setDynamicTooltip()
-                .onChange(async (val) => {
-                    this.plugin.settings.tempWizard = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName(`Synthesizer (Fusion) - Effective: ${(this.plugin.settings.tempSynth * mult).toFixed(2)}`)
-            .setDesc('Controls how aggressively the AI merges conflicting drives.')
-            .addSlider(slider => slider
-                .setLimits(0.0, 1.5, 0.05)
-                .setValue(this.plugin.settings.tempSynth)
-                .setDynamicTooltip()
-                .onChange(async (val) => {
-                    this.plugin.settings.tempSynth = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName(`Architect (Structure) - Effective: ${(this.plugin.settings.tempArchitect * mult).toFixed(2)}`)
-            .setDesc('Balance between rigid structure and creative flow.')
-            .addSlider(slider => slider
-                .setLimits(0.0, 1.2, 0.05)
-                .setValue(this.plugin.settings.tempArchitect)
-                .setDynamicTooltip()
-                .onChange(async (val) => {
-                    this.plugin.settings.tempArchitect = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName(`Repair (Editing) - Effective: ${(this.plugin.settings.tempRepair * mult).toFixed(2)}`)
-            .setDesc('Low recommended to preserve your voice.')
-            .addSlider(slider => slider
-                .setLimits(0.0, 1.0, 0.05)
-                .setValue(this.plugin.settings.tempRepair)
-                .setDynamicTooltip()
-                .onChange(async (val) => {
-                    this.plugin.settings.tempRepair = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        // --- 3. NAME POOLS (NEW) ---
-        containerEl.createEl('h4', { text: 'Name Pools (Character Generation)' });
-
-        new Setting(containerEl)
-            .setName('Name Pool (Preferred Names)')
-            .setDesc('Comma-separated list of names the AI should prioritize when generating characters.')
-            .addTextArea(text => text
-                .setPlaceholder('e.g. Kael, Elara, Thorne, ...')
-                .setValue(this.plugin.settings.namePool)
-                .onChange(async (val) => {
-                    this.plugin.settings.namePool = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName('Negative Name Pool (Banned Names)')
-            .setDesc('Comma-separated list of names the AI must NEVER use.')
-            .addTextArea(text => text
-                .setPlaceholder('e.g. Dave, Bob, ...')
-                .setValue(this.plugin.settings.negativeNamePool)
-                .onChange(async (val) => {
-                    this.plugin.settings.negativeNamePool = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        // --- 4. SAFETY & CONSTRAINTS ---
-        containerEl.createEl('h4', { text: 'Safety & Constraints' });
-        
-        new Setting(containerEl)
-            .setName('Wizard Negative Constraints')
-            .setDesc('What should the AI explicitly AVOID generating? (Anti-Tropes)')
-            .addTextArea(text => text
-                .setPlaceholder('e.g. Talking Animals, Time Travel, Deus Ex Machina...')
-                .setValue(this.plugin.settings.wizardNegativeConstraints)
-                .onChange(async (val) => {
-                    this.plugin.settings.wizardNegativeConstraints = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        // --- 5. ADVANCED ---
-        containerEl.createEl('h4', { text: 'Hardware Settings' });
-
-        new Setting(containerEl)
-            .setName('Max Output Tokens')
-            .setDesc('Limit the length of the AI response.')
-            .addText(text => text
-                .setValue(String(this.plugin.settings.maxOutputTokens))
-                .onChange(async (val) => {
-                    const num = parseInt(val);
-                    if (!isNaN(num)) {
-                        this.plugin.settings.maxOutputTokens = num;
-                        await this.plugin.saveSettings();
-                    }
-                }));
-
-        new Setting(containerEl)
-            .setName('Analysis Cores (Critic)')
-            .setDesc('Parallel passes (1-10). Higher = Slower but more accurate averaging.')
-            .addSlider(slider => slider
-                .setLimits(1, 10, 1)
-                .setValue(this.plugin.settings.analysisPasses)
-                .setDynamicTooltip()
-                .onChange(async (val) => {
-                    this.plugin.settings.analysisPasses = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName('Enable Tribunal (Multi-Agent Consensus)')
-            .setDesc('Uses 3 specialized agents (Market, Logic, Lit) instead of brute-force averaging. (More tokens, better quality).')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.enableTribunal)
-                .onChange(async (val) => {
-                    this.plugin.settings.enableTribunal = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName('Tribunal Retries')
-            .setDesc('Max number of loop attempts (1-5) if the Analyst rejects the result.')
-            .addSlider(slider => slider
-                .setLimits(1, 5, 1)
-                .setValue(this.plugin.settings.tribunalMaxRetries)
-                .setDynamicTooltip()
-                .onChange(async (val) => {
-                    this.plugin.settings.tribunalMaxRetries = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        // --- 5B. ARBITRATION & CONTROL ---
-        containerEl.createEl('h4', { text: 'Chief Justice Arbitration' });
-
-        new Setting(containerEl)
-            .setName('Enable Chief Justice')
-            .setDesc('Activates the Arbitration layer to weigh Soul vs Logic and penalize Deus Ex Machina.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.arbitrationEnabled)
-                .onChange(async (val) => {
-                    this.plugin.settings.arbitrationEnabled = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName('Luck Tolerance (0-10)')
-            .setDesc('How much "good luck" is allowed before it counts as Deus Ex Machina.')
-            .addSlider(slider => slider
-                .setLimits(0, 10, 1)
-                .setValue(this.plugin.settings.luckTolerance)
-                .setDynamicTooltip()
-                .onChange(async (val) => {
-                    this.plugin.settings.luckTolerance = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName('Disable Rainbows')
-            .setDesc('Turn off the "Masterpiece" rainbow animation for a flatter look.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.disableRainbows)
-                .onChange(async (val) => {
-                    this.plugin.settings.disableRainbows = val;
-                    await this.plugin.saveSettings();
-                }));
-
-        containerEl.createEl('div', { text: 'Agent Weighting (Influence)', cls: 'setting-item-description', style: 'margin-bottom: 10px; font-weight: bold;' });
-
-        new Setting(containerEl)
-            .setName('Logic Weight')
-            .addSlider(slider => slider.setLimits(0, 2, 0.1).setValue(this.plugin.settings.agentWeights.logic)
-            .setDynamicTooltip()
-            .onChange(async v => { this.plugin.settings.agentWeights.logic = v; await this.plugin.saveSettings(); }));
-
-        new Setting(containerEl)
-            .setName('Soul Weight')
-            .addSlider(slider => slider.setLimits(0, 2, 0.1).setValue(this.plugin.settings.agentWeights.soul)
-            .setDynamicTooltip()
-            .onChange(async v => { this.plugin.settings.agentWeights.soul = v; await this.plugin.saveSettings(); }));
 
         // --- 6. GRADING PALETTE ---
-        containerEl.createEl('h4', { text: 'Grading Palette (Gradient Map)' });
+        this.addSectionHeader(containerEl, 'GRADING PALETTE');
         
         const colors = this.plugin.settings.gradingColors;
-        
-        new Setting(containerEl).setName('Critical (0-20%)').addColorPicker(col => col.setValue(colors.critical)
-            .onChange(async v => { colors.critical = v; await this.plugin.saveSettings(); }));
-            
-        new Setting(containerEl).setName('Poor (20-40%)').addColorPicker(col => col.setValue(colors.poor)
-            .onChange(async v => { colors.poor = v; await this.plugin.saveSettings(); }));
-            
-        new Setting(containerEl).setName('Average (40-60%)').addColorPicker(col => col.setValue(colors.average)
-            .onChange(async v => { colors.average = v; await this.plugin.saveSettings(); }));
-            
-        new Setting(containerEl).setName('Good (60-80%)').addColorPicker(col => col.setValue(colors.good)
-            .onChange(async v => { colors.good = v; await this.plugin.saveSettings(); }));
-            
-        new Setting(containerEl).setName('Excellent (80-90%)').addColorPicker(col => col.setValue(colors.excellent)
-            .onChange(async v => { colors.excellent = v; await this.plugin.saveSettings(); }));
-            
-        new Setting(containerEl).setName('Masterpiece (90%+)').setDesc("Also defines the 'God Mode' glow color.")
-            .addColorPicker(col => col.setValue(colors.masterpiece)
+        new Setting(containerEl).setName('Masterpiece (90%+)').addColorPicker(col => col.setValue(colors.masterpiece)
             .onChange(async v => { colors.masterpiece = v; await this.plugin.saveSettings(); }));
 
         // --- 7. SYSTEM OVERRIDE ---
-        containerEl.createEl('h4', { text: 'System Override' });
+        this.addSectionHeader(containerEl, 'SYSTEM OVERRIDE');
         
         new Setting(containerEl)
             .setName('Custom Critic Prompt')
             .addTextArea(text => text
-                .setPlaceholder('You are a harsh literary critic...')
+                .setPlaceholder('Override System Prompt...')
                 .setValue(this.plugin.settings.customSystemPrompt)
                 .onChange(async (val) => {
                     this.plugin.settings.customSystemPrompt = val;
                     await this.plugin.saveSettings();
                 }));
+    }
 
-        new Setting(containerEl)
-            .setName('Custom Archivist Prompt')
-            .addTextArea(text => text
-                .setValue(this.plugin.settings.customOutlinePrompt)
-                .onChange(async (val) => {
-                    this.plugin.settings.customOutlinePrompt = val;
-                    await this.plugin.saveSettings();
-                }));
+    // HELPER: Apply Retro Styles
+    private styleDropdown(setting: Setting) {
+        const el = setting.controlEl.querySelector('select');
+        if (el) el.addClass('retro-select');
+    }
+
+    private addTextInput(el: HTMLElement, name: string, placeholder: string, value: string, cb: (val: string) => void) {
+        const s = new Setting(el).setName(name);
+        s.addText(text => text.setPlaceholder(placeholder).setValue(value).onChange(cb));
+        const input = s.controlEl.querySelector('input');
+        if (input) input.addClass('retro-input');
+    }
+
+    private addSectionHeader(el: HTMLElement, text: string) {
+        el.createEl('h4', { text: text, style: 'border-bottom: 2px solid #808080; color: #000080; margin-top: 20px;' });
     }
 }

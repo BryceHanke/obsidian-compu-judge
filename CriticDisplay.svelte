@@ -16,37 +16,19 @@
     let { data, meta, isProcessing, settings, onRunMeta, onAddRepairInstruction }: Props = $props();
     let showRaw = $state(false);
 
-    // [WIN95 UPDATE] Selected Agent Logic
+    // [WIN95 UPDATE] Selected Agent Logic (Now handled per window or summary if needed)
     let selectedAgent = $state<string | null>(null);
     let openDropdown = $state<string | null>(null);
-    let showQuickScanMenu = $state(false); // [UPDATED]
 
     // [UPDATED] Graph Toggle
     let graphMode = $state<'tension' | 'quality'>('tension');
     let selectedArc = $state("truby");
 
-    // [UPDATED] Dynamic Repair Issues
-    let repairIssues = $derived.by(() => {
-        const issues: string[] = [];
-        if (data.content_warning && data.content_warning !== 'None') issues.push(`Fix Critical Warning: ${data.content_warning}`);
-        if (data.tribunal_breakdown) {
-            if (data.tribunal_breakdown.logic.content_warning) issues.push(`Logic Fix: ${data.tribunal_breakdown.logic.content_warning}`);
-            if (data.tribunal_breakdown.market.commercial_reason) issues.push(`Market Fix: ${data.tribunal_breakdown.market.commercial_reason}`);
-            if (data.tribunal_breakdown.lit.niche_reason) issues.push(`Thematic Fix: ${data.tribunal_breakdown.lit.niche_reason}`);
-        }
-        if (data.detailed_metrics) {
-            Object.entries(data.detailed_metrics).forEach(([k, v]: any) => {
-                if (v.score < 0) issues.push(`Improve ${k.toUpperCase()} (Score: ${v.score})`);
-            });
-        }
-        return issues;
-    });
-
     // --- UTILS ---
     
     // Zero-Based Color Map
     function getBarColor(val: number): string {
-        if (val >= 45) return settings.gradingColors.masterpiece; // [UPDATED] Threshold 45
+        if (val >= 45) return settings.gradingColors.masterpiece; // Threshold 45 for Masterpiece
         if (val >= 30) return settings.gradingColors.excellent;
         if (val >= 10) return settings.gradingColors.good;
         if (val === 0) return settings.gradingColors.average;
@@ -66,9 +48,7 @@
     
     // Helper to get the correct container class
     function getContainerClass(val: number): string {
-        if (isMasterpieceEffect(val)) return 'score-container bevel-down masterpiece-border pattern-mesh-dark';
-        if (isCritical(val)) return 'score-container bevel-down critical-crack pattern-mesh-critical';
-        return 'score-container bevel-down';
+        return 'score-container'; // Basic container, effects applied to text
     }
 
     // Diverging Bar Logic (0 Center)
@@ -82,9 +62,10 @@
         return { width, isNegative };
     }
 
-    // Quality Bar Logic (0-100)
+    // Quality Bar Logic (Signed 0-50 cap) for Graph
     function getQualityMetrics(val: number) {
-        return Math.max(0, Math.min(100, val));
+        // Same as Tension basically, centered around 0
+        return getBarMetrics(val);
     }
 
     // Slider Bar Logic (0-100)
@@ -128,8 +109,8 @@
         const c = data.commercial_score || 0;
         const n = data.niche_score || 0;
         const co = data.cohesion_score || 0;
-        // Simple Average of Signed Integers
-        return Math.round((c + n + co) / 3);
+        // Simple Average of Signed Integers (or just use Commercial Score as the main verdict if Tribunal is active)
+        return data.commercial_score || 0;
     });
 
     // Ideal Arc Logic
@@ -139,10 +120,12 @@
         let sourceArray: number[] = [];
         let labels: string[] = [];
         let descs: string[] = [];
+        let durations: number[] = [];
 
         // Prefer Quality Arc if mode is Quality and data exists
         if (graphMode === 'quality' && data.quality_arc && data.quality_arc.length > 0) {
             sourceArray = data.quality_arc;
+            // Quality might not have distinct labels if separate from structure map
         } else if (graphMode === 'tension') {
              // Use Universal Outline tension if available, else tension_arc
              if (isUniversalOutline) {
@@ -151,45 +134,43 @@
                  sourceArray = data.tension_arc || [0, 10, 5, 20, 15, 30];
              }
         } else {
-             // Fallback for quality if missing
-             sourceArray = (data.tension_arc || []).map(() => 50); // Default flat 50
+             // Fallback
+             sourceArray = (data.tension_arc || []).map(() => 0);
         }
 
-        // Generate Labels/Descs
+        // Generate Labels/Descs/Durations
         if (isUniversalOutline) {
             const nodes = structure as UniversalOutlineNode[];
             labels = nodes.map(n => n.title);
             descs = nodes.map(n => n.description || "");
+            durations = nodes.map(n => n.duration || 1); // Default duration 1
         } else {
+             const len = sourceArray.length;
              labels = sourceArray.map((_, i) => `Beat ${i+1}`);
              descs = sourceArray.map(() => "Legacy Data");
+             durations = sourceArray.map(() => 1);
         }
         
-        // Normalize lengths if arrays differ (shouldn't happen often)
-        const finalData = sourceArray.map((val, i) => {
-            // Width calc for visual spacing
-            const len = descs[i]?.length || 50;
-            // Total length for percentage...
-            // Let's just do equal width for now or text-based. Text-based is better for outline.
-             return {
-                val: val,
-                title: labels[i] || `Beat ${i+1}`,
-                desc: descs[i] || "",
-                textLen: len
-            };
-        });
+        // If Quality Mode but no labels, try to map from structure or generate generic
+        if (graphMode === 'quality' && labels.length !== sourceArray.length) {
+             labels = sourceArray.map((_, i) => `Beat ${i+1}`);
+             descs = sourceArray.map(() => "");
+             durations = sourceArray.map(() => 1);
+        }
 
-        const totalChars = finalData.reduce((acc, d) => acc + d.textLen, 0);
+        const totalDuration = durations.reduce((a, b) => a + b, 0);
 
-        return finalData.map(d => ({
-            ...d,
-            widthPerc: (d.textLen / totalChars) * 100
+        return sourceArray.map((val, i) => ({
+            val: val,
+            title: labels[i] || `Beat ${i+1}`,
+            desc: descs[i] || "",
+            widthPerc: (durations[i] / totalDuration) * 100
         }));
     });
 
     // Interpolate Ideal Path (Only for Tension Mode)
     let idealPathD = $derived.by(() => {
-        if (graphMode !== 'tension') return ""; // No ideal path for Quality
+        if (graphMode !== 'tension') return "";
         if (!chartData || chartData.length === 0) return "";
         
         const idealPoints = IDEAL_ARCS[selectedArc].points;
@@ -221,57 +202,56 @@
 
         return path;
     });
+
+    let breakdown = $derived(data.tribunal_breakdown || {
+        market: { commercial_score: 0, commercial_reason: "N/A" },
+        logic: { score: 0, inconsistencies: [] },
+        soul: { score: 0, critique: "N/A" },
+        lit: { score: 0, niche_reason: "N/A" },
+        jester: { score_modifier: 0, roast: "N/A" }
+    });
 </script>
 
 <div class="critic-display">
     
-    <div class="{getContainerClass(averageScore)}">
+    <!-- [WIN95 UPDATE] DEEP SCAN POPUP (Overall Score) -->
+    <div class="win95-popup-window deep-scan-popup">
+        <div class="win95-titlebar">
+            <div class="win95-titlebar-text">
+                <span>🔎</span> <span>Deep Scan Analysis</span>
+            </div>
+            <div class="win95-controls">
+                <button class="win95-close-btn">X</button>
+            </div>
+        </div>
         
-        <!-- [WIN95 UPDATE] QUICK SCAN POPUP (Inside the main score container or above?)
-             Actually, Quick Scan is usually a separate tool or overlay.
-             But here, the 'Main Score Row' essentially IS the Quick Scan result display.
-             The user asked to "replace the 'help' button anchored on the top left of IT'S UI".
-             This suggests the Score Container IS the Quick Scan UI.
-        -->
-
-        <!-- Win95 Menu Bar for Quick Scan Area -->
-         <div class="win95-menubar" style="margin-bottom: 10px; border-bottom: 1px solid #808080;">
-             <!-- svelte-ignore a11y-click-events-have-key-events -->
-             <!-- svelte-ignore a11y-no-static-element-interactions -->
-             <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); showQuickScanMenu = !showQuickScanMenu; }}>
-                Smart Repair... ({repairIssues.length})
-             </span>
-             <!-- Replaces 'Help' -->
-
-             {#if showQuickScanMenu}
-                <div class="dropdown-list" style="left:0; top: 20px; width: 250px;">
-                    {#if repairIssues.length === 0}
-                        <div class="dd-item" style="color:#666; cursor:default;">No Issues Detected</div>
-                    {:else}
-                        {#each repairIssues as issue}
-                             <!-- svelte-ignore a11y-click-events-have-key-events -->
-                             <!-- svelte-ignore a11y-no-static-element-interactions -->
-                            <div class="dd-item" onclick={() => { onAddRepairInstruction(issue); showQuickScanMenu = false; }}>
-                                {issue}
-                            </div>
-                        {/each}
-                    {/if}
+        <div class="win95-menubar">
+            <span class="win95-menu-item">File</span>
+            <span class="win95-menu-item">Edit</span>
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); openDropdown = openDropdown === 'actions' ? null : 'actions'; }}>Actions</span>
+            {#if openDropdown === 'actions'}
+                <div class="dropdown-list">
+                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Address Warning: ${warning}`); openDropdown = null; }}>Inject Critical Repair</div>
                 </div>
             {/if}
-         </div>
+        </div>
 
-        <div class="main-score-row">
+        <div class="main-score-row" style="padding: 20px; background: #c0c0c0;">
             <div class="score-block main">
-                <div class="score-title" style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#999' : '#555'}">OVERALL SCORE</div>
-                <!-- Main score display -->
+                <div class="score-title" style="color: #000080;">OVERALL RATING</div>
+                <!-- Main score display: FIXED Masterpiece Shadow Logic -->
+                <!-- Inline style for shadow only applies if NOT masterpiece, otherwise CSS class handles it -->
                 <div class="score-main {isMasterpieceEffect(averageScore) ? 'masterpiece-text' : ''} 
                             {isCritical(averageScore) ? 'critical-text' : ''}" 
-                     style="color: {isMasterpieceEffect(averageScore) ? '' : (isCritical(averageScore) ? '#000' : getBarColor(averageScore))}">
+                     style="color: {isMasterpieceEffect(averageScore) ? '#000' : (isCritical(averageScore) ? '#000' : getBarColor(averageScore))};
+                            text-shadow: {isMasterpieceEffect(averageScore) ? '' : '1px 1px 0 #fff'};">
                     {formatScoreDisplay(averageScore)}
                 </div>
-                <!-- Verdict Text: Masterpiece (Rainbow) or Critical (Dark) -->
-                <div class="score-verdict {isMasterpieceEffect(averageScore) ? 'masterpiece-text' : ''} {isCritical(averageScore) ? 'critical-text' : ''}" 
-                     style="color: {isMasterpieceEffect(averageScore) ? '' : (isCritical(averageScore) ? '#000' : getBarColor(averageScore))}">
+                <!-- Verdict Text -->
+                <div class="score-verdict {isMasterpieceEffect(averageScore) ? 'masterpiece-text' : ''}"
+                     style="color: {isMasterpieceEffect(averageScore) ? '#000' : '#000'};">
                     {getVerdict(averageScore)}
                 </div>
             </div>
@@ -279,57 +259,171 @@
 
         <div class="score-divider-horizontal"></div>
 
+        <!-- 5 AGENT BREAKDOWN ROW -->
         <div class="sub-score-row">
+            <!-- MARKET -->
             <div class="sub-score-block tooltip-container">
-                <div class="sub-title" style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#aaa' : '#555'}">COMMERCIAL</div>
-                <!-- Force color white for dark backgrounds -->
-                <div class="sub-val {isMasterpieceEffect(data.commercial_score) ? 'masterpiece-text' : ''}" 
-                     style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#fff' : getBarColor(data.commercial_score)}">
-                    {formatScoreDisplay(data.commercial_score)}
+                <div class="sub-title">MARKET</div>
+                <div class="sub-val {isMasterpieceEffect(breakdown.market.commercial_score || 0) ? 'masterpiece-text' : ''}"
+                     style="color: {isMasterpieceEffect(breakdown.market.commercial_score || 0) ? '#000' : getBarColor(breakdown.market.commercial_score || 0)}">
+                    {formatScoreDisplay(breakdown.market.commercial_score || 0)}
                 </div>
-                <div class="tooltip bottom">{data.commercial_reason || "No reasoning available."}</div>
+                <div class="tooltip bottom">{breakdown.market.commercial_reason || "No Data"}</div>
             </div>
-            
             <div class="sub-divider"></div>
             
+            <!-- LOGIC -->
             <div class="sub-score-block tooltip-container">
-                <div class="sub-title" style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#aaa' : '#555'}">LITERARY</div>
-                <div class="sub-val {isMasterpieceEffect(data.niche_score) ? 'masterpiece-text' : ''}" 
-                     style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#fff' : getBarColor(data.niche_score)}">
-                    {formatScoreDisplay(data.niche_score)}
+                <div class="sub-title">LOGIC</div>
+                <div class="sub-val {isMasterpieceEffect(breakdown.logic.score || 0) ? 'masterpiece-text' : ''}"
+                     style="color: {isMasterpieceEffect(breakdown.logic.score || 0) ? '#000' : getBarColor(breakdown.logic.score || 0)}">
+                    {formatScoreDisplay(breakdown.logic.score || 0)}
                 </div>
-                <div class="tooltip bottom">{data.niche_reason || "No reasoning available."}</div>
+                <div class="tooltip bottom">Plot Holes: {breakdown.logic.inconsistencies?.length || 0}</div>
             </div>
-            
             <div class="sub-divider"></div>
-            
+
+            <!-- SOUL -->
             <div class="sub-score-block tooltip-container">
-                <div class="sub-title" style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#aaa' : '#555'}">COHESION</div>
-                <div class="sub-val {isMasterpieceEffect(data.cohesion_score) ? 'masterpiece-text' : ''}" 
-                     style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#fff' : getBarColor(data.cohesion_score)}">
-                    {formatScoreDisplay(data.cohesion_score)}
+                <div class="sub-title">SOUL</div>
+                <div class="sub-val {isMasterpieceEffect(breakdown.soul.score || 0) ? 'masterpiece-text' : ''}"
+                     style="color: {isMasterpieceEffect(breakdown.soul.score || 0) ? '#000' : getBarColor(breakdown.soul.score || 0)}">
+                    {formatScoreDisplay(breakdown.soul.score || 0)}
                 </div>
-                <div class="tooltip bottom">{data.cohesion_reason || "No reasoning available."}</div>
+                <div class="tooltip bottom">{breakdown.soul.critique || "No Data"}</div>
+            </div>
+            <div class="sub-divider"></div>
+
+            <!-- LIT -->
+            <div class="sub-score-block tooltip-container">
+                <div class="sub-title">LIT</div>
+                <div class="sub-val {isMasterpieceEffect(breakdown.lit?.score || 0) ? 'masterpiece-text' : ''}"
+                     style="color: {isMasterpieceEffect(breakdown.lit?.score || 0) ? '#000' : getBarColor(breakdown.lit?.score || 0)}">
+                    {formatScoreDisplay(breakdown.lit?.score || 0)}
+                </div>
+                <div class="tooltip bottom">{breakdown.lit?.niche_reason || "No Data"}</div>
+            </div>
+            <div class="sub-divider"></div>
+
+             <!-- JESTER -->
+             <div class="sub-score-block tooltip-container">
+                <div class="sub-title">JESTER</div>
+                <div class="sub-val {isMasterpieceEffect(breakdown.jester?.score_modifier || 0) ? 'masterpiece-text' : ''}"
+                     style="color: {isMasterpieceEffect(breakdown.jester?.score_modifier || 0) ? '#000' : getBarColor(breakdown.jester?.score_modifier || 0)}">
+                    {formatScoreDisplay(breakdown.jester?.score_modifier || 0)}
+                </div>
+                <div class="tooltip bottom">{breakdown.jester?.roast || "No Data"}</div>
             </div>
         </div>
-        
+
         {#if warning && warning.length > 5 && warning !== 'None'}
-        <div class="warning-box warning-stripe" style="margin-top: 15px;">
+        <div class="warning-box warning-stripe" style="margin: 10px;">
             <span class="warning-icon">⚠</span>
             <span class="warning-text">{warning}</span>
         </div>
         {/if}
 
-        <div class="log-section" style="margin-top: 10px;">
-            <span class="log-label">LOGLINE: </span>
-            <span class="log-text-blue">"{data.log_line || 'Analysis pending...'}"</span>
+        <div class="win95-statusbar">
+             <div class="win95-status-field">Status: Analysis Complete</div>
+             <div class="win95-status-field">Agents: 5 Active</div>
         </div>
     </div>
 
+    <!-- [WIN95 UPDATE] STORY GRAPH POPUP -->
+    <div class="win95-popup-window">
+        <div class="win95-titlebar">
+            <div class="win95-titlebar-text">
+                <span>📈</span> <span>Story Graph Visualizer</span>
+            </div>
+             <div class="win95-controls">
+                <button class="win95-close-btn">X</button>
+            </div>
+        </div>
+
+        <div class="win95-menubar" style="display:flex; justify-content:space-between; align-items:center;">
+             <div style="display:flex; gap:10px;">
+                 <span class="win95-menu-item">View</span>
+                 <!-- Mode Toggle -->
+                 <select class="retro-select mini" bind:value={graphMode}>
+                    <option value="tension">Narrative Tension</option>
+                    <option value="quality">Beat Quality</option>
+                </select>
+             </div>
+
+             {#if graphMode === 'tension'}
+                <select class="retro-select mini" bind:value={selectedArc} style="width:120px;">
+                    {#each Object.entries(IDEAL_ARCS) as [key, arc]}
+                        <option value={key}>{arc.label}</option>
+                    {/each}
+                </select>
+            {/if}
+        </div>
+
+        <div class="chart-box bevel-down" style="margin: 5px; background: #fff;">
+            <div class="chart-area zero-center" style="display: flex; width: 100%;">
+
+                <div class="chart-center-line"></div>
+
+                {#if graphMode === 'tension'}
+                <!-- SVG OVERLAY FOR IDEAL PATH (Only for Tension) -->
+                <svg class="chart-overlay" preserveAspectRatio="none" viewBox="0 0 100 100">
+                    <path d={idealPathD} fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6" />
+                </svg>
+                {/if}
+
+                {#each chartData as beat, i}
+                    {@const bar = getBarMetrics(beat.val)}
+
+                    <div class="bar-col tooltip-container" style="width: {beat.widthPerc}%; flex-grow: 0; flex-shrink: 0;">
+
+                        <div class="win95-progress-container"
+                             style="
+                                width: 100%; height: 100%;
+                                background: transparent; box-shadow: none; border: none;
+                                position: relative;
+                             ">
+                            <!-- Signed Bar (Used for both Tension and Quality now) -->
+                            <div class="win95-progress-fill"
+                                 style="
+                                    width: auto;
+                                    left: 1px; right: 1px;
+                                    top: {bar.isNegative ? '50%' : 'auto'};
+                                    bottom: {bar.isNegative ? 'auto' : '50%'};
+                                    height: {bar.width}%;
+                                    position: absolute;
+                                    background: {isMasterpieceEffect(beat.val) ? 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' : getBarColor(beat.val)};
+                                    background-size: 200% auto;
+                                    animation: {isMasterpieceEffect(beat.val) ? 'rainbow-bar-scroll 3s linear infinite' : 'none'};
+                                    border: 1px solid rgba(0,0,0,0.5);
+                                    box-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+                                 ">
+                            </div>
+                        </div>
+
+                        <div class="tooltip chart-tooltip">
+                            <strong>{i+1}. {beat.title}</strong><br/>
+                            {graphMode === 'tension' ? 'Tension' : 'Quality'}: {formatScoreDisplay(beat.val)}<br/>
+                            <span style="font-size:0.8em; opacity:0.8">Duration: {Math.round(beat.widthPerc)}%</span>
+                        </div>
+                    </div>
+                {/each}
+            </div>
+            <div class="chart-axis">
+                <span>START</span>
+                {#if graphMode === 'tension'}
+                <div style="display:flex; align-items:center; gap:5px;">
+                    <span class="legend-box" style="border:1px dashed #000080;"></span>
+                    <span style="font-size:9px; color:#000080;">IDEAL ({IDEAL_ARCS[selectedArc].label})</span>
+                </div>
+                {/if}
+                <span>END</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- METRICS -->
     <div class="section-header">SANDERSON ENGINE METRICS</div>
     <div class="modules-grid bevel-down">
-        
-        <!-- PROTAGONIST SLIDERS (0-100) -->
         {#if sanderson.competence !== undefined}
         <div class="slider-group">
             <div class="slider-label">PROTAGONIST SCALE</div>
@@ -344,7 +438,6 @@
                         <span class="s-val">{formatUnsignedScore(s.val)}%</span>
                     </div>
                     <div class="win95-progress-container">
-                        <!-- DISABLED RAINBOWS FOR CHARACTER STATS AS REQUESTED -->
                          <div class="win95-progress-fill"
                               style="width: {getSliderMetrics(s.val)}%; background: {getBarColor(s.val)};">
                          </div>
@@ -356,7 +449,7 @@
 
         <div class="divider-line"></div>
 
-        <!-- CORE LAWS (Zero-Based) -->
+        <!-- CORE LAWS -->
         {#each [
             { label: 'PROMISE/PAYOFF', val: sanderson.promise_payoff },
             { label: 'LAWS OF MAGIC', val: sanderson.laws_of_magic },
@@ -365,10 +458,8 @@
             {@const bar = getBarMetrics(m.val)}
             <div class="module-item">
                 <span class="mod-label">{m.label}</span>
-                <!-- Diverging Bar Container (Universal Bar Style) -->
                 <div class="win95-progress-container" style="flex: 1;">
                     <div class="center-line" style="position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed #555; z-index:2;"></div>
-                    <!-- [FIXED] Rainbow logic strictly follows isMasterpieceEffect (>= 45) -->
                     <div class="win95-progress-fill"
                          style="
                             position: absolute;
@@ -381,304 +472,47 @@
                     </div>
                 </div>
                 <span class="mod-score {isMasterpieceEffect(m.val) ? 'masterpiece-text' : ''}" 
-                      style="color: {isMasterpieceEffect(m.val) ? '' : getBarColor(m.val)}">
+                      style="color: {isMasterpieceEffect(m.val) ? '#000' : getBarColor(m.val)}">
                     {formatScoreDisplay(m.val)}
                 </span>
             </div>
         {/each}
     </div>
 
-    {#if hasDetails}
-    <div class="section-header">FORENSIC REPORT</div>
-    <div class="details-grid bevel-down">
-        {#each Object.entries(details) as [key, cat]}
-            <div class="detail-category">
-                <div class="cat-header">
-                    <span class="cat-name">{key.toUpperCase()}</span>
-                    <span class="cat-score {isMasterpieceEffect(cat.score) ? 'masterpiece-text' : ''}" 
-                          style="color: {isMasterpieceEffect(cat.score) ? '' : getBarColor(cat.score)}">
-                        AVG: {formatScoreDisplay(cat.score)}
-                    </span>
-                </div>
-                <div class="cat-items">
-                    {#each cat.items as item}
-                        {@const bar = getBarMetrics(item.score)}
-                        <div class="metric-card">
-                            <div class="metric-top">
-                                <span class="metric-name">{item.name}</span>
-                                <span class="metric-val {isMasterpieceEffect(item.score) ? 'masterpiece-text' : ''}" 
-                                      style="color: {isMasterpieceEffect(item.score) ? '' : getBarColor(item.score)}">
-                                    {formatScoreDisplay(item.score)}
-                                </span>
-                            </div>
-                            
-                            <!-- Diverging Metric Bar (Universal Style) -->
-                            <div class="win95-progress-container" style="margin-bottom: 6px;">
-                                <div class="center-line" style="position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed #555; z-index:2;"></div>
-                                <!-- [FIXED] Rainbow logic strictly follows isMasterpieceEffect (>= 45) -->
-                                <div class="win95-progress-fill"
-                                     style="
-                                        position: absolute;
-                                        width: {bar.width}%; 
-                                        left: {bar.isNegative ? (50 - bar.width) + '%' : '50%'};
-                                        background: {isMasterpieceEffect(item.score) ? 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' : getBarColor(item.score)};
-                                        background-size: 200% auto;
-                                        animation: {isMasterpieceEffect(item.score) ? 'rainbow-bar-scroll 3s linear infinite' : 'none'};
-                                     ">
-                                </div>
-                            </div>
-                            
-                            <div class="metric-diagnosis">
-                                <span class="diag-label">DIAGNOSIS:</span> 
-                                <span class="diag-text">{item.reason}</span>
-                            </div>
-                        </div>
-                    {/each}
-                </div>
-            </div>
-        {/each}
-    </div>
-    {/if}
-
-        {#if data.tribunal_breakdown}
-        <div class="section-header">TRIBUNAL CONSENSUS</div>
-        <div class="tribunal-grid">
-            <!-- MARKET -->
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <!-- svelte-ignore a11y-no-static-element-interactions -->
-            <div class="win95-popup-window" onclick={() => selectedAgent = 'market'}>
-                <div class="win95-titlebar {selectedAgent === 'market' ? '' : 'inactive'}">
-                    <div class="win95-titlebar-text">
-                        <span>📈</span> <span>MARKET ANALYST</span>
-                    </div>
-                </div>
-                <div class="win95-menubar" style="position:relative;">
-                    <!-- svelte-ignore a11y-click-events-have-key-events -->
-                    <!-- svelte-ignore a11y-no-static-element-interactions -->
-                    <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); openDropdown = openDropdown === 'market' ? null : 'market'; }}>Actions</span>
-                    {#if openDropdown === 'market'}
-                        <div class="dropdown-list">
-                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Address Commercial Concern: ${data.tribunal_breakdown?.market.commercial_reason}`); openDropdown = null; }}>Inject Issue to Repair</div>
-                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Enhance Commercial Appeal`); openDropdown = null; }}>Focus on Commercial Appeal</div>
-                        </div>
-                    {/if}
-                </div>
-                <div class="win95-info-area">
-                    <b>SCORE: {formatScoreDisplay(data.tribunal_breakdown.market.commercial_score)}</b>
-                </div>
-                <div class="win95-content-inset">
-                    {data.tribunal_breakdown.market.log_line || "N/A"}<br/><br/>
-                    <i>"{data.tribunal_breakdown.market.commercial_reason || ""}"</i>
-                </div>
-            </div>
-            
-            <!-- LOGIC -->
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <!-- svelte-ignore a11y-no-static-element-interactions -->
-            <div class="win95-popup-window" onclick={() => selectedAgent = 'logic'}>
-                 <div class="win95-titlebar {selectedAgent === 'logic' ? '' : 'inactive'}">
-                    <div class="win95-titlebar-text">
-                        <span>🧠</span> <span>LOGIC ENGINE</span>
-                    </div>
-                </div>
-                <div class="win95-menubar" style="position:relative;">
-                     <!-- svelte-ignore a11y-click-events-have-key-events -->
-                     <!-- svelte-ignore a11y-no-static-element-interactions -->
-                     <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); openDropdown = openDropdown === 'logic' ? null : 'logic'; }}>Actions</span>
-                     {#if openDropdown === 'logic'}
-                        <div class="dropdown-list">
-                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Fix Logic Hole: ${data.tribunal_breakdown?.logic.content_warning}`); openDropdown = null; }}>Inject Logic Fix</div>
-                             <div class="dd-item" onclick={() => { onAddRepairInstruction(`Improve Internal Cohesion`); openDropdown = null; }}>Focus on Cohesion</div>
-                        </div>
-                    {/if}
-                </div>
-                <div class="win95-info-area">
-                    <b>COHESION: {formatScoreDisplay(data.tribunal_breakdown.logic.score)}</b>
-                </div>
-                <div class="win95-content-inset" style="color: #800000;">
-                    {#if data.tribunal_breakdown.logic.inconsistencies && data.tribunal_breakdown.logic.inconsistencies.length > 0}
-                        {data.tribunal_breakdown.logic.inconsistencies[0]}
-                    {:else}
-                        No Logic Holes Detected.
-                    {/if}
-                    <br/><br/>
-                    <span style="color:#000;"><i>Deus Ex Machinas: {data.tribunal_breakdown.logic.deus_ex_machina_count || 0}</i></span>
-                </div>
-            </div>
-
-            <!-- SOUL (Replacing Lit in the 3-col grid) -->
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <!-- svelte-ignore a11y-no-static-element-interactions -->
-            <div class="win95-popup-window" onclick={() => selectedAgent = 'lit'}>
-                 <div class="win95-titlebar {selectedAgent === 'lit' ? '' : 'inactive'}">
-                    <div class="win95-titlebar-text">
-                        <span>✨</span> <span>THE SOUL</span>
-                    </div>
-                </div>
-                 <div class="win95-menubar" style="position:relative;">
-                     <!-- svelte-ignore a11y-click-events-have-key-events -->
-                     <!-- svelte-ignore a11y-no-static-element-interactions -->
-                     <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); openDropdown = openDropdown === 'lit' ? null : 'lit'; }}>Actions</span>
-                     {#if openDropdown === 'lit'}
-                        <div class="dropdown-list">
-                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Refine Vibe: ${data.tribunal_breakdown?.lit.critique}`); openDropdown = null; }}>Inject Vibe Repair</div>
-                        </div>
-                    {/if}
-                </div>
-                <div class="win95-info-area">
-                    <b>SCORE: {formatScoreDisplay(data.tribunal_breakdown.lit.score)}</b>
-                </div>
-                <div class="win95-content-inset">
-                    Mood: {data.tribunal_breakdown.lit.mood || "N/A"}<br/><br/>
-                    <i>"{data.tribunal_breakdown.lit.critique || ""}"</i>
-                </div>
-            </div>
-        </div>
-    {/if}
-
-    {#if data.arbitration_log}
-    <div class="section-header" style="margin-top:20px;">CHIEF JUSTICE ARBITRATION LOG</div>
+    <!-- UNIVERSAL OUTLINE (Tree View Style) -->
     <div class="win95-popup-window">
         <div class="win95-titlebar">
             <div class="win95-titlebar-text">
-                <span>⚖️</span> <span>FINAL VERDICT</span>
+                <span>📁</span> <span>Universal Outline</span>
             </div>
         </div>
-        <div class="win95-content-inset" style="font-family: 'Courier New', monospace; font-weight: bold;">
-            {data.arbitration_log.ruling}
-        </div>
-    </div>
-    {/if}
-
-<div class="section-header">
-    <span>STORY GRAPH</span>
-    <!-- [WIN95 UPDATE] Graph Mode Toggle -->
-    <select class="retro-select" bind:value={graphMode} style="margin-left: auto; margin-right: 10px;">
-        <option value="tension">Narrative Tension</option>
-        <option value="quality">Beat Quality</option>
-    </select>
-
-    {#if graphMode === 'tension'}
-    <select class="retro-select" bind:value={selectedArc}>
-        {#each Object.entries(IDEAL_ARCS) as [key, arc]}
-            <option value={key}>{arc.label}</option>
-        {/each}
-    </select>
-    {/if}
-</div>
-
-    <div class="chart-box bevel-down">
-        <div class="chart-area zero-center" style="display: flex; width: 100%;">
-            {#if graphMode === 'tension'}
-            <div class="chart-center-line"></div>
-            <!-- SVG OVERLAY FOR IDEAL PATH (Only for Tension) -->
-            <svg class="chart-overlay" preserveAspectRatio="none" viewBox="0 0 100 100">
-                <path d={idealPathD} fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6" />
-            </svg>
-            {/if}
-
-            {#each chartData as beat, i}
-                {@const bar = graphMode === 'tension' ? getBarMetrics(beat.val) : null}
-                {@const qualityH = graphMode === 'quality' ? getQualityMetrics(beat.val) : 0}
-
-                <div class="bar-col tooltip-container" style="width: {beat.widthPerc}%; flex-grow: 0; flex-shrink: 0;">
-
-                    <div class="win95-progress-container"
-                         style="
-                            width: 100%; height: 100%;
-                            background: transparent; box-shadow: none; border: none;
-                            position: relative;
-                         ">
-                        {#if graphMode === 'tension' && bar}
-                            <!-- Tension Bar (Diverging) -->
-                            <!-- [FIXED] Rainbow logic strictly follows isMasterpieceEffect (>= 45) -->
-                            <div class="win95-progress-fill"
-                                 style="
-                                    width: auto;
-                                    left: 1px; right: 1px;
-                                    top: {bar.isNegative ? '50%' : 'auto'};
-                                    bottom: {bar.isNegative ? 'auto' : '50%'};
-                                    height: {bar.width}%;
-                                    position: absolute;
-                                    background: {isMasterpieceEffect(beat.val) ? 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' : getBarColor(beat.val)};
-                                    background-size: 200% auto;
-                                    animation: {isMasterpieceEffect(beat.val) ? 'rainbow-bar-scroll 3s linear infinite' : 'none'};
-                                    border: 1px solid rgba(0,0,0,0.3);
-                                 ">
+        <div class="structure-box bevel-down" style="background:#fff; height: 200px; overflow-y:auto; border: 2px inset #808080;">
+             {#if isUniversalOutline}
+                <ul class="tree-view">
+                    {#each structure as node}
+                        <li class="tree-item">
+                            <span class="tree-line"></span>
+                            <div class="tree-content">
+                                <span class="node-icon">{node.type === 'beat' ? '📄' : '⭐'}</span>
+                                <span class="node-title">{node.title}</span>
+                                <span class="node-meta" style="color:#000080;">(Tens: {formatScoreDisplay(node.tension)})</span>
                             </div>
-                        {:else}
-                            <!-- Quality Bar (0-100 from bottom) -->
-                            <!-- [FIXED] Rainbow logic strictly follows isMasterpieceEffect (>= 45) -->
-                            <div class="win95-progress-fill"
-                                 style="
-                                    width: auto;
-                                    left: 1px; right: 1px;
-                                    bottom: 0;
-                                    height: {qualityH}%;
-                                    position: absolute;
-                                    background: {isMasterpieceEffect(beat.val) ? 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' : 'linear-gradient(to top, #800000, #ffff00, #00ff00)'};
-                                    background-size: {isMasterpieceEffect(beat.val) ? '200% auto' : 'auto'};
-                                    animation: {isMasterpieceEffect(beat.val) ? 'rainbow-bar-scroll 3s linear infinite' : 'none'};
-                                    border: 1px solid rgba(0,0,0,0.3);
-                                 ">
-                            </div>
-                        {/if}
+                        </li>
+                    {/each}
+                </ul>
+                {#if structure.length === 0}
+                    <div style="padding:10px; color:#555; font-style:italic;">[BUFFER EMPTY]</div>
+                {/if}
+            {:else}
+                 <!-- Legacy -->
+                {#each structure as beat}
+                    <div class="structure-item">
+                        <div class="square-bullet">■</div>
+                        <div class="beat-text">{beat}</div>
                     </div>
-
-                    <div class="tooltip chart-tooltip">
-                        <strong>{i+1}. {beat.title}</strong><br/>
-                        {graphMode === 'tension' ? 'Tension' : 'Quality'}: {formatScoreDisplay(beat.val)}<br/>
-                        <span style="font-size:0.8em; opacity:0.8">Duration: {Math.round(beat.widthPerc)}%</span>
-                    </div>
-                </div>
-            {/each}
+                {/each}
+            {/if}
         </div>
-        <div class="chart-axis">
-            <span>START</span>
-            {#if graphMode === 'tension'}
-            <div style="display:flex; align-items:center; gap:5px;">
-                <span class="legend-box" style="border:1px dashed #000080;"></span>
-                <span style="font-size:9px; color:#000080;">IDEAL ({IDEAL_ARCS[selectedArc].label})</span>
-            </div>
-            {/if}
-            <span>END</span>
-        </div>
-    </div>
-
-    <!-- [WIN95 UPDATE] Smart Repair Dropdown removed from here (moved to Quick Scan) -->
-    <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-        <div class="section-header" style="margin:0;">UNIVERSAL OUTLINE</div>
-    </div>
-
-    <div class="structure-box bevel-down">
-        {#if isUniversalOutline}
-            {#each structure as node}
-                <div class="structure-node {node.type}">
-                    <div class="node-header">
-                        <span class="node-type">{node.type.toUpperCase()}</span>
-                        <span class="node-title">{node.title}</span>
-                        <span class="node-tension {isMasterpieceEffect(node.tension) ? 'masterpiece-text' : ''}" style="color: {isMasterpieceEffect(node.tension) ? '' : '#BF40BF'}">
-                            ⚡ {formatScoreDisplay(node.tension)}
-                        </span>
-                    </div>
-                    <div class="node-desc">{node.description}</div>
-                    <div class="node-chars">ACTORS: {node.characters.join(", ")}</div>
-                </div>
-            {/each}
-            {#if structure.length === 0}
-                <div style="padding:10px; color:#555; font-style:italic;">[BUFFER EMPTY: No Universal Outline Data]</div>
-            {/if}
-        {:else}
-            {#each structure as beat}
-                <div class="structure-item">
-                    <div class="square-bullet">■</div>
-                    <div class="beat-text">{beat}</div>
-                </div>
-            {/each}
-            {#if structure.length === 0}
-                <div style="padding:10px; color:#555; font-style:italic;">[BUFFER EMPTY: No Structure Data]</div>
-            {/if}
-        {/if}
     </div>
 
     {#if data.thought_process}
@@ -699,232 +533,111 @@
 
 <style>
     .critic-display { display: flex; flex-direction: column; gap: 15px; font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif; color: #000; font-weight: normal; }
-    .bevel-down {
-        border-top: 1px solid #000;
-        border-left: 1px solid #000;
-        border-right: 1px solid #fff;
-        border-bottom: 1px solid #fff;
-        box-shadow: inset 1px 1px 0 #808080;
-        background: #fff;  /* Typically input backgrounds, but for panels might need grey */
-        background: #c0c0c0; /* Keeping original logic but with Win95 bevels */
-        padding: 10px;
-    }
     
     /* SCORES */
     .score-container { 
-        background: #d4d4d4; 
-        padding-bottom: 25px; 
+        background: #c0c0c0;
+        padding-bottom: 5px;
         position: relative; 
-        z-index: 100; /* Ensure tooltips are above following sections */
     }
     
-    /* NEW LAYOUT */
-    .main-score-row { display: flex; justify-content: center; padding: 15px 0; }
+    .main-score-row { display: flex; justify-content: center; padding: 10px 0; background: #c0c0c0; border: 2px inset #fff; }
     .score-block.main { display: flex; flex-direction: column; align-items: center; }
-    .score-title { font-size: 11px; color: #555; font-weight: 900; letter-spacing: 2px; margin-bottom: 5px; }
-    .score-main { font-size: 64px; font-weight: 900; line-height: 0.9; text-shadow: 2px 2px 0px rgba(255,255,255,0.5); }
-    .score-verdict { font-size: 16px; font-weight: 900; margin-top: 5px; text-shadow: 1px 1px 0px #000; letter-spacing: 3px; }
+    .score-title { font-size: 11px; color: #000080; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
+    .score-main { font-size: 48px; font-weight: 900; line-height: 0.9; text-shadow: 1px 1px 0 #fff; }
+    .score-verdict { font-size: 14px; font-weight: 900; margin-top: 5px; letter-spacing: 1px; color: #000; }
 
-    .score-divider-horizontal { height: 2px; background: #808080; width: 80%; margin: 10px auto; }
+    .score-divider-horizontal { height: 2px; border-top: 1px solid #808080; border-bottom: 1px solid #fff; width: 90%; margin: 5px auto; }
 
     .sub-score-row {
-        position: relative;
-        z-index: 101; /* Ensure sub-scores are even higher */
         display: flex; 
         justify-content: space-around; 
         align-items: center; 
-        padding-top: 5px; 
+        padding: 5px;
+        background: #c0c0c0;
     }
     
-    .sub-score-block { text-align: center; flex: 1; position: relative; cursor: help; } /* Added relative/cursor */
-    .sub-title { font-size: 10px; font-weight: bold; color: #555; margin-bottom: 2px; }
-    .sub-val { font-size: 18px; font-weight: 900; }
-    .sub-divider { width: 1px; height: 20px; background: #999; }
+    .sub-score-block { text-align: center; flex: 1; position: relative; cursor: help; }
+    .sub-title { font-size: 9px; font-weight: bold; color: #000; margin-bottom: 2px; }
+    .sub-val { font-size: 14px; font-weight: 900; text-shadow: 1px 1px 0 #fff; }
+    .sub-divider { width: 2px; height: 20px; border-left: 1px solid #808080; border-right: 1px solid #fff; }
 
     /* TOOLTIPS */
-    .tooltip-container { 
-        position: relative; 
-        overflow: visible; 
-    }
+    .tooltip-container { position: relative; overflow: visible; }
     .tooltip { 
-        visibility: hidden; 
-        opacity: 0;
+        visibility: hidden; opacity: 0;
         background-color: #FFFFE0; color: #000; 
-        text-align: center; 
-        border: 1px solid #000;
-        padding: 5px 8px; 
-        position: absolute; 
-        z-index: 10000; /* FORCE TOP LAYER */
-        font-size: 11px;
-        width: 140px;
+        text-align: center; border: 1px solid #000;
+        padding: 4px; position: absolute; z-index: 10000;
+        font-size: 10px; width: 120px;
         box-shadow: 2px 2px 0px rgba(0,0,0,0.2);
-        transition: opacity 0.2s;
-        pointer-events: none;
+        transition: opacity 0.1s; pointer-events: none;
     }
-    
-    .tooltip.bottom {
-        top: 100%; left: 50%;
-        transform: translateX(-50%);
-        margin-top: 8px;
-    }
-
-    /* Standard tooltip arrow (CSS triangle) */
-    .tooltip.bottom::after {
-        content: ""; position: absolute;
-        bottom: 100%;
-        left: 50%;
-        margin-left: -5px;
-        border-width: 5px;
-        border-style: solid;
-        border-color: transparent transparent #000 transparent;
-    }
-
+    .tooltip.bottom { top: 100%; left: 50%; transform: translateX(-50%); margin-top: 5px; }
     .tooltip-container:hover .tooltip { visibility: visible; opacity: 1; }
 
-    /* ANIMATIONS */
-    /* [UPDATED] Replaced Glow with Dither/Flat effects */
-    .masterpiece { color: var(--cj-grade-masterpiece) !important; animation: god-mode 1.5s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95); z-index: 5; position: relative; }
-    .masterpiece-text { text-shadow: 1px 1px 0 #000; } /* Hard shadow instead of glow */
+    /* MASTERPIECE TEXT EFFECT (Black with Rainbow Stroke/Shadow) */
+    .masterpiece-text {
+        color: #000 !important;
+        text-shadow:
+            -1px -1px 0 #ff0000,
+             1px -1px 0 #ffff00,
+            -1px  1px 0 #0000ff,
+             1px  1px 0 #00ff00;
+        /* Note: Full rainbow stroke isn't standard CSS, using multi-shadow approximation or webkit stroke */
+        -webkit-text-stroke: 1px transparent; /* Can't gradient stroke easily */
+        position: relative;
+    }
 
-    .glow-bar {
-        background-color: var(--cj-grade-masterpiece) !important;
-        background-image: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 80%) !important;
-        animation: pulse-bar 0.8s infinite alternate;
-        border: 1px solid #fff; /* Hard border */
-        box-shadow: none !important;
+    /* Optional: An overlay for the stroke if needed, but text-shadow is safer for retro look */
+    /* Using background clip on text for the stroke is tricky.
+       Let's use a layered shadow to simulate the "Rainbow Outline" requested. */
+    .masterpiece-text {
+        text-shadow:
+             2px  0px 0px #ff0000,
+            -2px  0px 0px #00ffff,
+             0px  2px 0px #00ff00,
+             0px -2px 0px #ff00ff;
+        animation: rainbow-shadow-pulse 0.5s infinite alternate;
+    }
+
+    @keyframes rainbow-shadow-pulse {
+        0% { text-shadow: 2px 0px 0 #ff0000, -2px 0px 0 #00ffff; }
+        100% { text-shadow: 2px 0px 0 #ff00ff, -2px 0px 0 #ffff00; }
     }
 
     /* DROPDOWN MENU */
     .dropdown-list {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        background: #c0c0c0;
-        border-top: 1px solid #fff;
-        border-left: 1px solid #fff;
-        border-right: 1px solid #000;
-        border-bottom: 1px solid #000;
+        position: absolute; top: 100%; left: 0;
+        background: #c0c0c0; border: 2px outset #fff;
         box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-        z-index: 9999;
-        min-width: 150px;
-        padding: 2px;
+        z-index: 9999; min-width: 150px; padding: 2px;
     }
+    .dd-item { padding: 4px 8px; cursor: pointer; color: #000; }
+    .dd-item:hover { background: #000080; color: #fff; }
 
-    .dd-item {
-        padding: 4px 8px;
-        cursor: pointer;
-        color: #000;
-    }
-
-    .dd-item:hover {
-        background: #000080;
-        color: #fff;
-    }
-
-    /* BUTTONS */
-    .retro-btn {
-        background: #c0c0c0;
-        border-top: 1px solid #fff;
-        border-left: 1px solid #fff;
-        border-right: 1px solid #000;
-        border-bottom: 1px solid #000;
-        box-shadow: 1px 1px 0 #000;
-        color: #000;
-        font-family: inherit;
-        font-size: 11px;
-        padding: 4px 8px;
-        cursor: pointer;
-    }
-    .retro-btn:active {
-        border-top: 1px solid #000;
-        border-left: 1px solid #000;
-        border-right: 1px solid #fff;
-        border-bottom: 1px solid #fff;
-        box-shadow: none;
-        transform: translate(1px, 1px);
-    }
-    .retro-btn:disabled {
-        color: #888;
-        cursor: not-allowed;
-    }
-
-
-    /* SANDERSON METRICS (Updated for Diverging Bars) */
-    .modules-grid { padding: 10px; z-index: 1; position: relative; }
-    .module-item { display: flex; align-items: center; gap: 8px; font-size: 10px; margin-bottom: 8px; }
-    .mod-label { width: 110px; text-align: right; color: #444; font-weight: 900; }
-    
-    .diverging-bar-container { flex: 1; height: 16px; background: #ddd; border: 1px solid #808080; box-shadow: inset 1px 1px 0 #000; position: relative; overflow: hidden; }
-    .center-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: #555; z-index: 2; opacity: 0.5; }
-    .fill { height: 100%; transition: width 0.5s ease; position: absolute; z-index: 1; }
-    
-    .mod-score { font-weight: 900; width: 35px; text-align: center; font-size: 12px; text-shadow: 1px 1px 0 #fff; }
-
-    /* NEW SLIDER STYLES */
-    .slider-group { padding: 0 0 10px 0; }
-    .slider-label { font-size: 11px; font-weight: 900; color: #000080; border-bottom: 1px dashed #888; margin-bottom: 6px; }
-    .slider-item { margin-bottom: 6px; }
-    .slider-text-row { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-bottom: 2px; }
-    .slider-track { height: 10px; background: #fff; border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #fff; border-bottom: 1px solid #fff; box-shadow: inset 1px 1px 0 #808080; }
-    .slider-fill { height: 100%; background: #008080; /* Teal for sliders */ }
-    .divider-line { height: 1px; background: #808080; margin: 10px 0; }
-
-    /* DETAILED METRICS (Updated) */
-    .details-grid { display: flex; flex-direction: column; gap: 15px; background: #dcdcdc; padding: 12px; }
-    .detail-category { border: 2px groove #fff; background: #e0e0e0; padding: 8px; }
-    .cat-header { display: flex; justify-content: space-between; font-weight: 900; font-size: 12px; color: #000080; margin-bottom: 8px; border-bottom: 2px dotted #808080; padding-bottom: 4px; }
-    .cat-items { display: flex; flex-direction: column; gap: 8px; }
-    
-    .metric-card { background: #f0f0f0; border: 1px solid #808080; padding: 6px; }
-    .metric-top { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
-    .metric-name { font-weight: bold; color: #222; }
-    .metric-val { font-weight: 900; }
-    
-    .metric-bar-container { height: 8px; background: #fff; border: 1px solid #888; margin-bottom: 6px; }
-    .metric-bar { height: 100%; transition: width 0.5s ease; position: absolute; top:0; bottom:0; }
-    
-    .metric-diagnosis { font-size: 10px; line-height: 1.3; color: #333; border-top: 1px dashed #ccc; padding-top: 4px; }
-    .diag-label { font-weight: 900; color: #800000; margin-right: 4px; }
-    .diag-text { font-style: italic; }
-
-    /* CHART AREA (Diverging) */
-    .chart-box { 
-        padding: 10px; background: #d4d4d4; 
-        position: relative;
-        z-index: 50; /* Lower than score but above normal flow if needed */
-    }
-    .chart-area { height: 100px; display: flex; align-items: stretch; gap: 1px; padding-bottom: 4px; border-bottom: 2px solid #808080; position: relative; }
-    .chart-center-line { position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #555; z-index: 0; }
-    
+    /* CHART AREA */
+    .chart-box { padding: 10px; background: #fff; border: 2px inset #808080; position: relative; z-index: 50; }
+    .chart-area { height: 100px; display: flex; align-items: stretch; gap: 1px; padding-bottom: 4px; border-bottom: 1px dotted #808080; position: relative; }
+    .chart-center-line { position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #000; z-index: 0; border-top: 1px dotted #808080; }
     .chart-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-
     .chart-axis { display: flex; justify-content: space-between; font-size: 9px; color: #555; margin-top: 2px; align-items: center; }
-    .retro-select { font-family: inherit; font-size: 10px; background: #fff; border: 1px solid #808080; margin-left: auto; }
-    .legend-box { width: 10px; height: 10px; display: inline-block; }
-    .bar-col { display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 4px; position: relative; transition: opacity 0.2s; height: 100%; }
-    .bar-col:hover { opacity: 0.8; }
-    .bar-fill { width: 100%; transition: height 0.5s ease; border: 1px solid rgba(0,0,0,0.2); }
-    .chart-tooltip { bottom: 100%; margin-bottom: 5px; white-space: nowrap; pointer-events: none; }
 
-    /* STRUCTURE NODES */
-    .structure-box { padding: 12px; background: #d4d4d4; }
-    .structure-node { background: #e0e0e0; border: 1px solid #fff; border-top: 1px solid #808080; border-left: 1px solid #808080; padding: 8px; margin-bottom: 8px; }
-    .structure-node.promise { border-left: 4px solid #000080; }
-    .structure-node.payoff { border-left: 4px solid #800000; }
-    .structure-node.progress { border-left: 4px solid #008000; }
-    .node-header { display: flex; justify-content: space-between; font-size: 10px; font-weight: 900; margin-bottom: 4px; border-bottom: 1px dashed #999; }
-    .node-type { color: #555; }
-    .node-tension { color: #BF40BF; }
-    .node-desc { font-size: 11px; margin-bottom: 4px; }
-    .node-chars { font-size: 9px; color: #666; font-style: italic; }
+    /* TREE VIEW */
+    .tree-view { list-style: none; padding-left: 5px; margin: 0; }
+    .tree-item { display: flex; align-items: center; padding: 2px 0; }
+    .tree-line { width: 10px; border-bottom: 1px dotted #808080; margin-right: 5px; }
+    .tree-content { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+    .node-title { font-weight: bold; }
+    .node-meta { font-size: 9px; }
 
     /* MISC */
-    .section-header { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 12px; color: #000; text-transform: uppercase; margin-top: 10px; margin-bottom: 5px; }
-    .section-header::after { content: ""; flex: 1; height: 2px; background: #808080; }
-    .warning-box { background: #FFFF00; border: 2px solid #000; padding: 8px; font-size: 11px; font-weight: 900; display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; }
-    .log-section { width: 100%; text-align: left; font-size: 12px; line-height: 1.4; }
-    .log-label { color: #000080; font-weight: 900; }
-    .log-text { color: #222; font-style: italic; font-weight: bold; }
-    .toggle-btn { background: none; border: none; color: #444; cursor: pointer; font-size: 11px; padding: 0; text-align: left; font-weight: bold; }
-    .raw-box { background: #000; color: #0f0; padding: 10px; overflow-x: auto; font-size: 11px; max-height: 200px; font-weight: bold; }
+    .section-header { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 11px; color: #000080; margin-top: 10px; margin-bottom: 5px; }
+    .section-header::after { content: ""; flex: 1; height: 2px; border-top: 1px solid #808080; border-bottom: 1px solid #fff; }
+    .warning-box { background: #FFFF00; border: 1px solid #000; padding: 4px; font-size: 10px; font-weight: bold; display: flex; gap: 8px; align-items: center; }
+
+    .retro-select.mini { padding: 0 15px 0 2px; height: 18px; font-size: 10px; }
+
+    .toggle-btn { background: none; border: none; color: #000080; cursor: pointer; font-size: 10px; padding: 0; text-align: left; font-weight: bold; margin-top: 5px; }
+    .raw-box { background: #000; color: #0f0; padding: 10px; overflow-x: auto; font-size: 11px; max-height: 200px; font-weight: bold; font-family: 'Courier New', monospace; border: 2px inset #808080; }
 </style>

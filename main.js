@@ -90,6 +90,8 @@ var DEFAULT_SETTINGS = {
   maxOutputTokens: 8192,
   analysisPasses: 1,
   enableTribunal: true,
+  tribunalConfiguration: "Parallel",
+  // Default to Parallel
   tribunalMaxRetries: 2,
   // Default 2 retries
   showThinking: false,
@@ -220,7 +222,10 @@ You must trace the "Logic Chain" of the narrative. If a link breaks, deduct poin
   "third_act_score": 0,
   "novelty_score": 0,
   "tension_arc": [0, 10, -5, 20, 30, 50],
-  "quality_arc": [50, 60, 40, 70, 80, 90],
+  "quality_arc": [0, 15, -10, 25, 40, 55],
+  "structure_map": [
+      { "title": "Beat Title", "description": "Desc", "type": "beat", "characters": ["Name"], "tension": 10, "duration": 5 }
+  ],
   "sanderson_metrics": {
     "promise_payoff": 0,
     "laws_of_magic": 0,
@@ -559,20 +564,36 @@ Start at 0.
 }
 `,
   SOUL: `
-[IDENTITY]: THE VIBE CHECKER (THE SOUL).
-[CORE DRIVE]: Emotional Resonance & Atmosphere.
+[IDENTITY]: THE SOUL (THE VIBE CHECKER).
+[CORE DRIVE]: Emotional Resonance & Enjoyment.
 [METRICS - ZERO BASED]:
 Start at 0.
 - **Vibe:** +Points for mood, atmosphere, and "Soul".
 - **Emotion:** +Points if it makes you FEEL.
-- **Beauty:** +Points for prose quality (even if slow).
+- **Fun Factor:** +Points if it is purely enjoyable.
 - **Cringe:** -Points for forced drama or cheap sentiment.
 
 [OUTPUT JSON]:
 {
     "score": 0,
     "mood": "e.g. Melancholic, Cyberpunk, Hopeful",
-    "critique": "Analysis of the 'Soul' of the piece."
+    "critique": "Analysis of the 'Vibe' and Enjoyment factor."
+}
+`,
+  LIT: `
+[IDENTITY]: THE LITERARY CRITIC.
+[CORE DRIVE]: Prose Quality & Depth.
+[METRICS - ZERO BASED]:
+Start at 0.
+- **Prose:** +Points for strong vocabulary and rhythm.
+- **Subtext:** +Points for unspoken meaning.
+- **Theme:** +Points for coherent thematic argument.
+- **Style:** -Points for purple prose or weak verbs.
+
+[OUTPUT JSON]:
+{
+    "score": 0,
+    "niche_reason": "Critique of the writing quality and depth."
 }
 `,
   JESTER: `
@@ -615,16 +636,17 @@ Start at 0.
 };
 var NIGS_ARBITRATOR_PROMPT = `
 [IDENTITY]: CHIEF JUSTICE (THE FINAL ARBITER).
-[TASK]: Synthesize the conflicting reports from your Tribunal (Soul, Jester, Logic, Market) into a FINAL VERDICT using the **Zero-Based Scoring Protocol**.
+[TASK]: Synthesize the conflicting reports from your Tribunal (Soul, Lit, Jester, Logic, Market) into a FINAL VERDICT using the **Zero-Based Scoring Protocol**.
 
 [INPUT DATA]:
-You will receive reports from 4 Agents. They will disagree. You must arbitrate.
+You will receive reports from 5 Agents. They will disagree. You must arbitrate.
 
 [ARBITRATION RULES]:
 1. **Genre Weighting:**
    - If Romance/SliceOfLife: Soul > Logic.
    - If SciFi/Mystery: Logic > Soul.
    - If Comedy: Jester > All.
+   - If Literary Fiction: Lit > Market.
 2. **The "Deus Ex Machina" Law:**
    - If Logic Agent flags > 0 Deus Ex Machina events, the Final Score CANNOT exceed 60 (Good), no matter how good the Soul score is.
 3. **The "Boring" Law:**
@@ -647,7 +669,7 @@ var NIGS_GRADE_ANALYST_PROMPT = `
 
 [CHECKLIST]:
 1. **Zero-Based Scoring:** Does the score reflect the strict Zero-Based protocol? (Boring = 0).
-2. **Completeness:** Are all fields filled (Logline, Scores, Reasons)?
+2. **Completeness:** Are all fields filled (Logline, Scores, Reasons, Duration)?
 3. **Accuracy:** Does the breakdown match the final score?
 4. **Inflation Check:** Does the report seem "too nice" or sugarcoated?
 
@@ -4474,19 +4496,62 @@ function from_html(content, flags2) {
     return clone;
   };
 }
-function text(value = "") {
-  if (!hydrating) {
-    var t3 = create_text(value + "");
-    assign_nodes(t3, t3);
-    return t3;
-  }
-  var node = hydrate_node;
-  if (node.nodeType !== TEXT_NODE) {
-    node.before(node = create_text());
-    set_hydrate_node(node);
-  }
-  assign_nodes(node, node);
-  return node;
+// @__NO_SIDE_EFFECTS__
+function from_namespace(content, flags2, ns = "svg") {
+  var has_start = !content.startsWith("<!>");
+  var is_fragment = (flags2 & TEMPLATE_FRAGMENT) !== 0;
+  var wrapped = `<${ns}>${has_start ? content : "<!>" + content}</${ns}>`;
+  var node;
+  return () => {
+    if (hydrating) {
+      assign_nodes(hydrate_node, null);
+      return hydrate_node;
+    }
+    if (!node) {
+      var fragment = (
+        /** @type {DocumentFragment} */
+        create_fragment_from_html(wrapped)
+      );
+      var root6 = (
+        /** @type {Element} */
+        get_first_child(fragment)
+      );
+      if (is_fragment) {
+        node = document.createDocumentFragment();
+        while (get_first_child(root6)) {
+          node.appendChild(
+            /** @type {TemplateNode} */
+            get_first_child(root6)
+          );
+        }
+      } else {
+        node = /** @type {Element} */
+        get_first_child(root6);
+      }
+    }
+    var clone = (
+      /** @type {TemplateNode} */
+      node.cloneNode(true)
+    );
+    if (is_fragment) {
+      var start2 = (
+        /** @type {TemplateNode} */
+        get_first_child(clone)
+      );
+      var end2 = (
+        /** @type {TemplateNode} */
+        clone.lastChild
+      );
+      assign_nodes(start2, end2);
+    } else {
+      assign_nodes(clone, clone);
+    }
+    return clone;
+  };
+}
+// @__NO_SIDE_EFFECTS__
+function from_svg(content, flags2) {
+  return /* @__PURE__ */ from_namespace(content, flags2, "svg");
 }
 function comment() {
   if (hydrating) {
@@ -6896,7 +6961,7 @@ var GeminiAdapter = class {
     this.model = model5;
     this.settings = settings;
   }
-  async generate(text2, sys, json = true, useSearch = false, tempOverride) {
+  async generate(text2, sys, json = true, useSearch = false, tempOverride, signal) {
     var _a3, _b3;
     if (!this.apiKey)
       throw new Error("MISSING GEMINI API KEY");
@@ -6929,15 +6994,18 @@ ${userSys}`;
       body.tools = [{ googleSearch: {} }];
     }
     setStatus(`QUERYING ${targetModel}...`);
-    const res = await (0, import_obsidian.requestUrl)({
-      url: `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${this.apiKey}`,
+    if (signal == null ? void 0 : signal.aborted)
+      throw new Error("Cancelled by user.");
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${this.apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal
     });
-    if (res.status >= 400)
-      throw new Error(`GEMINI ERROR ${res.status}: ${res.text}`);
-    const candidate = (_a3 = res.json.candidates) == null ? void 0 : _a3[0];
+    if (!res.ok)
+      throw new Error(`GEMINI ERROR ${res.status}: ${res.statusText}`);
+    const data = await res.json();
+    const candidate = (_a3 = data.candidates) == null ? void 0 : _a3[0];
     if (!((_b3 = candidate == null ? void 0 : candidate.content) == null ? void 0 : _b3.parts))
       throw new Error("Empty Response");
     let finalOutput = "";
@@ -6965,7 +7033,7 @@ var OpenAIAdapter = class {
     this.model = model5;
     this.settings = settings;
   }
-  async generate(text2, sys, json = true, useSearch = false, tempOverride) {
+  async generate(text2, sys, json = true, useSearch = false, tempOverride, signal) {
     if (!this.apiKey)
       throw new Error("MISSING OPENAI API KEY");
     setStatus(`CONNECTING TO OPENAI (${this.model})...`);
@@ -6979,15 +7047,18 @@ ${userSys}` }, { role: "user", content: text2 }],
       max_tokens: this.settings.maxOutputTokens,
       response_format: json ? { type: "json_object" } : void 0
     };
-    const res = await (0, import_obsidian.requestUrl)({
-      url: "https://api.openai.com/v1/chat/completions",
+    if (signal == null ? void 0 : signal.aborted)
+      throw new Error("Cancelled by user.");
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${this.apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal
     });
-    if (res.status >= 400)
+    if (!res.ok)
       throw new Error(`OPENAI ERROR ${res.status}`);
-    return res.json.choices[0].message.content;
+    const data = await res.json();
+    return data.choices[0].message.content;
   }
 };
 var AnthropicAdapter = class {
@@ -6996,7 +7067,7 @@ var AnthropicAdapter = class {
     this.model = model5;
     this.settings = settings;
   }
-  async generate(text2, sys, json = true, useSearch = false, tempOverride) {
+  async generate(text2, sys, json = true, useSearch = false, tempOverride, signal) {
     if (!this.apiKey)
       throw new Error("MISSING ANTHROPIC API KEY");
     setStatus(`CONNECTING TO CLAUDE (${this.model})...`);
@@ -7012,16 +7083,19 @@ ${userSys}`,
     };
     if (json)
       body.messages.push({ role: "assistant", content: "{" });
-    const res = await (0, import_obsidian.requestUrl)({
-      url: "https://api.anthropic.com/v1/messages",
+    if (signal == null ? void 0 : signal.aborted)
+      throw new Error("Cancelled by user.");
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": this.apiKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal
     });
-    if (res.status >= 400)
+    if (!res.ok)
       throw new Error(`ANTHROPIC ERROR ${res.status}`);
+    const data = await res.json();
     let textOutput = "";
-    for (const block2 of res.json.content) {
+    for (const block2 of data.content) {
       if (block2.type === "text")
         textOutput += block2.text;
     }
@@ -7033,7 +7107,7 @@ var CloudGenService = class {
     this.app = app;
     this.settings = settings;
     // --- AUTO-FILL WIZARD (Architect Mode) ---
-    this.autoFillWizard = async (concept, currentContext) => {
+    this.autoFillWizard = async (concept, currentContext, signal) => {
       setStatus("ARCHITECTING STORY BIBLE...");
       const nameRules = this.getNameProtocol();
       const prompt = `
@@ -7047,12 +7121,12 @@ var CloudGenService = class {
         ${nameRules}
         `;
       const temp = this.getTemp(this.settings.tempWizard);
-      const res = await this.callAI(prompt, NIGS_AUTOFILL_PROMPT, true, false, temp);
+      const res = await this.callAI(prompt, NIGS_AUTOFILL_PROMPT, true, false, temp, signal);
       return this.parseJson(res);
     };
     // --- DRIVE SYNTHESIS (Alchemy Mode) ---
     // [UPDATED] Uses full concatenated context
-    this.synthesizeDrives = async (drives, customTitle, targetQuality) => {
+    this.synthesizeDrives = async (drives, customTitle, targetQuality, signal) => {
       var _a3;
       setStatus("FUSING NARRATIVE DRIVES...");
       let driveContext = "";
@@ -7078,13 +7152,13 @@ You MUST use the title provided above. Do not invent a new one.`;
       const finalPrompt = `${driveContext}
 ${nameRules}${titleInstruction}${qualityInstruction}`;
       const temp = this.getTemp((_a3 = this.settings.tempSynth) != null ? _a3 : 1);
-      return await this.callAI(finalPrompt, NIGS_DRIVE_SYNTHESIS_PROMPT, false, false, temp);
+      return await this.callAI(finalPrompt, NIGS_DRIVE_SYNTHESIS_PROMPT, false, false, temp, signal);
     };
     // --- GRADING (Unified System) ---
-    // [UPDATED] Iterative Tribunal with Veto Protocol & Analyst Loop
-    this.gradeContent = async (text2, context, nlpStats, wizardState) => {
+    // [UPDATED] Iterative/Parallel Tribunal with Veto Protocol & Analyst Loop
+    this.gradeContent = async (text2, context, nlpStats, wizardState, signal) => {
       if (!this.settings.enableTribunal) {
-        return this.gradeContentLegacy(text2, context, nlpStats);
+        return this.gradeContentLegacy(text2, context, nlpStats, signal);
       }
       setStatus("CONVENING THE TRIBUNAL...");
       const sourceMaterial = (context == null ? void 0 : context.inspiration) ? `
@@ -7115,33 +7189,61 @@ ${sourceMaterial}
       do {
         attempts++;
         setStatus(attempts > 1 ? `RE-CONVENING TRIBUNAL (ATTEMPT ${attempts})...` : "STARTING TRIBUNAL PROCESS...");
+        if (signal == null ? void 0 : signal.aborted)
+          throw new Error("Cancelled by user.");
         const currentInputPayload = previousConsensus ? `${baseInputPayload}
 
 [PREVIOUS CONSENSUS / FEEDBACK]:
 ${previousConsensus}` : baseInputPayload;
-        setStatus("CONVENING AGENTS: SOUL, JESTER, LOGIC, MARKET...");
+        setStatus("CONVENING AGENTS: MARKET, LOGIC, SOUL, LIT, JESTER...");
         const soulTemp = this.getTemp(0.9);
         const logicTemp = this.getTemp(0.1, true);
         const marketTemp = this.getTemp(0.5);
         const jesterTemp = this.getTemp(1.1);
-        const [soulRaw, jesterRaw, logicRaw, marketRaw, forensicRaw] = await Promise.all([
-          this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp).catch((e2) => `{"error": "Soul Failed"}`),
-          this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp).catch((e2) => `{"error": "Jester Failed"}`),
-          this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp).catch((e2) => `{"error": "Logic Failed"}`),
-          this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp).catch((e2) => `{"error": "Market Failed"}`),
-          this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp).catch((e2) => `{"error": "Forensic Failed"}`)
-        ]);
-        const soulReport = this.parseJson(soulRaw);
-        const jesterReport = this.parseJson(jesterRaw);
-        const logicReport = this.parseJson(logicRaw);
-        const marketReport = this.parseJson(marketRaw);
+        const litTemp = this.getTemp(0.3);
+        let marketReport, logicReport, soulReport, litReport, jesterReport, forensicRaw;
+        if (this.settings.tribunalConfiguration === "Iterative") {
+          setStatus("AGENT 1/5: LOGIC ENGINE...");
+          const logicRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp, signal);
+          logicReport = this.parseJson(logicRaw);
+          setStatus("AGENT 2/5: MARKET ANALYST...");
+          const marketRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp, signal);
+          marketReport = this.parseJson(marketRaw);
+          setStatus("AGENT 3/5: THE SOUL...");
+          const soulRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp, signal);
+          soulReport = this.parseJson(soulRaw);
+          setStatus("AGENT 4/5: LITERARY CRITIC...");
+          const litRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.LIT, true, false, litTemp, signal);
+          litReport = this.parseJson(litRaw);
+          setStatus("AGENT 5/5: THE JESTER...");
+          const jesterRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp, signal);
+          jesterReport = this.parseJson(jesterRaw);
+          setStatus("FORENSIC SYSTEM SCAN...");
+          forensicRaw = await this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal);
+        } else {
+          const [soulRaw, jesterRaw, logicRaw, marketRaw, litRaw, fRaw] = await Promise.all([
+            this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp, signal).catch((e2) => `{"error": "Soul Failed"}`),
+            this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp, signal).catch((e2) => `{"error": "Jester Failed"}`),
+            this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp, signal).catch((e2) => `{"error": "Logic Failed"}`),
+            this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp, signal).catch((e2) => `{"error": "Market Failed"}`),
+            this.callAI(currentInputPayload, NIGS_TRIBUNAL.LIT, true, false, litTemp, signal).catch((e2) => `{"error": "Lit Failed"}`),
+            this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal).catch((e2) => `{"error": "Forensic Failed"}`)
+          ]);
+          soulReport = this.parseJson(soulRaw);
+          jesterReport = this.parseJson(jesterRaw);
+          logicReport = this.parseJson(logicRaw);
+          marketReport = this.parseJson(marketRaw);
+          litReport = this.parseJson(litRaw);
+          forensicRaw = fRaw;
+        }
         setStatus("CHIEF JUSTICE: DELIBERATING...");
         const arbitrationPayload = `
 [TRIBUNAL REPORTS]:
 1. SOUL: Score ${soulReport.score} (${soulReport.mood}) - ${soulReport.critique}
 2. LOGIC: Score ${logicReport.score} - ${logicReport.inconsistencies.length} plot holes, ${logicReport.deus_ex_machina_count} Deus Ex Machinas.
 3. MARKET: ${JSON.stringify(marketReport)}
-4. JESTER: ${JSON.stringify(jesterReport)}
+4. LIT: ${JSON.stringify(litReport)}
+5. JESTER: ${JSON.stringify(jesterReport)}
 
 [GENRE CONTEXT]: ${(context == null ? void 0 : context.inspiration) || "Unknown"}
 [SETTINGS]:
@@ -7149,7 +7251,7 @@ ${previousConsensus}` : baseInputPayload;
 - Soul Weight: ${this.settings.agentWeights.soul}
 - Luck Tolerance: ${this.settings.luckTolerance}
 `;
-        const arbitrationRaw = await this.callAI(arbitrationPayload, NIGS_ARBITRATOR_PROMPT, true, false, 0.2);
+        const arbitrationRaw = await this.callAI(arbitrationPayload, NIGS_ARBITRATOR_PROMPT, true, false, 0.2, signal);
         const arbitrationLog = this.parseJson(arbitrationRaw);
         finalResponse = this.parseJson(forensicRaw);
         finalResponse.commercial_score = arbitrationLog.final_verdict;
@@ -7162,8 +7264,9 @@ ${previousConsensus}` : baseInputPayload;
         finalResponse.tribunal_breakdown = {
           market: marketReport,
           logic: logicReport,
-          lit: soulReport
-          // Mapping Soul to Lit slot for UI compatibility
+          soul: soulReport,
+          lit: litReport,
+          jester: jesterReport
         };
         if (logicReport.score < 0) {
           const vetoFactor = 1 / 6;
@@ -7177,7 +7280,7 @@ ${JSON.stringify(finalResponse)}
 
 [TASK]: Verify this report matches the Zero-Based Scoring Protocol and is complete.
 `;
-        const analystResStr = await this.callAI(analystPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2);
+        const analystResStr = await this.callAI(analystPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal);
         const analystRes = this.parseJson(analystResStr);
         if (analystRes.verdict === "PASS") {
           isApproved = true;
@@ -7191,17 +7294,9 @@ ${JSON.stringify(finalResponse)}
       } while (!isApproved && attempts < maxAttempts);
       if (!finalResponse)
         throw new Error("Grading failed to produce response.");
-      if (finalResponse.tribunal_breakdown && finalResponse.tribunal_breakdown.logic && finalResponse.tribunal_breakdown.logic.score <= 0) {
-        const vetoFactor = 1 / 6;
-        finalResponse.commercial_score = Math.round(finalResponse.commercial_score * vetoFactor);
-        finalResponse.niche_score = Math.round(finalResponse.niche_score * vetoFactor);
-        finalResponse.commercial_reason += " [LOGIC VETO APPLIED: Score Slashed]";
-        finalResponse.niche_reason += " [LOGIC VETO APPLIED: Score Slashed]";
-        console.log("LOGIC VETO APPLIED: Scores slashed by factor of 6.");
-      }
       return finalResponse;
     };
-    this.gradeContentLegacy = async (text2, context, nlpStats) => {
+    this.gradeContentLegacy = async (text2, context, nlpStats, signal) => {
       const passes = Math.max(1, Math.min(10, this.settings.analysisPasses));
       const contextBlock = (context == null ? void 0 : context.inspiration) ? `
 [UPLOADED SOURCE CONTEXT]: "${context.inspiration}"
@@ -7232,7 +7327,7 @@ ${instructionBlock}`;
       setStatus(`INITIALIZING ${passes} FORENSIC CORES...`);
       const temp = this.getTemp(this.settings.tempCritic, true);
       const promises = Array.from({ length: passes }, (_2, i3) => {
-        return this.callAI(wrapped, NIGS_SYSTEM_PROMPT, true, false, temp).then((resStr) => this.parseJson(resStr)).catch((e2) => {
+        return this.callAI(wrapped, NIGS_SYSTEM_PROMPT, true, false, temp, signal).then((resStr) => this.parseJson(resStr)).catch((e2) => {
           console.error(`Core ${i3 + 1} Failed:`, e2);
           return null;
         });
@@ -7247,14 +7342,14 @@ ${instructionBlock}`;
       return finalRes;
     };
     // --- PASSTHROUGHS ---
-    this.generateOutline = async (text2, useSearch = false) => {
+    this.generateOutline = async (text2, useSearch = false, signal) => {
       setStatus("INITIALIZING ARCHIVIST PROTOCOL...");
       const prompt = this.settings.customOutlinePrompt ? this.settings.customOutlinePrompt : NIGS_OUTLINE_PROMPT;
       const temp = this.getTemp(this.settings.tempArchitect);
-      return await this.callAI(text2, prompt, false, useSearch, temp);
+      return await this.callAI(text2, prompt, false, useSearch, temp, signal);
     };
     // [UPDATED] Pass Scan Telemetry to Action Plan
-    this.getActionPlan = async (text2, focus, deepScan, quickScan) => {
+    this.getActionPlan = async (text2, focus, deepScan, quickScan, signal) => {
       setStatus("ANALYZING WEAKNESSES...");
       let diagnosticBlock = "";
       let specificComplaints = "";
@@ -7282,10 +7377,11 @@ ${instructionBlock}`;
           }
         }
         if (deepScan.tribunal_breakdown) {
-          specificComplaints = `
-[PRIORITY FIXES REQUIRED BY TRIBUNAL]:
-1. LOGIC ENGINE DEMANDS: ${deepScan.tribunal_breakdown.logic.content_warning}
-2. MARKET ANALYST DEMANDS: ${deepScan.tribunal_breakdown.market.commercial_reason}
+          if (deepScan.tribunal_breakdown.logic)
+            specificComplaints += `1. LOGIC ENGINE DEMANDS: ${deepScan.tribunal_breakdown.logic.content_warning || "None"}
+`;
+          if (deepScan.tribunal_breakdown.market)
+            specificComplaints += `2. MARKET ANALYST DEMANDS: ${deepScan.tribunal_breakdown.market.commercial_reason || "None"}
 `;
         }
       }
@@ -7304,7 +7400,8 @@ ${text2}`;
 ${inputBlock}`;
       }
       if (specificComplaints) {
-        inputBlock = `${specificComplaints}
+        inputBlock = `[PRIORITY FIXES REQUIRED BY TRIBUNAL]:
+${specificComplaints}
 
 ${inputBlock}`;
       }
@@ -7313,26 +7410,26 @@ ${inputBlock}`;
 
 ${inputBlock}`;
       const temp = this.getTemp(this.settings.tempArchitect);
-      return this.parseJson(await this.callAI(inputBlock, NIGS_FORGE_PROMPT, true, false, temp));
+      return this.parseJson(await this.callAI(inputBlock, NIGS_FORGE_PROMPT, true, false, temp, signal));
     };
-    this.autoRepair = async (text2, plan) => {
+    this.autoRepair = async (text2, plan, signal) => {
       setStatus("INITIATING REPAIR...");
       const prompt = this.settings.customRepairPrompt ? this.settings.customRepairPrompt : NIGS_AUTO_REPAIR_PROMPT;
       const temp = this.getTemp(this.settings.tempRepair, true);
-      return await this.callAI(JSON.stringify(plan) + "\n\n" + text2, prompt, false, false, temp);
+      return await this.callAI(JSON.stringify(plan) + "\n\n" + text2, prompt, false, false, temp, signal);
     };
-    this.getMetaAnalysis = async (text2) => {
+    this.getMetaAnalysis = async (text2, signal) => {
       setStatus("RUNNING DIAGNOSTICS...");
       const temp = this.getTemp(this.settings.tempCritic, true);
-      return this.parseJson(await this.callAI(text2, NIGS_META_PROMPT, true, false, temp));
+      return this.parseJson(await this.callAI(text2, NIGS_META_PROMPT, true, false, temp, signal));
     };
-    this.getLightGrade = async (text2) => {
+    this.getLightGrade = async (text2, signal) => {
       setStatus("PERFORMING QUICK SCAN...");
       const temp = this.getTemp(this.settings.tempCritic, true);
-      return this.parseJson(await this.callAI(text2, NIGS_QUICK_SCAN_PROMPT, true, false, temp));
+      return this.parseJson(await this.callAI(text2, NIGS_QUICK_SCAN_PROMPT, true, false, temp, signal));
     };
     // --- CHARACTER AUTO-GRADER ---
-    this.gradeCharacter = async (char, context) => {
+    this.gradeCharacter = async (char, context, signal) => {
       var _a3, _b3, _c2;
       setStatus(`ANALYZING ${char.name.toUpperCase()}...`);
       const prompt = `
@@ -7346,7 +7443,7 @@ ${inputBlock}`;
         RETURN JSON: { "competence": number, "proactivity": number, "likability": number, "flaw": "Refined suggestion", "revelation": "Refined suggestion" }
         `;
       const temp = this.getTemp(this.settings.tempCritic, true);
-      const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp);
+      const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp, signal);
       const data = this.parseJson(res);
       return {
         ...char,
@@ -7358,7 +7455,7 @@ ${inputBlock}`;
       };
     };
     // --- STRUCTURE AUTO-GRADER ---
-    this.gradeStructureBeat = async (beat, context) => {
+    this.gradeStructureBeat = async (beat, context, signal) => {
       var _a3, _b3;
       setStatus(`ANALYZING STORY BEAT...`);
       const prompt = `
@@ -7372,7 +7469,7 @@ ${inputBlock}`;
         RETURN JSON: { "tension": number, "type": "The determined type" }
         `;
       const temp = this.getTemp(this.settings.tempCritic, true);
-      const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp);
+      const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp, signal);
       const data = this.parseJson(res);
       return {
         ...beat,
@@ -7381,7 +7478,7 @@ ${inputBlock}`;
       };
     };
     // --- ASSIST WIZARD (Logic Hardened + Name Protocol) ---
-    this.assistWizard = async (field, state2) => {
+    this.assistWizard = async (field, state2, signal) => {
       var _a3;
       setStatus("CONSULTING NARRATIVE DATABASE...");
       const sourceMaterial = state2.inspirationContext || "No source file loaded.";
@@ -7470,11 +7567,11 @@ ${inputBlock}`;
         Return JSON ONLY: { "suggestion": "Your concise text suggestion." }
         `;
       const temp = this.getTemp(this.settings.tempWizard);
-      const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, true, temp);
+      const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, true, temp, signal);
       const data = this.parseJson(res);
       return data.suggestion;
     };
-    this.wizardCompose = async (state2) => {
+    this.wizardCompose = async (state2, signal) => {
       setStatus("ARCHITECTING OUTLINE...");
       const targetQ = state2.targetScore || this.settings.defaultTargetQuality;
       const promptContext = `
@@ -7487,10 +7584,10 @@ ${inputBlock}`;
         Ensure every scene and character beat is generated to meet the Target Quality.
         `;
       const temp = this.getTemp(this.settings.tempArchitect);
-      return await this.callAI(promptContext, NIGS_WIZARD_COMPOSITION_PROMPT, false, false, temp);
+      return await this.callAI(promptContext, NIGS_WIZARD_COMPOSITION_PROMPT, false, false, temp, signal);
     };
     // --- DEEP RENAME (NEW) ---
-    this.generateDeepNames = async (characters, context) => {
+    this.generateDeepNames = async (characters, context, signal) => {
       setStatus("ETYMOLOGIST ACTIVE: DEEP RENAMING...");
       const charInput = characters.map((c2) => `- Name: ${c2.name} (Role: ${c2.role}) | Bio: ${c2.description}`).join("\n");
       const input = `
@@ -7501,7 +7598,7 @@ ${inputBlock}`;
         ${charInput}
         `;
       const temp = this.getTemp(this.settings.tempWizard);
-      const res = await this.callAI(input, NIGS_RENAME_PROMPT, true, false, temp);
+      const res = await this.callAI(input, NIGS_RENAME_PROMPT, true, false, temp, signal);
       return this.parseJson(res);
     };
   }
@@ -7531,9 +7628,9 @@ ${inputBlock}`;
     let mult = taskType === "architect" ? 4 : 1.2;
     return Math.min(6e4, baseTime + tokenCount * 20 * mult);
   }
-  async callAI(text2, sys, json = true, useSearch = false, tempOverride) {
+  async callAI(text2, sys, json = true, useSearch = false, tempOverride, signal) {
     const adapter = this.getAdapter();
-    return await adapter.generate(text2, sys, json, useSearch, tempOverride);
+    return await adapter.generate(text2, sys, json, useSearch, tempOverride, signal);
   }
   // [HELPER]: Generate Name Protocol String
   getNameProtocol() {
@@ -28831,106 +28928,70 @@ var IDEAL_ARCS = {
 };
 
 // CriticDisplay.svelte
-var root_23 = from_html(`<div class="dd-item svelte-1wfho06" style="color:#666; cursor:default;">No Issues Detected</div>`);
-var root_43 = from_html(`<div class="dd-item svelte-1wfho06"> </div>`);
-var root_1 = from_html(`<div class="dropdown-list svelte-1wfho06" style="left:0; top: 20px; width: 250px;"><!></div>`);
-var root_53 = from_html(`<div class="warning-box warning-stripe svelte-1wfho06" style="margin-top: 15px;"><span class="warning-icon">\u26A0</span> <span class="warning-text"> </span></div>`);
-var root_72 = from_html(`<div class="slider-item svelte-1wfho06"><div class="slider-text-row svelte-1wfho06"><span class="s-label"> </span> <span class="s-val"> </span></div> <div class="win95-progress-container"><div class="win95-progress-fill"></div></div></div>`);
-var root_62 = from_html(`<div class="slider-group svelte-1wfho06"><div class="slider-label svelte-1wfho06">PROTAGONIST SCALE</div> <!></div>`);
-var root_8 = from_html(`<div class="module-item svelte-1wfho06"><span class="mod-label svelte-1wfho06"> </span> <div class="win95-progress-container" style="flex: 1;"><div class="center-line svelte-1wfho06" style="position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed #555; z-index:2;"></div> <div class="win95-progress-fill"></div></div> <span> </span></div>`);
-var root_11 = from_html(`<div class="metric-card svelte-1wfho06"><div class="metric-top svelte-1wfho06"><span class="metric-name svelte-1wfho06"> </span> <span> </span></div> <div class="win95-progress-container" style="margin-bottom: 6px;"><div class="center-line svelte-1wfho06" style="position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed #555; z-index:2;"></div> <div class="win95-progress-fill"></div></div> <div class="metric-diagnosis svelte-1wfho06"><span class="diag-label svelte-1wfho06">DIAGNOSIS:</span> <span class="diag-text svelte-1wfho06"> </span></div></div>`);
-var root_10 = from_html(`<div class="detail-category svelte-1wfho06"><div class="cat-header svelte-1wfho06"><span class="cat-name"> </span> <span> </span></div> <div class="cat-items svelte-1wfho06"></div></div>`);
-var root_9 = from_html(`<div class="section-header svelte-1wfho06">FORENSIC REPORT</div> <div class="details-grid bevel-down svelte-1wfho06"></div>`, 1);
-var root_13 = from_html(`<div class="dropdown-list svelte-1wfho06"><div class="dd-item svelte-1wfho06">Inject Issue to Repair</div> <div class="dd-item svelte-1wfho06">Focus on Commercial Appeal</div></div>`);
-var root_14 = from_html(`<div class="dropdown-list svelte-1wfho06"><div class="dd-item svelte-1wfho06">Inject Logic Fix</div> <div class="dd-item svelte-1wfho06">Focus on Cohesion</div></div>`);
-var root_17 = from_html(`<div class="dropdown-list svelte-1wfho06"><div class="dd-item svelte-1wfho06">Inject Vibe Repair</div></div>`);
-var root_12 = from_html(`<div class="section-header svelte-1wfho06">TRIBUNAL CONSENSUS</div> <div class="tribunal-grid"><div class="win95-popup-window"><div><div class="win95-titlebar-text"><span>\u{1F4C8}</span> <span>MARKET ANALYST</span></div></div> <div class="win95-menubar" style="position:relative;"><span class="win95-menu-item">Actions</span> <!></div> <div class="win95-info-area"><b> </b></div> <div class="win95-content-inset"> <br/><br/> <i> </i></div></div>  <div class="win95-popup-window"><div><div class="win95-titlebar-text"><span>\u{1F9E0}</span> <span>LOGIC ENGINE</span></div></div> <div class="win95-menubar" style="position:relative;"><span class="win95-menu-item">Actions</span> <!></div> <div class="win95-info-area"><b> </b></div> <div class="win95-content-inset" style="color: #800000;"><!> <br/><br/> <span style="color:#000;"><i> </i></span></div></div>  <div class="win95-popup-window"><div><div class="win95-titlebar-text"><span>\u2728</span> <span>THE SOUL</span></div></div> <div class="win95-menubar" style="position:relative;"><span class="win95-menu-item">Actions</span> <!></div> <div class="win95-info-area"><b> </b></div> <div class="win95-content-inset"> <br/><br/> <i> </i></div></div></div>`, 1);
-var root_18 = from_html(`<div class="section-header svelte-1wfho06" style="margin-top:20px;">CHIEF JUSTICE ARBITRATION LOG</div> <div class="win95-popup-window"><div class="win95-titlebar"><div class="win95-titlebar-text"><span>\u2696\uFE0F</span> <span>FINAL VERDICT</span></div></div> <div class="win95-content-inset" style="font-family: 'Courier New', monospace; font-weight: bold;"> </div></div>`, 1);
-var root_20 = from_html(`<option> </option>`);
-var root_19 = from_html(`<select class="retro-select svelte-1wfho06"></select>`);
-var root_21 = from_html(`<div class="chart-center-line svelte-1wfho06"></div> <svg class="chart-overlay svelte-1wfho06" preserveAspectRatio="none" viewBox="0 0 100 100"><path fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6"></path></svg>`, 1);
-var root_232 = from_html(`<div class="win95-progress-fill"></div>`);
-var root_24 = from_html(`<div class="win95-progress-fill"></div>`);
-var root_222 = from_html(`<div class="bar-col tooltip-container svelte-1wfho06"><div class="win95-progress-container" style="
-                            width: 100%; height: 100%;
-                            background: transparent; box-shadow: none; border: none;
-                            position: relative;
-                         "><!></div> <div class="tooltip chart-tooltip svelte-1wfho06"><strong> </strong><br/> <br/> <span style="font-size:0.8em; opacity:0.8"> </span></div></div>`);
-var root_25 = from_html(`<div style="display:flex; align-items:center; gap:5px;"><span class="legend-box svelte-1wfho06" style="border:1px dashed #000080;"></span> <span style="font-size:9px; color:#000080;"> </span></div>`);
-var root_27 = from_html(`<div><div class="node-header svelte-1wfho06"><span class="node-type svelte-1wfho06"> </span> <span class="node-title"> </span> <span> </span></div> <div class="node-desc svelte-1wfho06"> </div> <div class="node-chars svelte-1wfho06"> </div></div>`);
-var root_28 = from_html(`<div style="padding:10px; color:#555; font-style:italic;">[BUFFER EMPTY: No Universal Outline Data]</div>`);
-var root_26 = from_html(`<!> <!>`, 1);
-var root_30 = from_html(`<div class="structure-item"><div class="square-bullet">\u25A0</div> <div class="beat-text"> </div></div>`);
-var root_31 = from_html(`<div style="padding:10px; color:#555; font-style:italic;">[BUFFER EMPTY: No Structure Data]</div>`);
-var root_29 = from_html(`<!> <!>`, 1);
-var root_33 = from_html(`<div class="raw-box svelte-1wfho06"><pre> </pre></div>`);
-var root_322 = from_html(`<button class="toggle-btn svelte-1wfho06"> </button> <!>`, 1);
-var root3 = from_html(`<div class="critic-display svelte-1wfho06"><div><div class="win95-menubar" style="margin-bottom: 10px; border-bottom: 1px solid #808080;"><span class="win95-menu-item"> </span> <!></div> <div class="main-score-row svelte-1wfho06"><div class="score-block main svelte-1wfho06"><div class="score-title svelte-1wfho06">OVERALL SCORE</div> <div> </div> <div> </div></div></div> <div class="score-divider-horizontal svelte-1wfho06"></div> <div class="sub-score-row svelte-1wfho06"><div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">COMMERCIAL</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">LITERARY</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">COHESION</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div></div> <!> <div class="log-section svelte-1wfho06" style="margin-top: 10px;"><span class="log-label svelte-1wfho06">LOGLINE:</span> <span class="log-text-blue"> </span></div></div> <div class="section-header svelte-1wfho06">SANDERSON ENGINE METRICS</div> <div class="modules-grid bevel-down svelte-1wfho06"><!> <div class="divider-line svelte-1wfho06"></div> <!></div> <!> <!> <!> <div class="section-header svelte-1wfho06"><span>STORY GRAPH</span> <select class="retro-select svelte-1wfho06" style="margin-left: auto; margin-right: 10px;"><option>Narrative Tension</option><option>Beat Quality</option></select> <!></div> <div class="chart-box bevel-down svelte-1wfho06"><div class="chart-area zero-center svelte-1wfho06" style="display: flex; width: 100%;"><!> <!></div> <div class="chart-axis svelte-1wfho06"><span>START</span> <!> <span>END</span></div></div> <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px;"><div class="section-header svelte-1wfho06" style="margin:0;">UNIVERSAL OUTLINE</div></div> <div class="structure-box bevel-down svelte-1wfho06"><!></div> <!> <button class="action-btn secondary">RUN DEEP META-ANALYSIS</button></div>`);
+var root_1 = from_html(`<div class="dropdown-list svelte-1wfho06"><div class="dd-item svelte-1wfho06">Inject Critical Repair</div></div>`);
+var root_23 = from_html(`<div class="warning-box warning-stripe svelte-1wfho06" style="margin: 10px;"><span class="warning-icon svelte-1wfho06">\u26A0</span> <span class="warning-text svelte-1wfho06"> </span></div>`);
+var root_43 = from_html(`<option class="svelte-1wfho06"> </option>`);
+var root_33 = from_html(`<select class="retro-select mini svelte-1wfho06" style="width:120px;"></select>`);
+var root_53 = from_svg(`<svg class="chart-overlay svelte-1wfho06" preserveAspectRatio="none" viewBox="0 0 100 100"><path fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6" class="svelte-1wfho06"></path></svg>`);
+var root_62 = from_html(`<div class="bar-col tooltip-container svelte-1wfho06"><div class="win95-progress-container svelte-1wfho06" style="
+                                width: 100%; height: 100%;
+                                background: transparent; box-shadow: none; border: none;
+                                position: relative;
+                             "><div class="win95-progress-fill svelte-1wfho06"></div></div> <div class="tooltip chart-tooltip svelte-1wfho06"><strong class="svelte-1wfho06"> </strong><br class="svelte-1wfho06"/> <br class="svelte-1wfho06"/> <span style="font-size:0.8em; opacity:0.8" class="svelte-1wfho06"> </span></div></div>`);
+var root_72 = from_html(`<div style="display:flex; align-items:center; gap:5px;" class="svelte-1wfho06"><span class="legend-box svelte-1wfho06" style="border:1px dashed #000080;"></span> <span style="font-size:9px; color:#000080;" class="svelte-1wfho06"> </span></div>`);
+var root_9 = from_html(`<div class="slider-item svelte-1wfho06"><div class="slider-text-row svelte-1wfho06"><span class="s-label svelte-1wfho06"> </span> <span class="s-val svelte-1wfho06"> </span></div> <div class="win95-progress-container svelte-1wfho06"><div class="win95-progress-fill svelte-1wfho06"></div></div></div>`);
+var root_8 = from_html(`<div class="slider-group svelte-1wfho06"><div class="slider-label svelte-1wfho06">PROTAGONIST SCALE</div> <!></div>`);
+var root_10 = from_html(`<div class="module-item svelte-1wfho06"><span class="mod-label svelte-1wfho06"> </span> <div class="win95-progress-container svelte-1wfho06" style="flex: 1;"><div class="center-line svelte-1wfho06" style="position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed #555; z-index:2;"></div> <div class="win95-progress-fill svelte-1wfho06"></div></div> <span> </span></div>`);
+var root_12 = from_html(`<li class="tree-item svelte-1wfho06"><span class="tree-line svelte-1wfho06"></span> <div class="tree-content svelte-1wfho06"><span class="node-icon svelte-1wfho06"> </span> <span class="node-title svelte-1wfho06"> </span> <span class="node-meta svelte-1wfho06" style="color:#000080;"> </span></div></li>`);
+var root_13 = from_html(`<div style="padding:10px; color:#555; font-style:italic;" class="svelte-1wfho06">[BUFFER EMPTY]</div>`);
+var root_11 = from_html(`<ul class="tree-view svelte-1wfho06"></ul> <!>`, 1);
+var root_15 = from_html(`<div class="structure-item svelte-1wfho06"><div class="square-bullet svelte-1wfho06">\u25A0</div> <div class="beat-text svelte-1wfho06"> </div></div>`);
+var root_17 = from_html(`<div class="raw-box svelte-1wfho06"><pre class="svelte-1wfho06"> </pre></div>`);
+var root_16 = from_html(`<button class="toggle-btn svelte-1wfho06"> </button> <!>`, 1);
+var root3 = from_html(`<div class="critic-display svelte-1wfho06"><div class="win95-popup-window deep-scan-popup svelte-1wfho06"><div class="win95-titlebar svelte-1wfho06"><div class="win95-titlebar-text svelte-1wfho06"><span class="svelte-1wfho06">\u{1F50E}</span> <span class="svelte-1wfho06">Deep Scan Analysis</span></div> <div class="win95-controls svelte-1wfho06"><button class="win95-close-btn svelte-1wfho06">X</button></div></div> <div class="win95-menubar svelte-1wfho06"><span class="win95-menu-item svelte-1wfho06">File</span> <span class="win95-menu-item svelte-1wfho06">Edit</span>  <span class="win95-menu-item svelte-1wfho06">Actions</span> <!></div> <div class="main-score-row svelte-1wfho06" style="padding: 20px; background: #c0c0c0;"><div class="score-block main svelte-1wfho06"><div class="score-title svelte-1wfho06" style="color: #000080;">OVERALL RATING</div>  <div> </div> <div> </div></div></div> <div class="score-divider-horizontal svelte-1wfho06"></div> <div class="sub-score-row svelte-1wfho06"><div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">MARKET</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">LOGIC</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">SOUL</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">LIT</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">JESTER</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div></div> <!> <div class="win95-statusbar svelte-1wfho06"><div class="win95-status-field svelte-1wfho06">Status: Analysis Complete</div> <div class="win95-status-field svelte-1wfho06">Agents: 5 Active</div></div></div> <div class="win95-popup-window svelte-1wfho06"><div class="win95-titlebar svelte-1wfho06"><div class="win95-titlebar-text svelte-1wfho06"><span class="svelte-1wfho06">\u{1F4C8}</span> <span class="svelte-1wfho06">Story Graph Visualizer</span></div> <div class="win95-controls svelte-1wfho06"><button class="win95-close-btn svelte-1wfho06">X</button></div></div> <div class="win95-menubar svelte-1wfho06" style="display:flex; justify-content:space-between; align-items:center;"><div style="display:flex; gap:10px;" class="svelte-1wfho06"><span class="win95-menu-item svelte-1wfho06">View</span> <select class="retro-select mini svelte-1wfho06"><option class="svelte-1wfho06">Narrative Tension</option><option class="svelte-1wfho06">Beat Quality</option></select></div> <!></div> <div class="chart-box bevel-down svelte-1wfho06" style="margin: 5px; background: #fff;"><div class="chart-area zero-center svelte-1wfho06" style="display: flex; width: 100%;"><div class="chart-center-line svelte-1wfho06"></div> <!> <!></div> <div class="chart-axis svelte-1wfho06"><span class="svelte-1wfho06">START</span> <!> <span class="svelte-1wfho06">END</span></div></div></div> <div class="section-header svelte-1wfho06">SANDERSON ENGINE METRICS</div> <div class="modules-grid bevel-down svelte-1wfho06"><!> <div class="divider-line svelte-1wfho06"></div> <!></div> <div class="win95-popup-window svelte-1wfho06"><div class="win95-titlebar svelte-1wfho06"><div class="win95-titlebar-text svelte-1wfho06"><span class="svelte-1wfho06">\u{1F4C1}</span> <span class="svelte-1wfho06">Universal Outline</span></div></div> <div class="structure-box bevel-down svelte-1wfho06" style="background:#fff; height: 200px; overflow-y:auto; border: 2px inset #808080;"><!></div></div> <!> <button class="action-btn secondary svelte-1wfho06">RUN DEEP META-ANALYSIS</button></div>`);
 var $$css3 = {
   hash: "svelte-1wfho06",
-  code: `.critic-display.svelte-1wfho06 {display:flex;flex-direction:column;gap:15px;font-family:'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;color:#000;font-weight:normal;}.bevel-down.svelte-1wfho06 {border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;background:#fff;  /* Typically input backgrounds, but for panels might need grey */background:#c0c0c0; /* Keeping original logic but with Win95 bevels */padding:10px;}
+  code: `.critic-display.svelte-1wfho06 {display:flex;flex-direction:column;gap:15px;font-family:'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;color:#000;font-weight:normal;}
 
-    /* SCORES */.score-container.svelte-1wfho06 {background:#d4d4d4;padding-bottom:25px;position:relative;z-index:100; /* Ensure tooltips are above following sections */}
+    /* SCORES */.main-score-row.svelte-1wfho06 {display:flex;justify-content:center;padding:10px 0;background:#c0c0c0;border:2px inset #fff;}.score-block.main.svelte-1wfho06 {display:flex;flex-direction:column;align-items:center;}.score-title.svelte-1wfho06 {font-size:11px;color:#000080;font-weight:bold;margin-bottom:5px;text-transform:uppercase;}.score-main.svelte-1wfho06 {font-size:48px;font-weight:900;line-height:0.9;text-shadow:1px 1px 0 #fff;}.score-verdict.svelte-1wfho06 {font-size:14px;font-weight:900;margin-top:5px;letter-spacing:1px;color:#000;}.score-divider-horizontal.svelte-1wfho06 {height:2px;border-top:1px solid #808080;border-bottom:1px solid #fff;width:90%;margin:5px auto;}.sub-score-row.svelte-1wfho06 {display:flex;justify-content:space-around;align-items:center;padding:5px;background:#c0c0c0;}.sub-score-block.svelte-1wfho06 {text-align:center;flex:1;position:relative;cursor:help;}.sub-title.svelte-1wfho06 {font-size:9px;font-weight:bold;color:#000;margin-bottom:2px;}.sub-val.svelte-1wfho06 {font-size:14px;font-weight:900;text-shadow:1px 1px 0 #fff;}.sub-divider.svelte-1wfho06 {width:2px;height:20px;border-left:1px solid #808080;border-right:1px solid #fff;}
 
-    /* NEW LAYOUT */.main-score-row.svelte-1wfho06 {display:flex;justify-content:center;padding:15px 0;}.score-block.main.svelte-1wfho06 {display:flex;flex-direction:column;align-items:center;}.score-title.svelte-1wfho06 {font-size:11px;color:#555;font-weight:900;letter-spacing:2px;margin-bottom:5px;}.score-main.svelte-1wfho06 {font-size:64px;font-weight:900;line-height:0.9;text-shadow:2px 2px 0px rgba(255,255,255,0.5);}.score-verdict.svelte-1wfho06 {font-size:16px;font-weight:900;margin-top:5px;text-shadow:1px 1px 0px #000;letter-spacing:3px;}.score-divider-horizontal.svelte-1wfho06 {height:2px;background:#808080;width:80%;margin:10px auto;}.sub-score-row.svelte-1wfho06 {position:relative;z-index:101; /* Ensure sub-scores are even higher */display:flex;justify-content:space-around;align-items:center;padding-top:5px;}.sub-score-block.svelte-1wfho06 {text-align:center;flex:1;position:relative;cursor:help;} /* Added relative/cursor */.sub-title.svelte-1wfho06 {font-size:10px;font-weight:bold;color:#555;margin-bottom:2px;}.sub-val.svelte-1wfho06 {font-size:18px;font-weight:900;}.sub-divider.svelte-1wfho06 {width:1px;height:20px;background:#999;}
+    /* TOOLTIPS */.tooltip-container.svelte-1wfho06 {position:relative;overflow:visible;}.tooltip.svelte-1wfho06 {visibility:hidden;opacity:0;background-color:#FFFFE0;color:#000;text-align:center;border:1px solid #000;padding:4px;position:absolute;z-index:10000;font-size:10px;width:120px;box-shadow:2px 2px 0px rgba(0,0,0,0.2);transition:opacity 0.1s;pointer-events:none;}.tooltip.bottom.svelte-1wfho06 {top:100%;left:50%;transform:translateX(-50%);margin-top:5px;}.tooltip-container.svelte-1wfho06:hover .tooltip:where(.svelte-1wfho06) {visibility:visible;opacity:1;}
 
-    /* TOOLTIPS */.tooltip-container.svelte-1wfho06 {position:relative;overflow:visible;}.tooltip.svelte-1wfho06 {visibility:hidden;opacity:0;background-color:#FFFFE0;color:#000;text-align:center;border:1px solid #000;padding:5px 8px;position:absolute;z-index:10000; /* FORCE TOP LAYER */font-size:11px;width:140px;box-shadow:2px 2px 0px rgba(0,0,0,0.2);transition:opacity 0.2s;pointer-events:none;}.tooltip.bottom.svelte-1wfho06 {top:100%;left:50%;transform:translateX(-50%);margin-top:8px;}
+    /* MASTERPIECE TEXT EFFECT (Black with Rainbow Stroke/Shadow) */.masterpiece-text.svelte-1wfho06 {color:#000 !important;text-shadow:-1px -1px 0 #ff0000,
+             1px -1px 0 #ffff00,
+            -1px  1px 0 #0000ff,
+             1px  1px 0 #00ff00;
+        /* Note: Full rainbow stroke isn't standard CSS, using multi-shadow approximation or webkit stroke */-webkit-text-stroke:1px transparent; /* Can't gradient stroke easily */position:relative;}
 
-    /* Standard tooltip arrow (CSS triangle) */.tooltip.bottom.svelte-1wfho06::after {content:"";position:absolute;bottom:100%;left:50%;margin-left:-5px;border-width:5px;border-style:solid;border-color:transparent transparent #000 transparent;}.tooltip-container.svelte-1wfho06:hover .tooltip:where(.svelte-1wfho06) {visibility:visible;opacity:1;}
+    /* Optional: An overlay for the stroke if needed, but text-shadow is safer for retro look */
+    /* Using background clip on text for the stroke is tricky.
+       Let's use a layered shadow to simulate the "Rainbow Outline" requested. */.masterpiece-text.svelte-1wfho06 {text-shadow:2px  0px 0px #ff0000,
+            -2px  0px 0px #00ffff,
+             0px  2px 0px #00ff00,
+             0px -2px 0px #ff00ff;
+        animation: svelte-1wfho06-rainbow-shadow-pulse 0.5s infinite alternate;}
 
-    /* ANIMATIONS */
-    /* [UPDATED] Replaced Glow with Dither/Flat effects */.masterpiece.svelte-1wfho06 {color:var(--cj-grade-masterpiece) !important; animation: god-mode 1.5s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95);z-index:5;position:relative;}.masterpiece-text.svelte-1wfho06 {text-shadow:1px 1px 0 #000;} /* Hard shadow instead of glow */.glow-bar.svelte-1wfho06 {background-color:var(--cj-grade-masterpiece) !important;background-image:radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 80%) !important;
-        animation: pulse-bar 0.8s infinite alternate;border:1px solid #fff; /* Hard border */box-shadow:none !important;}
+    @keyframes svelte-1wfho06-rainbow-shadow-pulse {
+        0% { text-shadow: 2px 0px 0 #ff0000, -2px 0px 0 #00ffff; }
+        100% { text-shadow: 2px 0px 0 #ff00ff, -2px 0px 0 #ffff00; }
+    }
 
-    /* DROPDOWN MENU */.dropdown-list.svelte-1wfho06 {position:absolute;top:100%;left:0;background:#c0c0c0;border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:2px 2px 5px rgba(0,0,0,0.5);z-index:9999;min-width:150px;padding:2px;}.dd-item.svelte-1wfho06 {padding:4px 8px;cursor:pointer;color:#000;}.dd-item.svelte-1wfho06:hover {background:#000080;color:#fff;}
+    /* DROPDOWN MENU */.dropdown-list.svelte-1wfho06 {position:absolute;top:100%;left:0;background:#c0c0c0;border:2px outset #fff;box-shadow:2px 2px 5px rgba(0,0,0,0.5);z-index:9999;min-width:150px;padding:2px;}.dd-item.svelte-1wfho06 {padding:4px 8px;cursor:pointer;color:#000;}.dd-item.svelte-1wfho06:hover {background:#000080;color:#fff;}
 
-    /* BUTTONS */.retro-btn.svelte-1wfho06 {background:#c0c0c0;border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:1px 1px 0 #000;color:#000;font-family:inherit;font-size:11px;padding:4px 8px;cursor:pointer;}.retro-btn.svelte-1wfho06:active {border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:none;transform:translate(1px, 1px);}.retro-btn.svelte-1wfho06:disabled {color:#888;cursor:not-allowed;}
+    /* CHART AREA */.chart-box.svelte-1wfho06 {padding:10px;background:#fff;border:2px inset #808080;position:relative;z-index:50;}.chart-area.svelte-1wfho06 {height:100px;display:flex;align-items:stretch;gap:1px;padding-bottom:4px;border-bottom:1px dotted #808080;position:relative;}.chart-center-line.svelte-1wfho06 {position:absolute;top:50%;left:0;right:0;height:1px;background:#000;z-index:0;border-top:1px dotted #808080;}.chart-overlay.svelte-1wfho06 {position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;pointer-events:none;}.chart-axis.svelte-1wfho06 {display:flex;justify-content:space-between;font-size:9px;color:#555;margin-top:2px;align-items:center;}
 
+    /* TREE VIEW */.tree-view.svelte-1wfho06 {list-style:none;padding-left:5px;margin:0;}.tree-item.svelte-1wfho06 {display:flex;align-items:center;padding:2px 0;}.tree-line.svelte-1wfho06 {width:10px;border-bottom:1px dotted #808080;margin-right:5px;}.tree-content.svelte-1wfho06 {display:flex;align-items:center;gap:5px;font-size:11px;}.node-title.svelte-1wfho06 {font-weight:bold;}.node-meta.svelte-1wfho06 {font-size:9px;}
 
-    /* SANDERSON METRICS (Updated for Diverging Bars) */.modules-grid.svelte-1wfho06 {padding:10px;z-index:1;position:relative;}.module-item.svelte-1wfho06 {display:flex;align-items:center;gap:8px;font-size:10px;margin-bottom:8px;}.mod-label.svelte-1wfho06 {width:110px;text-align:right;color:#444;font-weight:900;}.diverging-bar-container.svelte-1wfho06 {flex:1;height:16px;background:#ddd;border:1px solid #808080;box-shadow:inset 1px 1px 0 #000;position:relative;overflow:hidden;}.center-line.svelte-1wfho06 {position:absolute;left:50%;top:0;bottom:0;width:2px;background:#555;z-index:2;opacity:0.5;}.fill.svelte-1wfho06 {height:100%;transition:width 0.5s ease;position:absolute;z-index:1;}.mod-score.svelte-1wfho06 {font-weight:900;width:35px;text-align:center;font-size:12px;text-shadow:1px 1px 0 #fff;}
-
-    /* NEW SLIDER STYLES */.slider-group.svelte-1wfho06 {padding:0 0 10px 0;}.slider-label.svelte-1wfho06 {font-size:11px;font-weight:900;color:#000080;border-bottom:1px dashed #888;margin-bottom:6px;}.slider-item.svelte-1wfho06 {margin-bottom:6px;}.slider-text-row.svelte-1wfho06 {display:flex;justify-content:space-between;font-size:10px;font-weight:bold;margin-bottom:2px;}.slider-track.svelte-1wfho06 {height:10px;background:#fff;border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;}.slider-fill.svelte-1wfho06 {height:100%;background:#008080; /* Teal for sliders */}.divider-line.svelte-1wfho06 {height:1px;background:#808080;margin:10px 0;}
-
-    /* DETAILED METRICS (Updated) */.details-grid.svelte-1wfho06 {display:flex;flex-direction:column;gap:15px;background:#dcdcdc;padding:12px;}.detail-category.svelte-1wfho06 {border:2px groove #fff;background:#e0e0e0;padding:8px;}.cat-header.svelte-1wfho06 {display:flex;justify-content:space-between;font-weight:900;font-size:12px;color:#000080;margin-bottom:8px;border-bottom:2px dotted #808080;padding-bottom:4px;}.cat-items.svelte-1wfho06 {display:flex;flex-direction:column;gap:8px;}.metric-card.svelte-1wfho06 {background:#f0f0f0;border:1px solid #808080;padding:6px;}.metric-top.svelte-1wfho06 {display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;}.metric-name.svelte-1wfho06 {font-weight:bold;color:#222;}.metric-val.svelte-1wfho06 {font-weight:900;}.metric-bar-container.svelte-1wfho06 {height:8px;background:#fff;border:1px solid #888;margin-bottom:6px;}.metric-bar.svelte-1wfho06 {height:100%;transition:width 0.5s ease;position:absolute;top:0;bottom:0;}.metric-diagnosis.svelte-1wfho06 {font-size:10px;line-height:1.3;color:#333;border-top:1px dashed #ccc;padding-top:4px;}.diag-label.svelte-1wfho06 {font-weight:900;color:#800000;margin-right:4px;}.diag-text.svelte-1wfho06 {font-style:italic;}
-
-    /* CHART AREA (Diverging) */.chart-box.svelte-1wfho06 {padding:10px;background:#d4d4d4;position:relative;z-index:50; /* Lower than score but above normal flow if needed */}.chart-area.svelte-1wfho06 {height:100px;display:flex;align-items:stretch;gap:1px;padding-bottom:4px;border-bottom:2px solid #808080;position:relative;}.chart-center-line.svelte-1wfho06 {position:absolute;top:50%;left:0;right:0;height:1px;background:#555;z-index:0;}.chart-overlay.svelte-1wfho06 {position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;pointer-events:none;}.chart-axis.svelte-1wfho06 {display:flex;justify-content:space-between;font-size:9px;color:#555;margin-top:2px;align-items:center;}.retro-select.svelte-1wfho06 {font-family:inherit;font-size:10px;background:#fff;border:1px solid #808080;margin-left:auto;}.legend-box.svelte-1wfho06 {width:10px;height:10px;display:inline-block;}.bar-col.svelte-1wfho06 {display:flex;flex-direction:column;justify-content:center;align-items:center;min-width:4px;position:relative;transition:opacity 0.2s;height:100%;}.bar-col.svelte-1wfho06:hover {opacity:0.8;}.bar-fill.svelte-1wfho06 {width:100%;transition:height 0.5s ease;border:1px solid rgba(0,0,0,0.2);}.chart-tooltip.svelte-1wfho06 {bottom:100%;margin-bottom:5px;white-space:nowrap;pointer-events:none;}
-
-    /* STRUCTURE NODES */.structure-box.svelte-1wfho06 {padding:12px;background:#d4d4d4;}.structure-node.svelte-1wfho06 {background:#e0e0e0;border:1px solid #fff;border-top:1px solid #808080;border-left:1px solid #808080;padding:8px;margin-bottom:8px;}.structure-node.promise.svelte-1wfho06 {border-left:4px solid #000080;}.structure-node.payoff.svelte-1wfho06 {border-left:4px solid #800000;}.structure-node.progress.svelte-1wfho06 {border-left:4px solid #008000;}.node-header.svelte-1wfho06 {display:flex;justify-content:space-between;font-size:10px;font-weight:900;margin-bottom:4px;border-bottom:1px dashed #999;}.node-type.svelte-1wfho06 {color:#555;}.node-tension.svelte-1wfho06 {color:#BF40BF;}.node-desc.svelte-1wfho06 {font-size:11px;margin-bottom:4px;}.node-chars.svelte-1wfho06 {font-size:9px;color:#666;font-style:italic;}
-
-    /* MISC */.section-header.svelte-1wfho06 {display:flex;align-items:center;gap:10px;font-weight:900;font-size:12px;color:#000;text-transform:uppercase;margin-top:10px;margin-bottom:5px;}.section-header.svelte-1wfho06::after {content:"";flex:1;height:2px;background:#808080;}.warning-box.svelte-1wfho06 {background:#FFFF00;border:2px solid #000;padding:8px;font-size:11px;font-weight:900;display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;}.log-section.svelte-1wfho06 {width:100%;text-align:left;font-size:12px;line-height:1.4;}.log-label.svelte-1wfho06 {color:#000080;font-weight:900;}.log-text.svelte-1wfho06 {color:#222;font-style:italic;font-weight:bold;}.toggle-btn.svelte-1wfho06 {background:none;border:none;color:#444;cursor:pointer;font-size:11px;padding:0;text-align:left;font-weight:bold;}.raw-box.svelte-1wfho06 {background:#000;color:#0f0;padding:10px;overflow-x:auto;font-size:11px;max-height:200px;font-weight:bold;}`
+    /* MISC */.section-header.svelte-1wfho06 {display:flex;align-items:center;gap:10px;font-weight:bold;font-size:11px;color:#000080;margin-top:10px;margin-bottom:5px;}.section-header.svelte-1wfho06::after {content:"";flex:1;height:2px;border-top:1px solid #808080;border-bottom:1px solid #fff;}.warning-box.svelte-1wfho06 {background:#FFFF00;border:1px solid #000;padding:4px;font-size:10px;font-weight:bold;display:flex;gap:8px;align-items:center;}.retro-select.mini.svelte-1wfho06 {padding:0 15px 0 2px;height:18px;font-size:10px;}.toggle-btn.svelte-1wfho06 {background:none;border:none;color:#000080;cursor:pointer;font-size:10px;padding:0;text-align:left;font-weight:bold;margin-top:5px;}.raw-box.svelte-1wfho06 {background:#000;color:#0f0;padding:10px;overflow-x:auto;font-size:11px;max-height:200px;font-weight:bold;font-family:'Courier New', monospace;border:2px inset #808080;}`
 };
 function CriticDisplay($$anchor, $$props) {
   push($$props, true);
   append_styles($$anchor, $$css3);
   let showRaw = state(false);
-  let selectedAgent = state(null);
+  let selectedAgent = null;
   let openDropdown = state(null);
-  let showQuickScanMenu = state(
-    false
-    // [UPDATED]
-  );
   let graphMode = state("tension");
   let selectedArc = state("truby");
-  let repairIssues = user_derived(() => {
-    const issues = [];
-    if ($$props.data.content_warning && $$props.data.content_warning !== "None")
-      issues.push(`Fix Critical Warning: ${$$props.data.content_warning}`);
-    if ($$props.data.tribunal_breakdown) {
-      if ($$props.data.tribunal_breakdown.logic.content_warning)
-        issues.push(`Logic Fix: ${$$props.data.tribunal_breakdown.logic.content_warning}`);
-      if ($$props.data.tribunal_breakdown.market.commercial_reason)
-        issues.push(`Market Fix: ${$$props.data.tribunal_breakdown.market.commercial_reason}`);
-      if ($$props.data.tribunal_breakdown.lit.niche_reason)
-        issues.push(`Thematic Fix: ${$$props.data.tribunal_breakdown.lit.niche_reason}`);
-    }
-    if ($$props.data.detailed_metrics) {
-      Object.entries($$props.data.detailed_metrics).forEach(([k2, v2]) => {
-        if (v2.score < 0)
-          issues.push(`Improve ${k2.toUpperCase()} (Score: ${v2.score})`);
-      });
-    }
-    return issues;
-  });
   function getBarColor(val) {
     if (val >= 45)
       return $$props.settings.gradingColors.masterpiece;
@@ -28951,11 +29012,7 @@ function CriticDisplay($$anchor, $$props) {
     return val <= -20;
   }
   function getContainerClass(val) {
-    if (isMasterpieceEffect(val))
-      return "score-container bevel-down masterpiece-border pattern-mesh-dark";
-    if (isCritical(val))
-      return "score-container bevel-down critical-crack pattern-mesh-critical";
-    return "score-container bevel-down";
+    return "score-container";
   }
   function getBarMetrics(val) {
     const cap = 50;
@@ -28965,7 +29022,7 @@ function CriticDisplay($$anchor, $$props) {
     return { width, isNegative };
   }
   function getQualityMetrics(val) {
-    return Math.max(0, Math.min(100, val));
+    return getBarMetrics(val);
   }
   function getSliderMetrics(val) {
     const clamped = Math.max(0, Math.min(100, val));
@@ -29008,12 +29065,13 @@ function CriticDisplay($$anchor, $$props) {
     const c2 = $$props.data.commercial_score || 0;
     const n3 = $$props.data.niche_score || 0;
     const co = $$props.data.cohesion_score || 0;
-    return Math.round((c2 + n3 + co) / 3);
+    return $$props.data.commercial_score || 0;
   });
   let chartData = user_derived(() => {
     let sourceArray = [];
     let labels = [];
     let descs = [];
+    let durations = [];
     if (get(graphMode) === "quality" && $$props.data.quality_arc && $$props.data.quality_arc.length > 0) {
       sourceArray = $$props.data.quality_arc;
     } else if (get(graphMode) === "tension") {
@@ -29023,28 +29081,31 @@ function CriticDisplay($$anchor, $$props) {
         sourceArray = $$props.data.tension_arc || [0, 10, 5, 20, 15, 30];
       }
     } else {
-      sourceArray = ($$props.data.tension_arc || []).map(() => 50);
+      sourceArray = ($$props.data.tension_arc || []).map(() => 0);
     }
     if (get(isUniversalOutline)) {
       const nodes = get(structure);
       labels = nodes.map((n3) => n3.title);
       descs = nodes.map((n3) => n3.description || "");
+      durations = nodes.map((n3) => n3.duration || 1);
     } else {
+      const len = sourceArray.length;
       labels = sourceArray.map((_2, i3) => `Beat ${i3 + 1}`);
       descs = sourceArray.map(() => "Legacy Data");
+      durations = sourceArray.map(() => 1);
     }
-    const finalData = sourceArray.map((val, i3) => {
-      var _a3;
-      const len = ((_a3 = descs[i3]) === null || _a3 === void 0 ? void 0 : _a3.length) || 50;
-      return {
-        val,
-        title: labels[i3] || `Beat ${i3 + 1}`,
-        desc: descs[i3] || "",
-        textLen: len
-      };
-    });
-    const totalChars = finalData.reduce((acc, d2) => acc + d2.textLen, 0);
-    return finalData.map((d2) => ({ ...d2, widthPerc: d2.textLen / totalChars * 100 }));
+    if (get(graphMode) === "quality" && labels.length !== sourceArray.length) {
+      labels = sourceArray.map((_2, i3) => `Beat ${i3 + 1}`);
+      descs = sourceArray.map(() => "");
+      durations = sourceArray.map(() => 1);
+    }
+    const totalDuration = durations.reduce((a2, b) => a2 + b, 0);
+    return sourceArray.map((val, i3) => ({
+      val,
+      title: labels[i3] || `Beat ${i3 + 1}`,
+      desc: descs[i3] || "",
+      widthPerc: durations[i3] / totalDuration * 100
+    }));
   });
   let idealPathD = user_derived(() => {
     if (get(graphMode) !== "tension")
@@ -29074,128 +29135,246 @@ function CriticDisplay($$anchor, $$props) {
     });
     return path;
   });
+  let breakdown = user_derived(() => $$props.data.tribunal_breakdown || {
+    market: { commercial_score: 0, commercial_reason: "N/A" },
+    logic: { score: 0, inconsistencies: [] },
+    soul: { score: 0, critique: "N/A" },
+    lit: { score: 0, niche_reason: "N/A" },
+    jester: { score_modifier: 0, roast: "N/A" }
+  });
   var div = root3();
   var div_1 = child(div);
-  var div_2 = child(div_1);
-  var span = child(div_2);
+  var div_2 = sibling(child(div_1), 2);
+  var span = sibling(child(div_2), 4);
   span.__click = (e2) => {
     e2.stopPropagation();
-    set(showQuickScanMenu, !get(showQuickScanMenu));
+    set(openDropdown, get(openDropdown) === "actions" ? null : "actions", true);
   };
-  var text2 = child(span);
-  reset(span);
   var node_1 = sibling(span, 2);
   {
-    var consequent_1 = ($$anchor2) => {
+    var consequent = ($$anchor2) => {
       var div_3 = root_1();
-      var node_2 = child(div_3);
-      {
-        var consequent = ($$anchor3) => {
-          var div_4 = root_23();
-          append($$anchor3, div_4);
-        };
-        var alternate = ($$anchor3) => {
-          var fragment = comment();
-          var node_3 = first_child(fragment);
-          each(node_3, 17, () => get(repairIssues), index, ($$anchor4, issue) => {
-            var div_5 = root_43();
-            div_5.__click = () => {
-              $$props.onAddRepairInstruction(get(issue));
-              set(showQuickScanMenu, false);
-            };
-            var text_1 = child(div_5, true);
-            reset(div_5);
-            template_effect(() => set_text(text_1, get(issue)));
-            append($$anchor4, div_5);
-          });
-          append($$anchor3, fragment);
-        };
-        if_block(node_2, ($$render) => {
-          if (get(repairIssues).length === 0)
-            $$render(consequent);
-          else
-            $$render(alternate, false);
-        });
-      }
+      var div_4 = child(div_3);
+      div_4.__click = () => {
+        $$props.onAddRepairInstruction(`Address Warning: ${get(warning)}`);
+        set(openDropdown, null);
+      };
       reset(div_3);
       append($$anchor2, div_3);
     };
     if_block(node_1, ($$render) => {
-      if (get(showQuickScanMenu))
-        $$render(consequent_1);
+      if (get(openDropdown) === "actions")
+        $$render(consequent);
     });
   }
   reset(div_2);
-  var div_6 = sibling(div_2, 2);
-  var div_7 = child(div_6);
-  var div_8 = child(div_7);
-  var div_9 = sibling(div_8, 2);
-  var text_2 = child(div_9, true);
-  reset(div_9);
-  var div_10 = sibling(div_9, 2);
-  var text_3 = child(div_10, true);
-  reset(div_10);
+  var div_5 = sibling(div_2, 2);
+  var div_6 = child(div_5);
+  var div_7 = sibling(child(div_6), 2);
+  var text2 = child(div_7, true);
   reset(div_7);
+  var div_8 = sibling(div_7, 2);
+  var text_1 = child(div_8, true);
+  reset(div_8);
   reset(div_6);
-  var div_11 = sibling(div_6, 4);
-  var div_12 = child(div_11);
-  var div_13 = child(div_12);
-  var div_14 = sibling(div_13, 2);
+  reset(div_5);
+  var div_9 = sibling(div_5, 4);
+  var div_10 = child(div_9);
+  var div_11 = sibling(child(div_10), 2);
+  var text_2 = child(div_11, true);
+  reset(div_11);
+  var div_12 = sibling(div_11, 2);
+  var text_3 = child(div_12, true);
+  reset(div_12);
+  reset(div_10);
+  var div_13 = sibling(div_10, 4);
+  var div_14 = sibling(child(div_13), 2);
   var text_4 = child(div_14, true);
   reset(div_14);
   var div_15 = sibling(div_14, 2);
-  var text_5 = child(div_15, true);
+  var text_5 = child(div_15);
   reset(div_15);
-  reset(div_12);
-  var div_16 = sibling(div_12, 4);
-  var div_17 = child(div_16);
+  reset(div_13);
+  var div_16 = sibling(div_13, 4);
+  var div_17 = sibling(child(div_16), 2);
+  var text_6 = child(div_17, true);
+  reset(div_17);
   var div_18 = sibling(div_17, 2);
-  var text_6 = child(div_18, true);
+  var text_7 = child(div_18, true);
   reset(div_18);
-  var div_19 = sibling(div_18, 2);
-  var text_7 = child(div_19, true);
-  reset(div_19);
   reset(div_16);
-  var div_20 = sibling(div_16, 4);
-  var div_21 = child(div_20);
-  var div_22 = sibling(div_21, 2);
-  var text_8 = child(div_22, true);
-  reset(div_22);
-  var div_23 = sibling(div_22, 2);
-  var text_9 = child(div_23, true);
-  reset(div_23);
+  var div_19 = sibling(div_16, 4);
+  var div_20 = sibling(child(div_19), 2);
+  var text_8 = child(div_20, true);
   reset(div_20);
-  reset(div_11);
-  var node_4 = sibling(div_11, 2);
+  var div_21 = sibling(div_20, 2);
+  var text_9 = child(div_21, true);
+  reset(div_21);
+  reset(div_19);
+  var div_22 = sibling(div_19, 4);
+  var div_23 = sibling(child(div_22), 2);
+  var text_10 = child(div_23, true);
+  reset(div_23);
+  var div_24 = sibling(div_23, 2);
+  var text_11 = child(div_24, true);
+  reset(div_24);
+  reset(div_22);
+  reset(div_9);
+  var node_2 = sibling(div_9, 2);
+  {
+    var consequent_1 = ($$anchor2) => {
+      var div_25 = root_23();
+      var span_1 = sibling(child(div_25), 2);
+      var text_12 = child(span_1, true);
+      reset(span_1);
+      reset(div_25);
+      template_effect(() => set_text(text_12, get(warning)));
+      append($$anchor2, div_25);
+    };
+    if_block(node_2, ($$render) => {
+      if (get(warning) && get(warning).length > 5 && get(warning) !== "None")
+        $$render(consequent_1);
+    });
+  }
+  next(2);
+  reset(div_1);
+  var div_26 = sibling(div_1, 2);
+  var div_27 = sibling(child(div_26), 2);
+  var div_28 = child(div_27);
+  var select = sibling(child(div_28), 2);
+  var option = child(select);
+  option.value = option.__value = "tension";
+  var option_1 = sibling(option);
+  option_1.value = option_1.__value = "quality";
+  reset(select);
+  reset(div_28);
+  var node_3 = sibling(div_28, 2);
   {
     var consequent_2 = ($$anchor2) => {
-      var div_24 = root_53();
-      var span_1 = sibling(child(div_24), 2);
-      var text_10 = child(span_1, true);
-      reset(span_1);
-      reset(div_24);
-      template_effect(() => set_text(text_10, get(warning)));
-      append($$anchor2, div_24);
+      var select_1 = root_33();
+      each(select_1, 21, () => Object.entries(IDEAL_ARCS), index, ($$anchor3, $$item) => {
+        var $$array = user_derived(() => to_array(get($$item), 2));
+        let key2 = () => get($$array)[0];
+        let arc = () => get($$array)[1];
+        var option_2 = root_43();
+        var text_13 = child(option_2, true);
+        reset(option_2);
+        var option_2_value = {};
+        template_effect(() => {
+          var _a3;
+          set_text(text_13, arc().label);
+          if (option_2_value !== (option_2_value = key2())) {
+            option_2.value = (_a3 = option_2.__value = key2()) != null ? _a3 : "";
+          }
+        });
+        append($$anchor3, option_2);
+      });
+      reset(select_1);
+      bind_select_value(select_1, () => get(selectedArc), ($$value) => set(selectedArc, $$value));
+      append($$anchor2, select_1);
     };
-    if_block(node_4, ($$render) => {
-      if (get(warning) && get(warning).length > 5 && get(warning) !== "None")
+    if_block(node_3, ($$render) => {
+      if (get(graphMode) === "tension")
         $$render(consequent_2);
     });
   }
-  var div_25 = sibling(node_4, 2);
-  var span_2 = sibling(child(div_25), 2);
-  var text_11 = child(span_2);
-  reset(span_2);
-  reset(div_25);
-  reset(div_1);
-  var div_26 = sibling(div_1, 4);
-  var node_5 = child(div_26);
+  reset(div_27);
+  var div_29 = sibling(div_27, 2);
+  var div_30 = child(div_29);
+  var node_4 = sibling(child(div_30), 2);
   {
     var consequent_3 = ($$anchor2) => {
-      var div_27 = root_62();
-      var node_6 = sibling(child(div_27), 2);
+      var svg = root_53();
+      var path_1 = child(svg);
+      reset(svg);
+      template_effect(() => set_attribute2(path_1, "d", get(idealPathD)));
+      append($$anchor2, svg);
+    };
+    if_block(node_4, ($$render) => {
+      if (get(graphMode) === "tension")
+        $$render(consequent_3);
+    });
+  }
+  var node_5 = sibling(node_4, 2);
+  each(node_5, 17, () => get(chartData), index, ($$anchor2, beat, i3) => {
+    const bar = user_derived(() => getBarMetrics(get(beat).val));
+    var div_31 = root_62();
+    var div_32 = child(div_31);
+    var div_33 = child(div_32);
+    reset(div_32);
+    var div_34 = sibling(div_32, 2);
+    var strong = child(div_34);
+    var text_14 = child(strong);
+    reset(strong);
+    var text_15 = sibling(strong, 2);
+    var span_2 = sibling(text_15, 3);
+    var text_16 = child(span_2);
+    reset(span_2);
+    reset(div_34);
+    reset(div_31);
+    template_effect(
+      ($0, $1, $2, $3) => {
+        var _a3, _b3, _c2;
+        set_style(div_31, `width: ${(_a3 = get(beat).widthPerc) != null ? _a3 : ""}%; flex-grow: 0; flex-shrink: 0;`);
+        set_style(div_33, `
+                                    width: auto;
+                                    left: 1px; right: 1px;
+                                    top: ${get(bar).isNegative ? "50%" : "auto"};
+                                    bottom: ${get(bar).isNegative ? "auto" : "50%"};
+                                    height: ${(_b3 = get(bar).width) != null ? _b3 : ""}%;
+                                    position: absolute;
+                                    background: ${$0 != null ? $0 : ""};
+                                    background-size: 200% auto;
+                                    animation: ${$1 != null ? $1 : ""};
+                                    border: 1px solid rgba(0,0,0,0.5);
+                                    box-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+                                 `);
+        set_text(text_14, `${i3 + 1}. ${(_c2 = get(beat).title) != null ? _c2 : ""}`);
+        set_text(text_15, ` ${get(graphMode) === "tension" ? "Tension" : "Quality"}: ${$2 != null ? $2 : ""}`);
+        set_text(text_16, `Duration: ${$3 != null ? $3 : ""}%`);
+      },
+      [
+        () => isMasterpieceEffect(get(beat).val) ? "linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)" : getBarColor(get(beat).val),
+        () => isMasterpieceEffect(get(beat).val) ? "rainbow-bar-scroll 3s linear infinite" : "none",
+        () => formatScoreDisplay(get(beat).val),
+        () => Math.round(get(beat).widthPerc)
+      ]
+    );
+    append($$anchor2, div_31);
+  });
+  reset(div_30);
+  var div_35 = sibling(div_30, 2);
+  var node_6 = sibling(child(div_35), 2);
+  {
+    var consequent_4 = ($$anchor2) => {
+      var div_36 = root_72();
+      var span_3 = sibling(child(div_36), 2);
+      var text_17 = child(span_3);
+      reset(span_3);
+      reset(div_36);
+      template_effect(() => {
+        var _a3;
+        return set_text(text_17, `IDEAL (${(_a3 = IDEAL_ARCS[get(selectedArc)].label) != null ? _a3 : ""})`);
+      });
+      append($$anchor2, div_36);
+    };
+    if_block(node_6, ($$render) => {
+      if (get(graphMode) === "tension")
+        $$render(consequent_4);
+    });
+  }
+  next(2);
+  reset(div_35);
+  reset(div_29);
+  reset(div_26);
+  var div_37 = sibling(div_26, 4);
+  var node_7 = child(div_37);
+  {
+    var consequent_5 = ($$anchor2) => {
+      var div_38 = root_8();
+      var node_8 = sibling(child(div_38), 2);
       each(
-        node_6,
+        node_8,
         17,
         () => {
           var _a3, _b3, _c2;
@@ -29210,24 +29389,24 @@ function CriticDisplay($$anchor, $$props) {
         },
         index,
         ($$anchor3, s3) => {
-          var div_28 = root_72();
-          var div_29 = child(div_28);
-          var span_3 = child(div_29);
-          var text_12 = child(span_3, true);
-          reset(span_3);
-          var span_4 = sibling(span_3, 2);
-          var text_13 = child(span_4);
+          var div_39 = root_9();
+          var div_40 = child(div_39);
+          var span_4 = child(div_40);
+          var text_18 = child(span_4, true);
           reset(span_4);
-          reset(div_29);
-          var div_30 = sibling(div_29, 2);
-          var div_31 = child(div_30);
-          reset(div_30);
-          reset(div_28);
+          var span_5 = sibling(span_4, 2);
+          var text_19 = child(span_5);
+          reset(span_5);
+          reset(div_40);
+          var div_41 = sibling(div_40, 2);
+          var div_42 = child(div_41);
+          reset(div_41);
+          reset(div_39);
           template_effect(
             ($0, $1, $2) => {
-              set_text(text_12, get(s3).label);
-              set_text(text_13, `${$0 != null ? $0 : ""}%`);
-              set_style(div_31, `width: ${$1 != null ? $1 : ""}%; background: ${$2 != null ? $2 : ""};`);
+              set_text(text_18, get(s3).label);
+              set_text(text_19, `${$0 != null ? $0 : ""}%`);
+              set_style(div_42, `width: ${$1 != null ? $1 : ""}%; background: ${$2 != null ? $2 : ""};`);
             },
             [
               () => formatUnsignedScore(get(s3).val),
@@ -29235,20 +29414,20 @@ function CriticDisplay($$anchor, $$props) {
               () => getBarColor(get(s3).val)
             ]
           );
-          append($$anchor3, div_28);
+          append($$anchor3, div_39);
         }
       );
-      reset(div_27);
-      append($$anchor2, div_27);
+      reset(div_38);
+      append($$anchor2, div_38);
     };
-    if_block(node_5, ($$render) => {
+    if_block(node_7, ($$render) => {
       if (get(sanderson).competence !== void 0)
-        $$render(consequent_3);
+        $$render(consequent_5);
     });
   }
-  var node_7 = sibling(node_5, 4);
+  var node_9 = sibling(node_7, 4);
   each(
-    node_7,
+    node_9,
     17,
     () => [
       {
@@ -29261,22 +29440,22 @@ function CriticDisplay($$anchor, $$props) {
     index,
     ($$anchor2, m3) => {
       const bar = user_derived(() => getBarMetrics(get(m3).val));
-      var div_32 = root_8();
-      var span_5 = child(div_32);
-      var text_14 = child(span_5, true);
-      reset(span_5);
-      var div_33 = sibling(span_5, 2);
-      var div_34 = sibling(child(div_33), 2);
-      reset(div_33);
-      var span_6 = sibling(div_33, 2);
-      var text_15 = child(span_6, true);
+      var div_43 = root_10();
+      var span_6 = child(div_43);
+      var text_20 = child(span_6, true);
       reset(span_6);
-      reset(div_32);
+      var div_44 = sibling(span_6, 2);
+      var div_45 = sibling(child(div_44), 2);
+      reset(div_44);
+      var span_7 = sibling(div_44, 2);
+      var text_21 = child(span_7, true);
+      reset(span_7);
+      reset(div_43);
       template_effect(
         ($0, $1, $2, $3, $4) => {
           var _a3;
-          set_text(text_14, get(m3).label);
-          set_style(div_34, `
+          set_text(text_20, get(m3).label);
+          set_style(div_45, `
                             position: absolute;
                             width: ${(_a3 = get(bar).width) != null ? _a3 : ""}%;
                             left: ${get(bar).isNegative ? 50 - get(bar).width + "%" : "50%"};
@@ -29284,676 +29463,209 @@ function CriticDisplay($$anchor, $$props) {
                             background-size: 200% auto;
                             animation: ${$1 != null ? $1 : ""};
                          `);
-          set_class(span_6, 1, `mod-score ${$2 != null ? $2 : ""}`, "svelte-1wfho06");
-          set_style(span_6, `color: ${$3 != null ? $3 : ""}`);
-          set_text(text_15, $4);
+          set_class(span_7, 1, `mod-score ${$2 != null ? $2 : ""}`, "svelte-1wfho06");
+          set_style(span_7, `color: ${$3 != null ? $3 : ""}`);
+          set_text(text_21, $4);
         },
         [
           () => isMasterpieceEffect(get(m3).val) ? "linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)" : getBarColor(get(m3).val),
           () => isMasterpieceEffect(get(m3).val) ? "rainbow-bar-scroll 3s linear infinite" : "none",
           () => isMasterpieceEffect(get(m3).val) ? "masterpiece-text" : "",
-          () => isMasterpieceEffect(get(m3).val) ? "" : getBarColor(get(m3).val),
+          () => isMasterpieceEffect(get(m3).val) ? "#000" : getBarColor(get(m3).val),
           () => formatScoreDisplay(get(m3).val)
         ]
       );
-      append($$anchor2, div_32);
+      append($$anchor2, div_43);
     }
   );
-  reset(div_26);
-  var node_8 = sibling(div_26, 2);
+  reset(div_37);
+  var div_46 = sibling(div_37, 2);
+  var div_47 = sibling(child(div_46), 2);
+  var node_10 = child(div_47);
   {
-    var consequent_4 = ($$anchor2) => {
-      var fragment_1 = root_9();
-      var div_35 = sibling(first_child(fragment_1), 2);
-      each(div_35, 21, () => Object.entries(get(details)), index, ($$anchor3, $$item) => {
-        var $$array = user_derived(() => to_array(get($$item), 2));
-        let key2 = () => get($$array)[0];
-        let cat = () => get($$array)[1];
-        var div_36 = root_10();
-        var div_37 = child(div_36);
-        var span_7 = child(div_37);
-        var text_16 = child(span_7, true);
-        reset(span_7);
-        var span_8 = sibling(span_7, 2);
-        var text_17 = child(span_8);
+    var consequent_7 = ($$anchor2) => {
+      var fragment = root_11();
+      var ul = first_child(fragment);
+      each(ul, 21, () => get(structure), index, ($$anchor3, node) => {
+        var li = root_12();
+        var div_48 = sibling(child(li), 2);
+        var span_8 = child(div_48);
+        var text_22 = child(span_8, true);
         reset(span_8);
-        reset(div_37);
-        var div_38 = sibling(div_37, 2);
-        each(div_38, 21, () => cat().items, index, ($$anchor4, item) => {
-          const bar = user_derived(() => getBarMetrics(get(item).score));
-          var div_39 = root_11();
-          var div_40 = child(div_39);
-          var span_9 = child(div_40);
-          var text_18 = child(span_9, true);
-          reset(span_9);
-          var span_10 = sibling(span_9, 2);
-          var text_19 = child(span_10, true);
-          reset(span_10);
-          reset(div_40);
-          var div_41 = sibling(div_40, 2);
-          var div_42 = sibling(child(div_41), 2);
-          reset(div_41);
-          var div_43 = sibling(div_41, 2);
-          var span_11 = sibling(child(div_43), 2);
-          var text_20 = child(span_11, true);
-          reset(span_11);
-          reset(div_43);
-          reset(div_39);
-          template_effect(
-            ($0, $1, $2, $3, $4) => {
-              var _a3;
-              set_text(text_18, get(item).name);
-              set_class(span_10, 1, `metric-val ${$0 != null ? $0 : ""}`, "svelte-1wfho06");
-              set_style(span_10, `color: ${$1 != null ? $1 : ""}`);
-              set_text(text_19, $2);
-              set_style(div_42, `
-                                        position: absolute;
-                                        width: ${(_a3 = get(bar).width) != null ? _a3 : ""}%;
-                                        left: ${get(bar).isNegative ? 50 - get(bar).width + "%" : "50%"};
-                                        background: ${$3 != null ? $3 : ""};
-                                        background-size: 200% auto;
-                                        animation: ${$4 != null ? $4 : ""};
-                                     `);
-              set_text(text_20, get(item).reason);
-            },
-            [
-              () => isMasterpieceEffect(get(item).score) ? "masterpiece-text" : "",
-              () => isMasterpieceEffect(get(item).score) ? "" : getBarColor(get(item).score),
-              () => formatScoreDisplay(get(item).score),
-              () => isMasterpieceEffect(get(item).score) ? "linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)" : getBarColor(get(item).score),
-              () => isMasterpieceEffect(get(item).score) ? "rainbow-bar-scroll 3s linear infinite" : "none"
-            ]
-          );
-          append($$anchor4, div_39);
-        });
-        reset(div_38);
-        reset(div_36);
+        var span_9 = sibling(span_8, 2);
+        var text_23 = child(span_9, true);
+        reset(span_9);
+        var span_10 = sibling(span_9, 2);
+        var text_24 = child(span_10);
+        reset(span_10);
+        reset(div_48);
+        reset(li);
         template_effect(
-          ($0, $1, $2, $3) => {
-            set_text(text_16, $0);
-            set_class(span_8, 1, `cat-score ${$1 != null ? $1 : ""}`, "svelte-1wfho06");
-            set_style(span_8, `color: ${$2 != null ? $2 : ""}`);
-            set_text(text_17, `AVG: ${$3 != null ? $3 : ""}`);
+          ($0) => {
+            set_text(text_22, get(node).type === "beat" ? "\u{1F4C4}" : "\u2B50");
+            set_text(text_23, get(node).title);
+            set_text(text_24, `(Tens: ${$0 != null ? $0 : ""})`);
           },
-          [
-            () => key2().toUpperCase(),
-            () => isMasterpieceEffect(cat().score) ? "masterpiece-text" : "",
-            () => isMasterpieceEffect(cat().score) ? "" : getBarColor(cat().score),
-            () => formatScoreDisplay(cat().score)
-          ]
+          [() => formatScoreDisplay(get(node).tension)]
         );
-        append($$anchor3, div_36);
+        append($$anchor3, li);
       });
-      reset(div_35);
-      append($$anchor2, fragment_1);
-    };
-    if_block(node_8, ($$render) => {
-      if (get(hasDetails))
-        $$render(consequent_4);
-    });
-  }
-  var node_9 = sibling(node_8, 2);
-  {
-    var consequent_9 = ($$anchor2) => {
-      var fragment_2 = root_12();
-      var div_44 = sibling(first_child(fragment_2), 2);
-      var div_45 = child(div_44);
-      div_45.__click = () => set(selectedAgent, "market");
-      var div_46 = child(div_45);
-      var div_47 = sibling(div_46, 2);
-      var span_12 = child(div_47);
-      span_12.__click = (e2) => {
-        e2.stopPropagation();
-        set(openDropdown, get(openDropdown) === "market" ? null : "market", true);
-      };
-      var node_10 = sibling(span_12, 2);
-      {
-        var consequent_5 = ($$anchor3) => {
-          var div_48 = root_13();
-          var div_49 = child(div_48);
-          div_49.__click = () => {
-            var _a3;
-            $$props.onAddRepairInstruction(`Address Commercial Concern: ${(_a3 = $$props.data.tribunal_breakdown) == null ? void 0 : _a3.market.commercial_reason}`);
-            set(openDropdown, null);
-          };
-          var div_50 = sibling(div_49, 2);
-          div_50.__click = () => {
-            $$props.onAddRepairInstruction(`Enhance Commercial Appeal`);
-            set(openDropdown, null);
-          };
-          reset(div_48);
-          append($$anchor3, div_48);
-        };
-        if_block(node_10, ($$render) => {
-          if (get(openDropdown) === "market")
-            $$render(consequent_5);
-        });
-      }
-      reset(div_47);
-      var div_51 = sibling(div_47, 2);
-      var b = child(div_51);
-      var text_21 = child(b);
-      reset(b);
-      reset(div_51);
-      var div_52 = sibling(div_51, 2);
-      var text_22 = child(div_52, true);
-      var i_1 = sibling(text_22, 4);
-      var text_23 = child(i_1);
-      reset(i_1);
-      reset(div_52);
-      reset(div_45);
-      var div_53 = sibling(div_45, 2);
-      div_53.__click = () => set(selectedAgent, "logic");
-      var div_54 = child(div_53);
-      var div_55 = sibling(div_54, 2);
-      var span_13 = child(div_55);
-      span_13.__click = (e2) => {
-        e2.stopPropagation();
-        set(openDropdown, get(openDropdown) === "logic" ? null : "logic", true);
-      };
-      var node_11 = sibling(span_13, 2);
+      reset(ul);
+      var node_11 = sibling(ul, 2);
       {
         var consequent_6 = ($$anchor3) => {
-          var div_56 = root_14();
-          var div_57 = child(div_56);
-          div_57.__click = () => {
-            var _a3;
-            $$props.onAddRepairInstruction(`Fix Logic Hole: ${(_a3 = $$props.data.tribunal_breakdown) == null ? void 0 : _a3.logic.content_warning}`);
-            set(openDropdown, null);
-          };
-          var div_58 = sibling(div_57, 2);
-          div_58.__click = () => {
-            $$props.onAddRepairInstruction(`Improve Internal Cohesion`);
-            set(openDropdown, null);
-          };
-          reset(div_56);
-          append($$anchor3, div_56);
+          var div_49 = root_13();
+          append($$anchor3, div_49);
         };
         if_block(node_11, ($$render) => {
-          if (get(openDropdown) === "logic")
+          if (get(structure).length === 0)
             $$render(consequent_6);
         });
       }
-      reset(div_55);
-      var div_59 = sibling(div_55, 2);
-      var b_1 = child(div_59);
-      var text_24 = child(b_1);
-      reset(b_1);
-      reset(div_59);
-      var div_60 = sibling(div_59, 2);
-      var node_12 = child(div_60);
-      {
-        var consequent_7 = ($$anchor3) => {
-          var text_25 = text();
-          template_effect(() => set_text(text_25, $$props.data.tribunal_breakdown.logic.inconsistencies[0]));
-          append($$anchor3, text_25);
-        };
-        var alternate_1 = ($$anchor3) => {
-          var text_26 = text("No Logic Holes Detected.");
-          append($$anchor3, text_26);
-        };
-        if_block(node_12, ($$render) => {
-          if ($$props.data.tribunal_breakdown.logic.inconsistencies && $$props.data.tribunal_breakdown.logic.inconsistencies.length > 0)
-            $$render(consequent_7);
-          else
-            $$render(alternate_1, false);
-        });
-      }
-      var span_14 = sibling(node_12, 5);
-      var i_2 = child(span_14);
-      var text_27 = child(i_2);
-      reset(i_2);
-      reset(span_14);
-      reset(div_60);
-      reset(div_53);
-      var div_61 = sibling(div_53, 2);
-      div_61.__click = () => set(selectedAgent, "lit");
-      var div_62 = child(div_61);
-      var div_63 = sibling(div_62, 2);
-      var span_15 = child(div_63);
-      span_15.__click = (e2) => {
-        e2.stopPropagation();
-        set(openDropdown, get(openDropdown) === "lit" ? null : "lit", true);
-      };
-      var node_13 = sibling(span_15, 2);
+      append($$anchor2, fragment);
+    };
+    var alternate = ($$anchor2) => {
+      var fragment_1 = comment();
+      var node_12 = first_child(fragment_1);
+      each(node_12, 17, () => get(structure), index, ($$anchor3, beat) => {
+        var div_50 = root_15();
+        var div_51 = sibling(child(div_50), 2);
+        var text_25 = child(div_51, true);
+        reset(div_51);
+        reset(div_50);
+        template_effect(() => set_text(text_25, get(beat)));
+        append($$anchor3, div_50);
+      });
+      append($$anchor2, fragment_1);
+    };
+    if_block(node_10, ($$render) => {
+      if (get(isUniversalOutline))
+        $$render(consequent_7);
+      else
+        $$render(alternate, false);
+    });
+  }
+  reset(div_47);
+  reset(div_46);
+  var node_13 = sibling(div_46, 2);
+  {
+    var consequent_9 = ($$anchor2) => {
+      var fragment_2 = root_16();
+      var button = first_child(fragment_2);
+      button.__click = () => set(showRaw, !get(showRaw));
+      var text_26 = child(button, true);
+      reset(button);
+      var node_14 = sibling(button, 2);
       {
         var consequent_8 = ($$anchor3) => {
-          var div_64 = root_17();
-          var div_65 = child(div_64);
-          div_65.__click = () => {
-            var _a3;
-            $$props.onAddRepairInstruction(`Refine Vibe: ${(_a3 = $$props.data.tribunal_breakdown) == null ? void 0 : _a3.lit.critique}`);
-            set(openDropdown, null);
-          };
-          reset(div_64);
-          append($$anchor3, div_64);
+          var div_52 = root_17();
+          var pre = child(div_52);
+          var text_27 = child(pre, true);
+          reset(pre);
+          reset(div_52);
+          template_effect(() => set_text(text_27, $$props.data.thought_process));
+          transition(3, div_52, () => slide);
+          append($$anchor3, div_52);
         };
-        if_block(node_13, ($$render) => {
-          if (get(openDropdown) === "lit")
+        if_block(node_14, ($$render) => {
+          if (get(showRaw))
             $$render(consequent_8);
         });
       }
-      reset(div_63);
-      var div_66 = sibling(div_63, 2);
-      var b_2 = child(div_66);
-      var text_28 = child(b_2);
-      reset(b_2);
-      reset(div_66);
-      var div_67 = sibling(div_66, 2);
-      var text_29 = child(div_67);
-      var i_3 = sibling(text_29, 4);
-      var text_30 = child(i_3);
-      reset(i_3);
-      reset(div_67);
-      reset(div_61);
-      reset(div_44);
-      template_effect(
-        ($0, $1, $2) => {
-          var _a3, _b3, _c2, _d;
-          set_class(div_46, 1, `win95-titlebar ${get(selectedAgent) === "market" ? "" : "inactive"}`);
-          set_text(text_21, `SCORE: ${$0 != null ? $0 : ""}`);
-          set_text(text_22, $$props.data.tribunal_breakdown.market.log_line || "N/A");
-          set_text(text_23, `"${(_a3 = $$props.data.tribunal_breakdown.market.commercial_reason || "") != null ? _a3 : ""}"`);
-          set_class(div_54, 1, `win95-titlebar ${get(selectedAgent) === "logic" ? "" : "inactive"}`);
-          set_text(text_24, `COHESION: ${$1 != null ? $1 : ""}`);
-          set_text(text_27, `Deus Ex Machinas: ${(_b3 = $$props.data.tribunal_breakdown.logic.deus_ex_machina_count || 0) != null ? _b3 : ""}`);
-          set_class(div_62, 1, `win95-titlebar ${get(selectedAgent) === "lit" ? "" : "inactive"}`);
-          set_text(text_28, `SCORE: ${$2 != null ? $2 : ""}`);
-          set_text(text_29, `Mood: ${(_c2 = $$props.data.tribunal_breakdown.lit.mood || "N/A") != null ? _c2 : ""}`);
-          set_text(text_30, `"${(_d = $$props.data.tribunal_breakdown.lit.critique || "") != null ? _d : ""}"`);
-        },
-        [
-          () => formatScoreDisplay($$props.data.tribunal_breakdown.market.commercial_score),
-          () => formatScoreDisplay($$props.data.tribunal_breakdown.logic.score),
-          () => formatScoreDisplay($$props.data.tribunal_breakdown.lit.score)
-        ]
-      );
+      template_effect(() => set_text(text_26, get(showRaw) ? "[-] HIDE RAW LOGIC" : "[+] SHOW TRUBY LOGIC"));
       append($$anchor2, fragment_2);
     };
-    if_block(node_9, ($$render) => {
-      if ($$props.data.tribunal_breakdown)
+    if_block(node_13, ($$render) => {
+      if ($$props.data.thought_process)
         $$render(consequent_9);
     });
   }
-  var node_14 = sibling(node_9, 2);
-  {
-    var consequent_10 = ($$anchor2) => {
-      var fragment_4 = root_18();
-      var div_68 = sibling(first_child(fragment_4), 2);
-      var div_69 = sibling(child(div_68), 2);
-      var text_31 = child(div_69, true);
-      reset(div_69);
-      reset(div_68);
-      template_effect(() => set_text(text_31, $$props.data.arbitration_log.ruling));
-      append($$anchor2, fragment_4);
-    };
-    if_block(node_14, ($$render) => {
-      if ($$props.data.arbitration_log)
-        $$render(consequent_10);
-    });
-  }
-  var div_70 = sibling(node_14, 2);
-  var select = sibling(child(div_70), 2);
-  var option = child(select);
-  option.value = option.__value = "tension";
-  var option_1 = sibling(option);
-  option_1.value = option_1.__value = "quality";
-  reset(select);
-  var node_15 = sibling(select, 2);
-  {
-    var consequent_11 = ($$anchor2) => {
-      var select_1 = root_19();
-      each(select_1, 21, () => Object.entries(IDEAL_ARCS), index, ($$anchor3, $$item) => {
-        var $$array_1 = user_derived(() => to_array(get($$item), 2));
-        let key2 = () => get($$array_1)[0];
-        let arc = () => get($$array_1)[1];
-        var option_2 = root_20();
-        var text_32 = child(option_2, true);
-        reset(option_2);
-        var option_2_value = {};
-        template_effect(() => {
-          var _a3;
-          set_text(text_32, arc().label);
-          if (option_2_value !== (option_2_value = key2())) {
-            option_2.value = (_a3 = option_2.__value = key2()) != null ? _a3 : "";
-          }
-        });
-        append($$anchor3, option_2);
-      });
-      reset(select_1);
-      bind_select_value(select_1, () => get(selectedArc), ($$value) => set(selectedArc, $$value));
-      append($$anchor2, select_1);
-    };
-    if_block(node_15, ($$render) => {
-      if (get(graphMode) === "tension")
-        $$render(consequent_11);
-    });
-  }
-  reset(div_70);
-  var div_71 = sibling(div_70, 2);
-  var div_72 = child(div_71);
-  var node_16 = child(div_72);
-  {
-    var consequent_12 = ($$anchor2) => {
-      var fragment_5 = root_21();
-      var svg = sibling(first_child(fragment_5), 2);
-      var path_1 = child(svg);
-      reset(svg);
-      template_effect(() => set_attribute2(path_1, "d", get(idealPathD)));
-      append($$anchor2, fragment_5);
-    };
-    if_block(node_16, ($$render) => {
-      if (get(graphMode) === "tension")
-        $$render(consequent_12);
-    });
-  }
-  var node_17 = sibling(node_16, 2);
-  each(node_17, 17, () => get(chartData), index, ($$anchor2, beat, i3) => {
-    const bar = user_derived(() => get(graphMode) === "tension" ? getBarMetrics(get(beat).val) : null);
-    const qualityH = user_derived(() => get(graphMode) === "quality" ? getQualityMetrics(get(beat).val) : 0);
-    var div_73 = root_222();
-    var div_74 = child(div_73);
-    var node_18 = child(div_74);
-    {
-      var consequent_13 = ($$anchor3) => {
-        var div_75 = root_232();
-        template_effect(
-          ($0, $1) => {
-            var _a3;
-            return set_style(div_75, `
-                                    width: auto;
-                                    left: 1px; right: 1px;
-                                    top: ${get(bar).isNegative ? "50%" : "auto"};
-                                    bottom: ${get(bar).isNegative ? "auto" : "50%"};
-                                    height: ${(_a3 = get(bar).width) != null ? _a3 : ""}%;
-                                    position: absolute;
-                                    background: ${$0 != null ? $0 : ""};
-                                    background-size: 200% auto;
-                                    animation: ${$1 != null ? $1 : ""};
-                                    border: 1px solid rgba(0,0,0,0.3);
-                                 `);
-          },
-          [
-            () => isMasterpieceEffect(get(beat).val) ? "linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)" : getBarColor(get(beat).val),
-            () => isMasterpieceEffect(get(beat).val) ? "rainbow-bar-scroll 3s linear infinite" : "none"
-          ]
-        );
-        append($$anchor3, div_75);
-      };
-      var alternate_2 = ($$anchor3) => {
-        var div_76 = root_24();
-        template_effect(
-          ($0, $1, $2) => {
-            var _a3;
-            return set_style(div_76, `
-                                    width: auto;
-                                    left: 1px; right: 1px;
-                                    bottom: 0;
-                                    height: ${(_a3 = get(qualityH)) != null ? _a3 : ""}%;
-                                    position: absolute;
-                                    background: ${$0 != null ? $0 : ""};
-                                    background-size: ${$1 != null ? $1 : ""};
-                                    animation: ${$2 != null ? $2 : ""};
-                                    border: 1px solid rgba(0,0,0,0.3);
-                                 `);
-          },
-          [
-            () => isMasterpieceEffect(get(beat).val) ? "linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)" : "linear-gradient(to top, #800000, #ffff00, #00ff00)",
-            () => isMasterpieceEffect(get(beat).val) ? "200% auto" : "auto",
-            () => isMasterpieceEffect(get(beat).val) ? "rainbow-bar-scroll 3s linear infinite" : "none"
-          ]
-        );
-        append($$anchor3, div_76);
-      };
-      if_block(node_18, ($$render) => {
-        if (get(graphMode) === "tension" && get(bar))
-          $$render(consequent_13);
-        else
-          $$render(alternate_2, false);
-      });
-    }
-    reset(div_74);
-    var div_77 = sibling(div_74, 2);
-    var strong = child(div_77);
-    var text_33 = child(strong);
-    reset(strong);
-    var text_34 = sibling(strong, 2);
-    var span_16 = sibling(text_34, 3);
-    var text_35 = child(span_16);
-    reset(span_16);
-    reset(div_77);
-    reset(div_73);
-    template_effect(
-      ($0, $1) => {
-        var _a3, _b3;
-        set_style(div_73, `width: ${(_a3 = get(beat).widthPerc) != null ? _a3 : ""}%; flex-grow: 0; flex-shrink: 0;`);
-        set_text(text_33, `${i3 + 1}. ${(_b3 = get(beat).title) != null ? _b3 : ""}`);
-        set_text(text_34, ` ${get(graphMode) === "tension" ? "Tension" : "Quality"}: ${$0 != null ? $0 : ""}`);
-        set_text(text_35, `Duration: ${$1 != null ? $1 : ""}%`);
-      },
-      [
-        () => formatScoreDisplay(get(beat).val),
-        () => Math.round(get(beat).widthPerc)
-      ]
-    );
-    append($$anchor2, div_73);
-  });
-  reset(div_72);
-  var div_78 = sibling(div_72, 2);
-  var node_19 = sibling(child(div_78), 2);
-  {
-    var consequent_14 = ($$anchor2) => {
-      var div_79 = root_25();
-      var span_17 = sibling(child(div_79), 2);
-      var text_36 = child(span_17);
-      reset(span_17);
-      reset(div_79);
-      template_effect(() => {
-        var _a3;
-        return set_text(text_36, `IDEAL (${(_a3 = IDEAL_ARCS[get(selectedArc)].label) != null ? _a3 : ""})`);
-      });
-      append($$anchor2, div_79);
-    };
-    if_block(node_19, ($$render) => {
-      if (get(graphMode) === "tension")
-        $$render(consequent_14);
-    });
-  }
-  next(2);
-  reset(div_78);
-  reset(div_71);
-  var div_80 = sibling(div_71, 4);
-  var node_20 = child(div_80);
-  {
-    var consequent_16 = ($$anchor2) => {
-      var fragment_6 = root_26();
-      var node_21 = first_child(fragment_6);
-      each(node_21, 17, () => get(structure), index, ($$anchor3, node) => {
-        var div_81 = root_27();
-        var div_82 = child(div_81);
-        var span_18 = child(div_82);
-        var text_37 = child(span_18, true);
-        reset(span_18);
-        var span_19 = sibling(span_18, 2);
-        var text_38 = child(span_19, true);
-        reset(span_19);
-        var span_20 = sibling(span_19, 2);
-        var text_39 = child(span_20);
-        reset(span_20);
-        reset(div_82);
-        var div_83 = sibling(div_82, 2);
-        var text_40 = child(div_83, true);
-        reset(div_83);
-        var div_84 = sibling(div_83, 2);
-        var text_41 = child(div_84);
-        reset(div_84);
-        reset(div_81);
-        template_effect(
-          ($0, $1, $2, $3, $4) => {
-            var _a3;
-            set_class(div_81, 1, `structure-node ${(_a3 = get(node).type) != null ? _a3 : ""}`, "svelte-1wfho06");
-            set_text(text_37, $0);
-            set_text(text_38, get(node).title);
-            set_class(span_20, 1, `node-tension ${$1 != null ? $1 : ""}`, "svelte-1wfho06");
-            set_style(span_20, `color: ${$2 != null ? $2 : ""}`);
-            set_text(text_39, `\u26A1 ${$3 != null ? $3 : ""}`);
-            set_text(text_40, get(node).description);
-            set_text(text_41, `ACTORS: ${$4 != null ? $4 : ""}`);
-          },
-          [
-            () => get(node).type.toUpperCase(),
-            () => isMasterpieceEffect(get(node).tension) ? "masterpiece-text" : "",
-            () => isMasterpieceEffect(get(node).tension) ? "" : "#BF40BF",
-            () => formatScoreDisplay(get(node).tension),
-            () => get(node).characters.join(", ")
-          ]
-        );
-        append($$anchor3, div_81);
-      });
-      var node_22 = sibling(node_21, 2);
-      {
-        var consequent_15 = ($$anchor3) => {
-          var div_85 = root_28();
-          append($$anchor3, div_85);
-        };
-        if_block(node_22, ($$render) => {
-          if (get(structure).length === 0)
-            $$render(consequent_15);
-        });
-      }
-      append($$anchor2, fragment_6);
-    };
-    var alternate_3 = ($$anchor2) => {
-      var fragment_7 = root_29();
-      var node_23 = first_child(fragment_7);
-      each(node_23, 17, () => get(structure), index, ($$anchor3, beat) => {
-        var div_86 = root_30();
-        var div_87 = sibling(child(div_86), 2);
-        var text_42 = child(div_87, true);
-        reset(div_87);
-        reset(div_86);
-        template_effect(() => set_text(text_42, get(beat)));
-        append($$anchor3, div_86);
-      });
-      var node_24 = sibling(node_23, 2);
-      {
-        var consequent_17 = ($$anchor3) => {
-          var div_88 = root_31();
-          append($$anchor3, div_88);
-        };
-        if_block(node_24, ($$render) => {
-          if (get(structure).length === 0)
-            $$render(consequent_17);
-        });
-      }
-      append($$anchor2, fragment_7);
-    };
-    if_block(node_20, ($$render) => {
-      if (get(isUniversalOutline))
-        $$render(consequent_16);
-      else
-        $$render(alternate_3, false);
-    });
-  }
-  reset(div_80);
-  var node_25 = sibling(div_80, 2);
-  {
-    var consequent_19 = ($$anchor2) => {
-      var fragment_8 = root_322();
-      var button = first_child(fragment_8);
-      button.__click = () => set(showRaw, !get(showRaw));
-      var text_43 = child(button, true);
-      reset(button);
-      var node_26 = sibling(button, 2);
-      {
-        var consequent_18 = ($$anchor3) => {
-          var div_89 = root_33();
-          var pre = child(div_89);
-          var text_44 = child(pre, true);
-          reset(pre);
-          reset(div_89);
-          template_effect(() => set_text(text_44, $$props.data.thought_process));
-          transition(3, div_89, () => slide);
-          append($$anchor3, div_89);
-        };
-        if_block(node_26, ($$render) => {
-          if (get(showRaw))
-            $$render(consequent_18);
-        });
-      }
-      template_effect(() => set_text(text_43, get(showRaw) ? "[-] HIDE RAW LOGIC" : "[+] SHOW TRUBY LOGIC"));
-      append($$anchor2, fragment_8);
-    };
-    if_block(node_25, ($$render) => {
-      if ($$props.data.thought_process)
-        $$render(consequent_19);
-    });
-  }
-  var button_1 = sibling(node_25, 2);
+  var button_1 = sibling(node_13, 2);
   button_1.__click = function(...$$args) {
     var _a3;
     (_a3 = $$props.onRunMeta) == null ? void 0 : _a3.apply(this, $$args);
   };
   reset(div);
   template_effect(
-    ($0, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) => {
-      var _a3, _b3;
-      set_class(div_1, 1, $0, "svelte-1wfho06");
-      set_text(text2, `Smart Repair... (${(_a3 = get(repairIssues).length) != null ? _a3 : ""})`);
-      set_style(div_8, `color: ${$1 != null ? $1 : ""}`);
+    ($0, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) => {
+      var _a3, _b3, _c2, _d;
       set_class(
-        div_9,
+        div_7,
         1,
-        `score-main ${$2 != null ? $2 : ""}
-                            ${$3 != null ? $3 : ""}`,
+        `score-main ${$0 != null ? $0 : ""}
+                            ${$1 != null ? $1 : ""}`,
         "svelte-1wfho06"
       );
-      set_style(div_9, `color: ${$4 != null ? $4 : ""}`);
-      set_text(text_2, $5);
-      set_class(div_10, 1, `score-verdict ${$6 != null ? $6 : ""} ${$7 != null ? $7 : ""}`, "svelte-1wfho06");
-      set_style(div_10, `color: ${$8 != null ? $8 : ""}`);
-      set_text(text_3, $9);
-      set_style(div_13, `color: ${$10 != null ? $10 : ""}`);
+      set_style(div_7, `color: ${$2 != null ? $2 : ""};
+                            text-shadow: ${$3 != null ? $3 : ""};`);
+      set_text(text2, $4);
+      set_class(div_8, 1, `score-verdict ${$5 != null ? $5 : ""}`, "svelte-1wfho06");
+      set_style(div_8, `color: ${$6 != null ? $6 : ""};`);
+      set_text(text_1, $7);
+      set_class(div_11, 1, `sub-val ${$8 != null ? $8 : ""}`, "svelte-1wfho06");
+      set_style(div_11, `color: ${$9 != null ? $9 : ""}`);
+      set_text(text_2, $10);
+      set_text(text_3, get(breakdown).market.commercial_reason || "No Data");
       set_class(div_14, 1, `sub-val ${$11 != null ? $11 : ""}`, "svelte-1wfho06");
       set_style(div_14, `color: ${$12 != null ? $12 : ""}`);
       set_text(text_4, $13);
-      set_text(text_5, $$props.data.commercial_reason || "No reasoning available.");
-      set_style(div_17, `color: ${$14 != null ? $14 : ""}`);
-      set_class(div_18, 1, `sub-val ${$15 != null ? $15 : ""}`, "svelte-1wfho06");
-      set_style(div_18, `color: ${$16 != null ? $16 : ""}`);
-      set_text(text_6, $17);
-      set_text(text_7, $$props.data.niche_reason || "No reasoning available.");
-      set_style(div_21, `color: ${$18 != null ? $18 : ""}`);
-      set_class(div_22, 1, `sub-val ${$19 != null ? $19 : ""}`, "svelte-1wfho06");
-      set_style(div_22, `color: ${$20 != null ? $20 : ""}`);
-      set_text(text_8, $21);
-      set_text(text_9, $$props.data.cohesion_reason || "No reasoning available.");
-      set_text(text_11, `"${(_b3 = $$props.data.log_line || "Analysis pending...") != null ? _b3 : ""}"`);
+      set_text(text_5, `Plot Holes: ${(_b3 = ((_a3 = get(breakdown).logic.inconsistencies) == null ? void 0 : _a3.length) || 0) != null ? _b3 : ""}`);
+      set_class(div_17, 1, `sub-val ${$14 != null ? $14 : ""}`, "svelte-1wfho06");
+      set_style(div_17, `color: ${$15 != null ? $15 : ""}`);
+      set_text(text_6, $16);
+      set_text(text_7, get(breakdown).soul.critique || "No Data");
+      set_class(div_20, 1, `sub-val ${$17 != null ? $17 : ""}`, "svelte-1wfho06");
+      set_style(div_20, `color: ${$18 != null ? $18 : ""}`);
+      set_text(text_8, $19);
+      set_text(text_9, ((_c2 = get(breakdown).lit) == null ? void 0 : _c2.niche_reason) || "No Data");
+      set_class(div_23, 1, `sub-val ${$20 != null ? $20 : ""}`, "svelte-1wfho06");
+      set_style(div_23, `color: ${$21 != null ? $21 : ""}`);
+      set_text(text_10, $22);
+      set_text(text_11, ((_d = get(breakdown).jester) == null ? void 0 : _d.roast) || "No Data");
       button_1.disabled = $$props.isProcessing;
     },
     [
-      () => getContainerClass(get(averageScore)),
-      () => isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#999" : "#555",
       () => isMasterpieceEffect(get(averageScore)) ? "masterpiece-text" : "",
       () => isCritical(get(averageScore)) ? "critical-text" : "",
-      () => isMasterpieceEffect(get(averageScore)) ? "" : isCritical(get(averageScore)) ? "#000" : getBarColor(get(averageScore)),
+      () => isMasterpieceEffect(get(averageScore)) ? "#000" : isCritical(get(averageScore)) ? "#000" : getBarColor(get(averageScore)),
+      () => isMasterpieceEffect(get(averageScore)) ? "" : "1px 1px 0 #fff",
       () => formatScoreDisplay(get(averageScore)),
       () => isMasterpieceEffect(get(averageScore)) ? "masterpiece-text" : "",
-      () => isCritical(get(averageScore)) ? "critical-text" : "",
-      () => isMasterpieceEffect(get(averageScore)) ? "" : isCritical(get(averageScore)) ? "#000" : getBarColor(get(averageScore)),
+      () => isMasterpieceEffect(get(averageScore)) ? "#000" : "#000",
       () => getVerdict(get(averageScore)),
-      () => isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#aaa" : "#555",
-      () => isMasterpieceEffect($$props.data.commercial_score) ? "masterpiece-text" : "",
-      () => isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#fff" : getBarColor($$props.data.commercial_score),
-      () => formatScoreDisplay($$props.data.commercial_score),
-      () => isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#aaa" : "#555",
-      () => isMasterpieceEffect($$props.data.niche_score) ? "masterpiece-text" : "",
-      () => isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#fff" : getBarColor($$props.data.niche_score),
-      () => formatScoreDisplay($$props.data.niche_score),
-      () => isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#aaa" : "#555",
-      () => isMasterpieceEffect($$props.data.cohesion_score) ? "masterpiece-text" : "",
-      () => isMasterpieceEffect(get(averageScore)) || isCritical(get(averageScore)) ? "#fff" : getBarColor($$props.data.cohesion_score),
-      () => formatScoreDisplay($$props.data.cohesion_score)
+      () => isMasterpieceEffect(get(breakdown).market.commercial_score || 0) ? "masterpiece-text" : "",
+      () => isMasterpieceEffect(get(breakdown).market.commercial_score || 0) ? "#000" : getBarColor(get(breakdown).market.commercial_score || 0),
+      () => formatScoreDisplay(get(breakdown).market.commercial_score || 0),
+      () => isMasterpieceEffect(get(breakdown).logic.score || 0) ? "masterpiece-text" : "",
+      () => isMasterpieceEffect(get(breakdown).logic.score || 0) ? "#000" : getBarColor(get(breakdown).logic.score || 0),
+      () => formatScoreDisplay(get(breakdown).logic.score || 0),
+      () => isMasterpieceEffect(get(breakdown).soul.score || 0) ? "masterpiece-text" : "",
+      () => isMasterpieceEffect(get(breakdown).soul.score || 0) ? "#000" : getBarColor(get(breakdown).soul.score || 0),
+      () => formatScoreDisplay(get(breakdown).soul.score || 0),
+      () => {
+        var _a3;
+        return isMasterpieceEffect(((_a3 = get(breakdown).lit) == null ? void 0 : _a3.score) || 0) ? "masterpiece-text" : "";
+      },
+      () => {
+        var _a3, _b3;
+        return isMasterpieceEffect(((_a3 = get(breakdown).lit) == null ? void 0 : _a3.score) || 0) ? "#000" : getBarColor(((_b3 = get(breakdown).lit) == null ? void 0 : _b3.score) || 0);
+      },
+      () => {
+        var _a3;
+        return formatScoreDisplay(((_a3 = get(breakdown).lit) == null ? void 0 : _a3.score) || 0);
+      },
+      () => {
+        var _a3;
+        return isMasterpieceEffect(((_a3 = get(breakdown).jester) == null ? void 0 : _a3.score_modifier) || 0) ? "masterpiece-text" : "";
+      },
+      () => {
+        var _a3, _b3;
+        return isMasterpieceEffect(((_a3 = get(breakdown).jester) == null ? void 0 : _a3.score_modifier) || 0) ? "#000" : getBarColor(((_b3 = get(breakdown).jester) == null ? void 0 : _b3.score_modifier) || 0);
+      },
+      () => {
+        var _a3;
+        return formatScoreDisplay(((_a3 = get(breakdown).jester) == null ? void 0 : _a3.score_modifier) || 0);
+      }
     ]
   );
   bind_select_value(select, () => get(graphMode), ($$value) => set(graphMode, $$value));
@@ -30060,8 +29772,8 @@ function Win95ProgressBar($$anchor, $$props) {
 }
 
 // GradingPanel.svelte
-var root_15 = from_html(`<button class="reset-btn svelte-1ykavxi" title="Force Format / Stop">RST</button>`);
-var root_210 = from_html(`<div class="empty-state svelte-1ykavxi">INSERT DISK (OPEN MARKDOWN FILE)</div>`);
+var root_14 = from_html(`<button class="reset-btn svelte-1ykavxi" title="Force Format / Stop">RST</button>`);
+var root_24 = from_html(`<div class="empty-state svelte-1ykavxi">INSERT DISK (OPEN MARKDOWN FILE)</div>`);
 var root_102 = from_html(`<div class="dd-item svelte-1ykavxi">Fix Warning</div>`);
 var root_112 = from_html(`<div class="dd-item svelte-1ykavxi">Logic Repair</div>`);
 var root_92 = from_html(`<div style="border-top:1px dashed #000; margin:2px 0;"></div> <!> <!>`, 1);
@@ -30071,14 +29783,14 @@ var root_73 = from_html(`<div class="win95-popup-window"><div class="win95-title
 var root_132 = from_html(`<!> <button class="action-btn tertiary svelte-1ykavxi" style="margin-top:10px;">\u{1F4C4} EXPORT FORENSIC REPORT</button>`, 1);
 var root_54 = from_html(`<div class="panel-critic"><div class="button-row svelte-1ykavxi"><button class="action-btn primary svelte-1ykavxi"> </button> <button class="action-btn secondary svelte-1ykavxi">QUICK SCAN</button></div> <!> <!> <!></div>`);
 var root_152 = from_html(`<div class="panel-wizard"><button class="action-btn secondary svelte-1ykavxi">GENERATE FULL OUTLINE</button> <!> <!></div>`);
-var root_182 = from_html(`<div class="panel-synth"><!> <!></div>`);
+var root_18 = from_html(`<div class="panel-synth"><!> <!></div>`);
 var root_242 = from_html(`<details class="thought-trace bevel-groove svelte-1ykavxi"><summary class="thought-header svelte-1ykavxi">COGNITIVE TRACE (RAW)</summary> <div class="thought-content svelte-1ykavxi"> </div></details>`);
-var root_262 = from_html(`<div class="repair-item svelte-1ykavxi"><div class="repair-header svelte-1ykavxi"> </div> <div class="repair-body svelte-1ykavxi"> </div> <div class="repair-why svelte-1ykavxi"> </div></div>`);
-var root_252 = from_html(`<div class="repair-list"></div>`);
-var root_292 = from_html(`<li> </li>`);
-var root_282 = from_html(`<div class="repair-list legacy-mode svelte-1ykavxi"><p class="legacy-note svelte-1ykavxi">[LEGACY REPORT DETECTED - RE-RUN FOR DETAILS]</p> <ol class="forge-steps"></ol></div>`);
-var root_233 = from_html(`<div class="forge-report svelte-1ykavxi"><!> <div class="weakness-alert svelte-1ykavxi"> </div> <!> <button class="action-btn secondary svelte-1ykavxi">EXECUTE REPAIR PROTOCOL (AUTO-PATCH)</button></div>`);
-var root_212 = from_html(`<div class="panel-forge"><button class="action-btn primary svelte-1ykavxi">GENERATE REPAIR PLAN</button> <!> <div class="repair-focus-area svelte-1ykavxi"><label for="repairFocus" class="input-label svelte-1ykavxi">REPAIR FOCUS (OPTIONAL):</label> <textarea id="repairFocus" class="retro-input" rows="2" placeholder="E.g., 'Fix the pacing in Act 2' or 'Make the villain scarier'"></textarea></div> <fieldset class="outline-fieldset svelte-1ykavxi"><legend>PROSE TOOLS</legend> <div class="button-grid"><button class="action-btn secondary svelte-1ykavxi">FIX DIALOGUE PUNCTUATION</button> <button class="action-btn secondary svelte-1ykavxi">HIGHLIGHT ADVERBS (RED)</button> <button class="action-btn secondary svelte-1ykavxi">HIGHLIGHT FILTER WORDS (YELLOW)</button></div></fieldset> <fieldset class="outline-fieldset svelte-1ykavxi"><legend>STRUCTURAL ARCHIVIST</legend> <div class="memory-core bevel-down svelte-1ykavxi"><div class="memory-status svelte-1ykavxi"><div class="status-indicator svelte-1ykavxi"><span></span> <span> </span></div> <div class="status-details"> </div></div> <div class="context-controls svelte-1ykavxi"><button title="Load active file into buffer"> </button> <button class="scrub-btn svelte-1ykavxi">\u{1F5D1}\uFE0F</button></div></div> <textarea class="retro-input archivist-prompt svelte-1ykavxi" rows="2" placeholder="INSTRUCTIONS: Focus area OR Story Title (e.g. 'The Matrix')"></textarea> <div class="grid-2 svelte-1ykavxi"><button class="action-btn tertiary outline-btn svelte-1ykavxi"> </button> <button class="action-btn secondary outline-btn svelte-1ykavxi">\u{1F3F7}\uFE0F RENAME CAST (DEEP)</button></div></fieldset> <!></div>`);
+var root_26 = from_html(`<div class="repair-item svelte-1ykavxi"><div class="repair-header svelte-1ykavxi"> </div> <div class="repair-body svelte-1ykavxi"> </div> <div class="repair-why svelte-1ykavxi"> </div></div>`);
+var root_25 = from_html(`<div class="repair-list"></div>`);
+var root_29 = from_html(`<li> </li>`);
+var root_28 = from_html(`<div class="repair-list legacy-mode svelte-1ykavxi"><p class="legacy-note svelte-1ykavxi">[LEGACY REPORT DETECTED - RE-RUN FOR DETAILS]</p> <ol class="forge-steps"></ol></div>`);
+var root_232 = from_html(`<div class="forge-report svelte-1ykavxi"><!> <div class="weakness-alert svelte-1ykavxi"> </div> <!> <button class="action-btn secondary svelte-1ykavxi">EXECUTE REPAIR PROTOCOL (AUTO-PATCH)</button></div>`);
+var root_21 = from_html(`<div class="panel-forge"><button class="action-btn primary svelte-1ykavxi">GENERATE REPAIR PLAN</button> <!> <div class="repair-focus-area svelte-1ykavxi"><label for="repairFocus" class="input-label svelte-1ykavxi">REPAIR FOCUS (OPTIONAL):</label> <textarea id="repairFocus" class="retro-input" rows="2" placeholder="E.g., 'Fix the pacing in Act 2' or 'Make the villain scarier'"></textarea></div> <fieldset class="outline-fieldset svelte-1ykavxi"><legend>PROSE TOOLS</legend> <div class="button-grid"><button class="action-btn secondary svelte-1ykavxi">FIX DIALOGUE PUNCTUATION</button> <button class="action-btn secondary svelte-1ykavxi">HIGHLIGHT ADVERBS (RED)</button> <button class="action-btn secondary svelte-1ykavxi">HIGHLIGHT FILTER WORDS (YELLOW)</button></div></fieldset> <fieldset class="outline-fieldset svelte-1ykavxi"><legend>STRUCTURAL ARCHIVIST</legend> <div class="memory-core bevel-down svelte-1ykavxi"><div class="memory-status svelte-1ykavxi"><div class="status-indicator svelte-1ykavxi"><span></span> <span> </span></div> <div class="status-details"> </div></div> <div class="context-controls svelte-1ykavxi"><button title="Load active file into buffer"> </button> <button class="scrub-btn svelte-1ykavxi">\u{1F5D1}\uFE0F</button></div></div> <textarea class="retro-input archivist-prompt svelte-1ykavxi" rows="2" placeholder="INSTRUCTIONS: Focus area OR Story Title (e.g. 'The Matrix')"></textarea> <div class="grid-2 svelte-1ykavxi"><button class="action-btn tertiary outline-btn svelte-1ykavxi"> </button> <button class="action-btn secondary outline-btn svelte-1ykavxi">\u{1F3F7}\uFE0F RENAME CAST (DEEP)</button></div></fieldset> <!></div>`);
 var root5 = from_html(`<div class="compu-container theme-win95 svelte-1ykavxi"><div class="title-bar svelte-1ykavxi"><div class="title-bar-text"> </div> <!></div> <div class="tab-strip svelte-1ykavxi"><button>CRITIC</button> <button>WIZARD</button> <button>SYNTH</button> <button>FORGE</button></div> <div class="window-body svelte-1ykavxi"><!></div> <div class="status-bar svelte-1ykavxi"><span> </span> <span class="spacer svelte-1ykavxi"></span> <span>DISK ACT</span></div></div>`);
 var $$css5 = {
   hash: "svelte-1ykavxi",
@@ -30714,7 +30426,7 @@ ${entry}` : entry;
   var node = sibling(div_2, 2);
   {
     var consequent = ($$anchor2) => {
-      var button = root_15();
+      var button = root_14();
       button.__click = resetCurrentDisc;
       append($$anchor2, button);
     };
@@ -30742,7 +30454,7 @@ ${entry}` : entry;
   var node_1 = child(div_4);
   {
     var consequent_1 = ($$anchor2) => {
-      var div_5 = root_210();
+      var div_5 = root_24();
       append($$anchor2, div_5);
     };
     var alternate_4 = ($$anchor2) => {
@@ -30995,7 +30707,7 @@ ${entry}` : entry;
                   var node_16 = first_child(fragment_8);
                   {
                     var consequent_14 = ($$anchor6) => {
-                      var div_17 = root_182();
+                      var div_17 = root_18();
                       var node_17 = child(div_17);
                       {
                         var consequent_13 = ($$anchor7) => {
@@ -31033,7 +30745,7 @@ ${entry}` : entry;
                       var node_19 = first_child(fragment_10);
                       {
                         var consequent_20 = ($$anchor7) => {
-                          var div_18 = root_212();
+                          var div_18 = root_21();
                           var button_9 = child(div_18);
                           button_9.__click = runForge;
                           var node_20 = sibling(button_9, 2);
@@ -31111,7 +30823,7 @@ ${entry}` : entry;
                           var node_21 = sibling(fieldset_1, 2);
                           {
                             var consequent_19 = ($$anchor8) => {
-                              var div_27 = root_233();
+                              var div_27 = root_232();
                               var node_22 = child(div_27);
                               {
                                 var consequent_16 = ($$anchor9) => {
@@ -31134,9 +30846,9 @@ ${entry}` : entry;
                               var node_23 = sibling(div_29, 2);
                               {
                                 var consequent_17 = ($$anchor9) => {
-                                  var div_30 = root_252();
+                                  var div_30 = root_25();
                                   each(div_30, 21, () => get(projectData).lastActionPlan.repairs, index, ($$anchor10, repair, i3) => {
-                                    var div_31 = root_262();
+                                    var div_31 = root_26();
                                     var div_32 = child(div_31);
                                     var text_14 = child(div_32);
                                     reset(div_32);
@@ -31163,10 +30875,10 @@ ${entry}` : entry;
                                   var node_24 = first_child(fragment_12);
                                   {
                                     var consequent_18 = ($$anchor10) => {
-                                      var div_35 = root_282();
+                                      var div_35 = root_28();
                                       var ol = sibling(child(div_35), 2);
                                       each(ol, 21, () => get(projectData).lastActionPlan.steps, index, ($$anchor11, step) => {
-                                        var li = root_292();
+                                        var li = root_29();
                                         var text_17 = child(li, true);
                                         reset(li);
                                         template_effect(() => set_text(text_17, get(step)));
@@ -31321,7 +31033,6 @@ delegate(["click"]);
 // CompuJudgeView.ts
 var VIEW_TYPE_COMPU_JUDGE = "compu-judge-view";
 var CompuJudgeView = class extends import_obsidian7.ItemView {
-  // ADDED: Needs reference to plugin to save settings
   constructor(leaf, app, settings, cloud, plugin5) {
     super(leaf);
     this.app = app;
@@ -31361,14 +31072,8 @@ var CompuJudgeView = class extends import_obsidian7.ItemView {
     }
   }
   updateActiveFile(file) {
-    if (this.component && this.component.updateActiveFile) {
-      this.component.updateActiveFile(file);
-    }
   }
   updateTheme(theme) {
-    if (this.component && this.component.updateTheme) {
-      this.component.updateTheme(theme);
-    }
   }
 };
 
@@ -31500,6 +31205,8 @@ var CompuJudgePlugin = class extends import_obsidian8.Plugin {
       this.settings.namePool = "";
     if (this.settings.negativeNamePool === void 0)
       this.settings.negativeNamePool = "";
+    if (this.settings.tribunalConfiguration === void 0)
+      this.settings.tribunalConfiguration = "Parallel";
   }
   async saveSettings() {
     const cleanSettings = { ...this.settings };
@@ -31521,174 +31228,90 @@ var NigsSettingTab = class extends import_obsidian8.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "BIOS SETUP" });
+    const header = containerEl.createEl("div", { cls: "win95-titlebar", style: "margin-bottom: 20px;" });
+    header.createEl("div", { text: "BIOS SETUP UTILITY", cls: "win95-titlebar-text" });
+    this.addSectionHeader(containerEl, "AI IDENTITY");
     const providerSetting = new import_obsidian8.Setting(containerEl).setName("AI Provider").setDesc("Select your intelligence engine.").addDropdown((drop) => drop.addOption("gemini", "Google Gemini").addOption("openai", "OpenAI (ChatGPT)").addOption("anthropic", "Anthropic (Claude)").setValue(this.plugin.settings.aiProvider).onChange(async (val) => {
       this.plugin.settings.aiProvider = val;
       await this.plugin.saveSettings();
       this.display();
     }));
-    const dropdownEl = providerSetting.controlEl.querySelector("select");
-    if (dropdownEl) {
-      dropdownEl.addClass("retro-select");
-    }
-    containerEl.createEl("h4", { text: "Connection Settings" });
+    this.styleDropdown(providerSetting);
     if (this.plugin.settings.aiProvider === "gemini") {
-      new import_obsidian8.Setting(containerEl).setName("Gemini API Key").addText((text2) => text2.setPlaceholder("AIzaSy...").setValue(this.plugin.settings.apiKey).onChange(async (val) => {
+      this.addTextInput(containerEl, "Gemini API Key", "AIzaSy...", this.plugin.settings.apiKey, async (val) => {
         this.plugin.settings.apiKey = val;
         await this.plugin.saveSettings();
-      }));
-      new import_obsidian8.Setting(containerEl).setName("Model ID").addText((text2) => text2.setPlaceholder("gemini-2.0-flash").setValue(this.plugin.settings.modelId).onChange(async (val) => {
+      });
+      this.addTextInput(containerEl, "Model ID", "gemini-2.0-flash", this.plugin.settings.modelId, async (val) => {
         this.plugin.settings.modelId = val;
         await this.plugin.saveSettings();
-      }));
+      });
     }
     if (this.plugin.settings.aiProvider === "openai") {
-      new import_obsidian8.Setting(containerEl).setName("OpenAI API Key").addText((text2) => text2.setPlaceholder("sk-...").setValue(this.plugin.settings.openaiKey).onChange(async (val) => {
+      this.addTextInput(containerEl, "OpenAI API Key", "sk-...", this.plugin.settings.openaiKey, async (val) => {
         this.plugin.settings.openaiKey = val;
         await this.plugin.saveSettings();
-      }));
-      new import_obsidian8.Setting(containerEl).setName("Model ID").addText((text2) => text2.setPlaceholder("gpt-4o").setValue(this.plugin.settings.openaiModel).onChange(async (val) => {
+      });
+      this.addTextInput(containerEl, "Model ID", "gpt-4o", this.plugin.settings.openaiModel, async (val) => {
         this.plugin.settings.openaiModel = val;
         await this.plugin.saveSettings();
-      }));
+      });
     }
     if (this.plugin.settings.aiProvider === "anthropic") {
-      new import_obsidian8.Setting(containerEl).setName("Anthropic API Key").addText((text2) => text2.setPlaceholder("sk-ant-...").setValue(this.plugin.settings.anthropicKey).onChange(async (val) => {
+      this.addTextInput(containerEl, "Anthropic API Key", "sk-ant-...", this.plugin.settings.anthropicKey, async (val) => {
         this.plugin.settings.anthropicKey = val;
         await this.plugin.saveSettings();
-      }));
-      new import_obsidian8.Setting(containerEl).setName("Model ID").addText((text2) => text2.setPlaceholder("claude-3-7-sonnet-20250219").setValue(this.plugin.settings.anthropicModel).onChange(async (val) => {
+      });
+      this.addTextInput(containerEl, "Model ID", "claude-3-7-sonnet-20250219", this.plugin.settings.anthropicModel, async (val) => {
         this.plugin.settings.anthropicModel = val;
         await this.plugin.saveSettings();
-      }));
+      });
     }
-    containerEl.createEl("h4", { text: "Intelligence & Quality Control" });
-    new import_obsidian8.Setting(containerEl).setName("AI Intelligence Level (Thinking)").setDesc("1 (Fast/Shallow) to 5 (Deep Thought/Slow). Modulates the amount of reasoning the AI performs.").addSlider((slider) => slider.setLimits(1, 5, 1).setValue(this.plugin.settings.aiThinkingLevel).setDynamicTooltip().onChange(async (val) => {
-      this.plugin.settings.aiThinkingLevel = val;
+    this.addSectionHeader(containerEl, "TRIBUNAL CONFIGURATION");
+    const tribunalConfig = new import_obsidian8.Setting(containerEl).setName("Execution Mode").setDesc("Parallel (Faster) or Iterative (Sequential Chain).").addDropdown((drop) => drop.addOption("Parallel", "Parallel Processing").addOption("Iterative", "Iterative Chaining").setValue(this.plugin.settings.tribunalConfiguration).onChange(async (val) => {
+      this.plugin.settings.tribunalConfiguration = val;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian8.Setting(containerEl).setName("Default Target Quality").setDesc("The score (0-100) the AI should aim for when generating content (Wizard/Synthesizer default).").addSlider((slider) => slider.setLimits(0, 100, 5).setValue(this.plugin.settings.defaultTargetQuality).setDynamicTooltip().onChange(async (val) => {
-      this.plugin.settings.defaultTargetQuality = val;
-      await this.plugin.saveSettings();
-    }));
-    containerEl.createEl("h4", { text: "Creativity Matrix (Temperature)" });
-    const mult = this.plugin.settings.tempMultiplier;
-    new import_obsidian8.Setting(containerEl).setName('Global Multiplier (The "Vibe" Slider)').setDesc("Multiplies all settings below. < 1.0 = Rigid, > 1.0 = Chaos.").addSlider((slider) => slider.setLimits(0.5, 2, 0.1).setValue(this.plugin.settings.tempMultiplier).setDynamicTooltip().onChange(async (val) => {
-      this.plugin.settings.tempMultiplier = val;
-      await this.plugin.saveSettings();
-      this.display();
-    }));
-    containerEl.createEl("strong", { text: "Task-Specific Fine Tuning" });
-    new import_obsidian8.Setting(containerEl).setName(`Critic (Analysis) - Effective: ${(this.plugin.settings.tempCritic * mult).toFixed(2)}`).setDesc("Low = Objective/Harsh. High = Creative Interpretation.").addSlider((slider) => slider.setLimits(0, 1, 0.05).setValue(this.plugin.settings.tempCritic).setDynamicTooltip().onChange(async (val) => {
-      this.plugin.settings.tempCritic = val;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian8.Setting(containerEl).setName(`Wizard (Brainstorming) - Effective: ${(this.plugin.settings.tempWizard * mult).toFixed(2)}`).setDesc("High recommended for original ideas.").addSlider((slider) => slider.setLimits(0, 1.5, 0.05).setValue(this.plugin.settings.tempWizard).setDynamicTooltip().onChange(async (val) => {
-      this.plugin.settings.tempWizard = val;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian8.Setting(containerEl).setName(`Synthesizer (Fusion) - Effective: ${(this.plugin.settings.tempSynth * mult).toFixed(2)}`).setDesc("Controls how aggressively the AI merges conflicting drives.").addSlider((slider) => slider.setLimits(0, 1.5, 0.05).setValue(this.plugin.settings.tempSynth).setDynamicTooltip().onChange(async (val) => {
-      this.plugin.settings.tempSynth = val;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian8.Setting(containerEl).setName(`Architect (Structure) - Effective: ${(this.plugin.settings.tempArchitect * mult).toFixed(2)}`).setDesc("Balance between rigid structure and creative flow.").addSlider((slider) => slider.setLimits(0, 1.2, 0.05).setValue(this.plugin.settings.tempArchitect).setDynamicTooltip().onChange(async (val) => {
-      this.plugin.settings.tempArchitect = val;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian8.Setting(containerEl).setName(`Repair (Editing) - Effective: ${(this.plugin.settings.tempRepair * mult).toFixed(2)}`).setDesc("Low recommended to preserve your voice.").addSlider((slider) => slider.setLimits(0, 1, 0.05).setValue(this.plugin.settings.tempRepair).setDynamicTooltip().onChange(async (val) => {
-      this.plugin.settings.tempRepair = val;
-      await this.plugin.saveSettings();
-    }));
-    containerEl.createEl("h4", { text: "Name Pools (Character Generation)" });
-    new import_obsidian8.Setting(containerEl).setName("Name Pool (Preferred Names)").setDesc("Comma-separated list of names the AI should prioritize when generating characters.").addTextArea((text2) => text2.setPlaceholder("e.g. Kael, Elara, Thorne, ...").setValue(this.plugin.settings.namePool).onChange(async (val) => {
-      this.plugin.settings.namePool = val;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian8.Setting(containerEl).setName("Negative Name Pool (Banned Names)").setDesc("Comma-separated list of names the AI must NEVER use.").addTextArea((text2) => text2.setPlaceholder("e.g. Dave, Bob, ...").setValue(this.plugin.settings.negativeNamePool).onChange(async (val) => {
-      this.plugin.settings.negativeNamePool = val;
-      await this.plugin.saveSettings();
-    }));
-    containerEl.createEl("h4", { text: "Safety & Constraints" });
-    new import_obsidian8.Setting(containerEl).setName("Wizard Negative Constraints").setDesc("What should the AI explicitly AVOID generating? (Anti-Tropes)").addTextArea((text2) => text2.setPlaceholder("e.g. Talking Animals, Time Travel, Deus Ex Machina...").setValue(this.plugin.settings.wizardNegativeConstraints).onChange(async (val) => {
-      this.plugin.settings.wizardNegativeConstraints = val;
-      await this.plugin.saveSettings();
-    }));
-    containerEl.createEl("h4", { text: "Hardware Settings" });
-    new import_obsidian8.Setting(containerEl).setName("Max Output Tokens").setDesc("Limit the length of the AI response.").addText((text2) => text2.setValue(String(this.plugin.settings.maxOutputTokens)).onChange(async (val) => {
-      const num = parseInt(val);
-      if (!isNaN(num)) {
-        this.plugin.settings.maxOutputTokens = num;
-        await this.plugin.saveSettings();
-      }
-    }));
-    new import_obsidian8.Setting(containerEl).setName("Analysis Cores (Critic)").setDesc("Parallel passes (1-10). Higher = Slower but more accurate averaging.").addSlider((slider) => slider.setLimits(1, 10, 1).setValue(this.plugin.settings.analysisPasses).setDynamicTooltip().onChange(async (val) => {
-      this.plugin.settings.analysisPasses = val;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian8.Setting(containerEl).setName("Enable Tribunal (Multi-Agent Consensus)").setDesc("Uses 3 specialized agents (Market, Logic, Lit) instead of brute-force averaging. (More tokens, better quality).").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableTribunal).onChange(async (val) => {
+    this.styleDropdown(tribunalConfig);
+    new import_obsidian8.Setting(containerEl).setName("Enable Tribunal").setDesc("Use 5-Agent Consensus System.").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableTribunal).onChange(async (val) => {
       this.plugin.settings.enableTribunal = val;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian8.Setting(containerEl).setName("Tribunal Retries").setDesc("Max number of loop attempts (1-5) if the Analyst rejects the result.").addSlider((slider) => slider.setLimits(1, 5, 1).setValue(this.plugin.settings.tribunalMaxRetries).setDynamicTooltip().onChange(async (val) => {
-      this.plugin.settings.tribunalMaxRetries = val;
+    this.addSectionHeader(containerEl, "NEURO-PARAMETERS");
+    new import_obsidian8.Setting(containerEl).setName("AI Intelligence Level").setDesc("Thinking Effort (1-5).").addSlider((slider) => slider.setLimits(1, 5, 1).setValue(this.plugin.settings.aiThinkingLevel).setDynamicTooltip().onChange(async (val) => {
+      this.plugin.settings.aiThinkingLevel = val;
       await this.plugin.saveSettings();
     }));
-    containerEl.createEl("h4", { text: "Chief Justice Arbitration" });
-    new import_obsidian8.Setting(containerEl).setName("Enable Chief Justice").setDesc("Activates the Arbitration layer to weigh Soul vs Logic and penalize Deus Ex Machina.").addToggle((toggle) => toggle.setValue(this.plugin.settings.arbitrationEnabled).onChange(async (val) => {
-      this.plugin.settings.arbitrationEnabled = val;
+    new import_obsidian8.Setting(containerEl).setName("Temperature Multiplier").setDesc("Chaos Factor (0.5 - 2.0).").addSlider((slider) => slider.setLimits(0.5, 2, 0.1).setValue(this.plugin.settings.tempMultiplier).setDynamicTooltip().onChange(async (val) => {
+      this.plugin.settings.tempMultiplier = val;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian8.Setting(containerEl).setName("Luck Tolerance (0-10)").setDesc('How much "good luck" is allowed before it counts as Deus Ex Machina.').addSlider((slider) => slider.setLimits(0, 10, 1).setValue(this.plugin.settings.luckTolerance).setDynamicTooltip().onChange(async (val) => {
-      this.plugin.settings.luckTolerance = val;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian8.Setting(containerEl).setName("Disable Rainbows").setDesc('Turn off the "Masterpiece" rainbow animation for a flatter look.').addToggle((toggle) => toggle.setValue(this.plugin.settings.disableRainbows).onChange(async (val) => {
-      this.plugin.settings.disableRainbows = val;
-      await this.plugin.saveSettings();
-    }));
-    containerEl.createEl("div", { text: "Agent Weighting (Influence)", cls: "setting-item-description", style: "margin-bottom: 10px; font-weight: bold;" });
-    new import_obsidian8.Setting(containerEl).setName("Logic Weight").addSlider((slider) => slider.setLimits(0, 2, 0.1).setValue(this.plugin.settings.agentWeights.logic).setDynamicTooltip().onChange(async (v2) => {
-      this.plugin.settings.agentWeights.logic = v2;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian8.Setting(containerEl).setName("Soul Weight").addSlider((slider) => slider.setLimits(0, 2, 0.1).setValue(this.plugin.settings.agentWeights.soul).setDynamicTooltip().onChange(async (v2) => {
-      this.plugin.settings.agentWeights.soul = v2;
-      await this.plugin.saveSettings();
-    }));
-    containerEl.createEl("h4", { text: "Grading Palette (Gradient Map)" });
+    this.addSectionHeader(containerEl, "GRADING PALETTE");
     const colors2 = this.plugin.settings.gradingColors;
-    new import_obsidian8.Setting(containerEl).setName("Critical (0-20%)").addColorPicker((col) => col.setValue(colors2.critical).onChange(async (v2) => {
-      colors2.critical = v2;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian8.Setting(containerEl).setName("Poor (20-40%)").addColorPicker((col) => col.setValue(colors2.poor).onChange(async (v2) => {
-      colors2.poor = v2;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian8.Setting(containerEl).setName("Average (40-60%)").addColorPicker((col) => col.setValue(colors2.average).onChange(async (v2) => {
-      colors2.average = v2;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian8.Setting(containerEl).setName("Good (60-80%)").addColorPicker((col) => col.setValue(colors2.good).onChange(async (v2) => {
-      colors2.good = v2;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian8.Setting(containerEl).setName("Excellent (80-90%)").addColorPicker((col) => col.setValue(colors2.excellent).onChange(async (v2) => {
-      colors2.excellent = v2;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian8.Setting(containerEl).setName("Masterpiece (90%+)").setDesc("Also defines the 'God Mode' glow color.").addColorPicker((col) => col.setValue(colors2.masterpiece).onChange(async (v2) => {
+    new import_obsidian8.Setting(containerEl).setName("Masterpiece (90%+)").addColorPicker((col) => col.setValue(colors2.masterpiece).onChange(async (v2) => {
       colors2.masterpiece = v2;
       await this.plugin.saveSettings();
     }));
-    containerEl.createEl("h4", { text: "System Override" });
-    new import_obsidian8.Setting(containerEl).setName("Custom Critic Prompt").addTextArea((text2) => text2.setPlaceholder("You are a harsh literary critic...").setValue(this.plugin.settings.customSystemPrompt).onChange(async (val) => {
+    this.addSectionHeader(containerEl, "SYSTEM OVERRIDE");
+    new import_obsidian8.Setting(containerEl).setName("Custom Critic Prompt").addTextArea((text2) => text2.setPlaceholder("Override System Prompt...").setValue(this.plugin.settings.customSystemPrompt).onChange(async (val) => {
       this.plugin.settings.customSystemPrompt = val;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian8.Setting(containerEl).setName("Custom Archivist Prompt").addTextArea((text2) => text2.setValue(this.plugin.settings.customOutlinePrompt).onChange(async (val) => {
-      this.plugin.settings.customOutlinePrompt = val;
-      await this.plugin.saveSettings();
-    }));
+  }
+  // HELPER: Apply Retro Styles
+  styleDropdown(setting) {
+    const el = setting.controlEl.querySelector("select");
+    if (el)
+      el.addClass("retro-select");
+  }
+  addTextInput(el, name, placeholder, value, cb) {
+    const s3 = new import_obsidian8.Setting(el).setName(name);
+    s3.addText((text2) => text2.setPlaceholder(placeholder).setValue(value).onChange(cb));
+    const input = s3.controlEl.querySelector("input");
+    if (input)
+      input.addClass("retro-input");
+  }
+  addSectionHeader(el, text2) {
+    el.createEl("h4", { text: text2, style: "border-bottom: 2px solid #808080; color: #000080; margin-top: 20px;" });
   }
 };
