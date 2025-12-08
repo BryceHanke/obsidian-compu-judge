@@ -230,6 +230,25 @@
                         </div>
                     {/if}
                     <div class="dd-item" onclick={() => { onAddRepairInstruction(`General Fix`); openDropdown = null; }}>Inject General Repair</div>
+
+                    <div style="border-top:1px dashed #000; margin:2px 0;"></div>
+
+                    <!-- Comprehensive 5-Agent Repairs -->
+                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Logic Fix: Address Plot Holes & Inconsistencies`); openDropdown = null; }}>
+                        Logic Repair...
+                    </div>
+                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Market Fix: Improve Hooks & Commercial Appeal`); openDropdown = null; }}>
+                        Market Repair...
+                    </div>
+                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Soul Fix: Deepen Emotion & Theme`); openDropdown = null; }}>
+                        Soul Repair...
+                    </div>
+                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Lit Fix: Elevate Prose & Style`); openDropdown = null; }}>
+                        Lit Repair...
+                    </div>
+                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Jester Fix: Sharpen Wit & Irony`); openDropdown = null; }}>
+                        Jester Repair...
+                    </div>
                 </div>
             {/if}
         </div>

@@ -2,7 +2,7 @@ import { TFile, TFolder, normalizePath, type Plugin } from 'obsidian';
 import { DEFAULT_WIZARD_STATE, type ProjectData, type NigsSettings, DEFAULT_SETTINGS, type NigsWizardState, type NigsActionPlan } from './types';
 import type CompuJudgePlugin from './main';
 
-const DATA_FOLDER = '.compu-judge';
+const DATA_FOLDER = 'compu-judge-data';
 const GLOBAL_WIZARD_FILE = 'global_wizard_data.json';
 const GLOBAL_FORGE_FILE = 'global_forge_data.json';
 
