@@ -120,6 +120,7 @@ class NigsSettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
+        containerEl.addClass('nigs-settings-container');
 
         // WIN95 HEADER
         const header = containerEl.createEl('div', { cls: 'win95-titlebar', style: 'margin-bottom: 20px;' });
@@ -197,6 +198,67 @@ class NigsSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
+        new Setting(containerEl)
+            .setName('Tribunal Retries')
+            .setDesc('Max retries for consensus (1-5).')
+            .addSlider(slider => slider
+                .setLimits(1, 5, 1)
+                .setValue(this.plugin.settings.tribunalMaxRetries)
+                .setDynamicTooltip()
+                .onChange(async (val) => {
+                    this.plugin.settings.tribunalMaxRetries = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Arbitration Enabled')
+            .setDesc('Allow Chief Justice to adjust scores based on Logic/Soul/Market.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.arbitrationEnabled)
+                .onChange(async (val) => {
+                    this.plugin.settings.arbitrationEnabled = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        // --- AGENT WEIGHTS ---
+        this.addSectionHeader(containerEl, 'AGENT WEIGHTS');
+
+        new Setting(containerEl)
+            .setName('Logic Weight')
+            .setDesc('Importance of Logic Agent.')
+            .addSlider(slider => slider
+                .setLimits(0, 2, 0.1)
+                .setValue(this.plugin.settings.agentWeights.logic)
+                .setDynamicTooltip()
+                .onChange(async (val) => {
+                    this.plugin.settings.agentWeights.logic = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Soul Weight')
+            .setDesc('Importance of Soul Agent (Vibe/Enjoyment).')
+            .addSlider(slider => slider
+                .setLimits(0, 2, 0.1)
+                .setValue(this.plugin.settings.agentWeights.soul)
+                .setDynamicTooltip()
+                .onChange(async (val) => {
+                    this.plugin.settings.agentWeights.soul = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Market Weight')
+            .setDesc('Importance of Market Agent.')
+            .addSlider(slider => slider
+                .setLimits(0, 2, 0.1)
+                .setValue(this.plugin.settings.agentWeights.market)
+                .setDynamicTooltip()
+                .onChange(async (val) => {
+                    this.plugin.settings.agentWeights.market = val;
+                    await this.plugin.saveSettings();
+                }));
+
         // --- 2. NEURO-PARAMETERS ---
         this.addSectionHeader(containerEl, 'NEURO-PARAMETERS');
 
@@ -224,6 +286,69 @@ class NigsSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
+        new Setting(containerEl).setName('Critic Temp').setDesc('0.1 - 1.0').addSlider(s => s.setLimits(0.1, 1.0, 0.1).setValue(this.plugin.settings.tempCritic).setDynamicTooltip().onChange(async v => { this.plugin.settings.tempCritic = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Wizard Temp').setDesc('0.1 - 1.0').addSlider(s => s.setLimits(0.1, 1.0, 0.1).setValue(this.plugin.settings.tempWizard).setDynamicTooltip().onChange(async v => { this.plugin.settings.tempWizard = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Architect Temp').setDesc('0.1 - 1.0').addSlider(s => s.setLimits(0.1, 1.0, 0.1).setValue(this.plugin.settings.tempArchitect).setDynamicTooltip().onChange(async v => { this.plugin.settings.tempArchitect = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Repair Temp').setDesc('0.1 - 1.0').addSlider(s => s.setLimits(0.1, 1.0, 0.1).setValue(this.plugin.settings.tempRepair).setDynamicTooltip().onChange(async v => { this.plugin.settings.tempRepair = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Synthesizer Temp').setDesc('0.1 - 1.5').addSlider(s => s.setLimits(0.1, 1.5, 0.1).setValue(this.plugin.settings.tempSynth).setDynamicTooltip().onChange(async v => { this.plugin.settings.tempSynth = v; await this.plugin.saveSettings(); }));
+
+        new Setting(containerEl)
+            .setName('Luck Tolerance')
+            .setDesc('Tolerance for luck/coincidence (0-10).')
+            .addSlider(slider => slider
+                .setLimits(0, 10, 1)
+                .setValue(this.plugin.settings.luckTolerance)
+                .setDynamicTooltip()
+                .onChange(async (val) => {
+                    this.plugin.settings.luckTolerance = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        // --- 2.5 SAFETY & CONSTRAINTS ---
+        this.addSectionHeader(containerEl, 'SAFETY & CONSTRAINTS');
+
+        new Setting(containerEl)
+            .setName('Wizard Negative Constraints')
+            .setDesc('Things for the Wizard to avoid.')
+            .addTextArea(text => text
+                .setPlaceholder('Avoid: Deus Ex Machina...')
+                .setValue(this.plugin.settings.wizardNegativeConstraints)
+                .onChange(async (val) => {
+                    this.plugin.settings.wizardNegativeConstraints = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Preferred Name Pool')
+            .setDesc('Comma-separated list of preferred names.')
+            .addTextArea(text => text
+                .setPlaceholder('Alice, Bob, Charlie...')
+                .setValue(this.plugin.settings.namePool)
+                .onChange(async (val) => {
+                    this.plugin.settings.namePool = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Negative Name Pool')
+            .setDesc('Comma-separated list of banned names.')
+            .addTextArea(text => text
+                .setPlaceholder('X Æ A-12, ...')
+                .setValue(this.plugin.settings.negativeNamePool)
+                .onChange(async (val) => {
+                    this.plugin.settings.negativeNamePool = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Disable Rainbows')
+            .setDesc('Disable rainbow text effects.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.disableRainbows)
+                .onChange(async (val) => {
+                    this.plugin.settings.disableRainbows = val;
+                    await this.plugin.saveSettings();
+                }));
 
         // --- 6. GRADING PALETTE ---
         this.addSectionHeader(containerEl, 'GRADING PALETTE');

@@ -61,9 +61,9 @@ export class CompuJudgeView extends ItemView {
     }
     
     updateActiveFile(file: TFile | null) {
-        // Checking if component instance has the method (Svelte 5 component instance might expose exports differently depending on compilation)
-        // But props are reactive in Svelte 5 so we might need to pass file as a prop update or use store.
-        // For now, assume the component handles it or the logic is inside GradingPanel via App.
+        if (this.component && this.component.updateActiveFile) {
+            this.component.updateActiveFile(file);
+        }
     }
     
     updateTheme(theme: string) {
