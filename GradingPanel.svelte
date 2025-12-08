@@ -965,15 +965,26 @@
                                             Inject Fix: {projectData.lastLightResult.key_improvement.substring(0, 30)}...
                                         </div>
 
+                                        <div style="border-top:1px dashed #000; margin:2px 0;"></div>
+
                                         <!-- Deep Scan Issues if Available -->
                                         {#if projectData.lastAiResult}
-                                            <div style="border-top:1px dashed #000; margin:2px 0;"></div>
                                             {#if projectData.lastAiResult.content_warning && projectData.lastAiResult.content_warning !== 'None'}
                                                 <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Fix Critical: ${projectData?.lastAiResult?.content_warning}`); showQuickScanMenu = false; }}>Fix Warning</div>
                                             {/if}
-                                            {#if projectData.lastAiResult.tribunal_breakdown?.logic.content_warning}
-                                                <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Logic Fix: ${projectData?.lastAiResult?.tribunal_breakdown?.logic.content_warning}`); showQuickScanMenu = false; }}>Logic Repair</div>
-                                            {/if}
+                                            <!-- Comprehensive Fixes (Agent Based) -->
+                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Logic Fix: Plot Holes & Consistency`); showQuickScanMenu = false; }}>Logic Repair</div>
+                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Market Fix: Commercial Viability`); showQuickScanMenu = false; }}>Market Repair</div>
+                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Soul Fix: Emotion & Theme`); showQuickScanMenu = false; }}>Soul Repair</div>
+                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Lit Fix: Prose & Style`); showQuickScanMenu = false; }}>Lit Repair</div>
+                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Jester Fix: Humor & Irony`); showQuickScanMenu = false; }}>Jester Repair</div>
+                                        {:else}
+                                            <!-- Standard Fixes if no Deep Scan -->
+                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Fix Pacing & Flow`); showQuickScanMenu = false; }}>Fix Pacing</div>
+                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Fix Dialogue & Voice`); showQuickScanMenu = false; }}>Fix Dialogue</div>
+                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Enhance Description`); showQuickScanMenu = false; }}>Fix Description</div>
+                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Deepen Character Voice`); showQuickScanMenu = false; }}>Fix Character</div>
+                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Sharpen Theme`); showQuickScanMenu = false; }}>Fix Theme</div>
                                         {/if}
                                     </div>
                                 {/if}
