@@ -121,7 +121,7 @@
 .compu-container .win95-titlebar,
 .nigs-settings-container .title-bar,
 .nigs-settings-container .win95-titlebar {
-    background: #000080; /* Solid Deep Blue per OSFrame image, gradients were Win98/2k usually, but 95 did allow some if Plus! pack. Sticking to solid for authenticity. */
+    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
     color: #fff;
     padding: 2px 4px;
     display: flex;
@@ -258,6 +258,53 @@
     line-height: 1.4;
     -webkit-appearance: none;
     appearance: none;
+}
+
+/* WIN95 SLIDER (Range Input) */
+.compu-container input[type=range],
+.nigs-settings-container input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+  background: transparent;
+  margin: 10px 0;
+}
+
+.compu-container input[type=range]:focus,
+.nigs-settings-container input[type=range]:focus {
+  outline: none;
+}
+
+.compu-container input[type=range]::-webkit-slider-thumb,
+.nigs-settings-container input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 20px;
+  width: 10px;
+  background: #c0c0c0;
+  cursor: pointer;
+  margin-top: -8px;
+
+  /* Bevel Up (Physical Fader) */
+  border-top: 1px solid #fff;
+  border-left: 1px solid #fff;
+  border-right: 1px solid #000;
+  border-bottom: 1px solid #000;
+  box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
+  border-radius: 0;
+}
+
+.compu-container input[type=range]::-webkit-slider-runnable-track,
+.nigs-settings-container input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  cursor: pointer;
+  background: #fff;
+
+  /* Bevel Down / Sunken Groove */
+  border-top: 1px solid #808080;
+  border-left: 1px solid #808080;
+  border-right: 1px solid #fff;
+  border-bottom: 1px solid #fff;
+  box-shadow: inset 1px 1px 0 #000;
 }
 
 /* --- PROGRESS BAR --- */

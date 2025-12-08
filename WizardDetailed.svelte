@@ -513,8 +513,8 @@
         overflow-y: auto;
     }
 
-    .step-content h3 { margin-top: 0; font-family: 'Times New Roman', serif; font-size: 20px; margin-bottom: 10px; }
-    .step-content p { font-family: 'Arial', sans-serif; font-size: 12px; margin-bottom: 10px; }
+    .step-content h3 { margin-top: 0; font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif; font-size: 16px; margin-bottom: 10px; font-weight: bold; }
+    .step-content p { font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif; font-size: 11px; margin-bottom: 10px; }
 
     .wizard-footer {
         padding: 10px;
@@ -553,8 +553,9 @@
     label { display: block; margin-top: 12px; margin-bottom: 4px; font-size: 0.9em; font-weight: bold; color: var(--cj-dim); text-transform: uppercase; }
     .input-wrap { display: flex; gap: 5px; align-items: flex-start; }
     
-    .autofill-btn { width: 100%; margin: 15px 0; padding: 10px; background: linear-gradient(90deg, #4b0082, #800080); color: #fff; font-weight: 900; border: 2px outset #a020f0; cursor: pointer; }
-    .autofill-btn:hover { background: linear-gradient(90deg, #6a0dad, #9932cc); }
+    .autofill-btn { width: 100%; margin: 15px 0; padding: 6px; background: #c0c0c0; color: #000; font-weight: bold; border-top: 1px solid #fff; border-left: 1px solid #fff; border-right: 1px solid #000; border-bottom: 1px solid #000; box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf; cursor: pointer; font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif; }
+    .autofill-btn:active { border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #fff; border-bottom: 1px solid #fff; box-shadow: inset 1px 1px 0 #808080; padding: 7px 5px 5px 7px; }
+    .autofill-btn:disabled { color: #808080; text-shadow: 1px 1px 0 #fff; }
     
     .char-block { background: rgba(0,0,0,0.03); padding: 5px; border: 2px solid var(--cj-dim); }
     .char-header { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.1); padding: 5px; cursor: pointer; }
@@ -579,7 +580,7 @@
     .memory-status { display: flex; justify-content: space-between; align-items: center; background: #000; color: #00ff00; padding: 8px; margin-bottom: 10px; border: 2px inset var(--cj-dim); }
     .status-indicator { display: flex; gap: 8px; align-items: center; font-weight: 900; }
     .led { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #00ff00; }
-    .led.on { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
+    .led.on { background: radial-gradient(circle at 30% 30%, #e0ffe0, #00ff00); border-color: #00ff00; }
     .led.off { background: #111; border-color: #555; }
     
     .context-controls { display: flex; gap: 5px; }

@@ -1062,7 +1062,7 @@
     .memory-status { display: flex; justify-content: space-between; align-items: center; background: #000; color: #00ff00; padding: 5px 8px; font-size: 12px; border: 2px inset #808080; margin-bottom: 5px; font-weight: bold; }
     .status-indicator { display: flex; gap: 8px; align-items: center; font-weight: 900; }
     .led { width: 8px; height: 8px; border-radius: 50%; background: #004400; border: 1px solid #00ff00; }
-    .led.on { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
+    .led.on { background: radial-gradient(circle at 30% 30%, #e0ffe0, #00ff00); border-color: #00ff00; }
     .context-controls { display: flex; gap: 5px; }
     .upload-btn { flex: 1; padding: 4px; font-size: 11px; background: var(--cj-bg); border: 2px outset #fff; cursor: pointer; font-weight: bold; }
     .upload-btn:active { border-style: inset; }
@@ -1076,7 +1076,7 @@
     .status-bar { border-top: 2px solid var(--cj-dim); padding: 4px 8px; background: var(--cj-bg); color: var(--cj-text); display: flex; gap: 15px; font-size: 12px; align-items: center; font-weight: 900; }
     .spacer { flex: 1; }
     .disk-led { font-weight: 900; color: #808080; border: 2px inset #808080; padding: 0 4px; background: #c0c0c0; transition: all 0.1s; }
-    .active-led { background: #ff0000; color: #fff; border-color: #ff0000; box-shadow: 0 0 5px #ff0000; }
+    .active-led { background: radial-gradient(circle at 30% 30%, #ffaaaa, #ff0000); color: #fff; border-color: #ff0000; }
     .empty-state { padding: 40px; text-align: center; opacity: 0.5; font-weight: 900; }
     .reset-btn { font-size: 10px; padding: 0 4px; background: #ff0000; color: white; border: 2px outset #ffaaaa; cursor: pointer; }
     .reset-btn:active { border-style: inset; }
