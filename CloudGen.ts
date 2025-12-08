@@ -161,7 +161,7 @@ class OpenAIAdapter implements AIAdapter {
         }
 
         const body: any = {
-            model: this.model || 'gpt-4o',
+            model: this.model,
             messages: [{ role: "system", content: `${baseSys}\n${userSys}` }, { role: "user", content: content }],
             temperature: tempOverride !== undefined ? tempOverride : 0.7,
             max_tokens: this.settings.maxOutputTokens,
@@ -210,7 +210,7 @@ class AnthropicAdapter implements AIAdapter {
         }
 
         const body: any = {
-            model: this.model || 'claude-3-7-sonnet-20250219',
+            model: this.model,
             max_tokens: this.settings.maxOutputTokens, 
             system: `${baseSys}\n${userSys}`,
             messages: [{ role: "user", content: content }],
