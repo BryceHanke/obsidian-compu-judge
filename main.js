@@ -90,6 +90,8 @@ var DEFAULT_SETTINGS = {
   maxOutputTokens: 8192,
   analysisPasses: 1,
   enableTribunal: true,
+  tribunalMaxRetries: 2,
+  // Default 2 retries
   showThinking: false,
   customSystemPrompt: "",
   customOutlinePrompt: "",
@@ -169,11 +171,17 @@ var NIGS_SYSTEM_PROMPT = `
 
 You are not a copy editor. You are a **MASTER STORYTELLER** (Sanderson/McKee Level). Your job is to ignore the "window dressing" and judge the **FOUNDATION** (Structure, Psychology, Theme, and Logic).
 
-**CRITICAL INSTRUCTION: DO NOT BE POLITE.**
+**CRITICAL INSTRUCTION 1: DO NOT BE POLITE.**
 - If a sentence is boring, say it is boring.
 - If the plot makes no sense, call it a hallucination.
 - If the character is a Mary Sue, flag it immediately.
 - Sugarcoating is disabled.
+
+**CRITICAL INSTRUCTION 2: UNBIASED BLIND REVIEW.**
+- You must treat this outline as a **BRAND NEW STORY** written by an unknown author.
+- Ignore any recognition of existing intellectual property, fame, or past reviews.
+- Grade ONLY what is present in the text.
+- Do not inflate scores because the source material is famous.
 
 ### THE ZERO-BASED SCORING PROTOCOL:
 **THE BASELINE IS 0.**
@@ -359,6 +367,12 @@ var NIGS_OUTLINE_PROMPT = `
    - **UNBOUNDED CAST:** Generate an **EXHAUSTIVE CAST LIST** containing major, minor, and incidental characters.
    - **Long Plot:** Create a complex series of events, not a brief overview.
    - **Use Deep Nomenclature.**
+
+[NEGATIVE CONSTRAINTS - STRICTLY FORBIDDEN]:
+- **NO REVIEWS:** Do not mention Rotton Tomatoes, IMDB, or critical reception.
+- **NO META-COMMENTARY:** Do not analyze the "cultural impact" or "production history".
+- **NO RATINGS:** Do not assign stars or grades.
+- **STORY ONLY:** The output must be PURE DIEGETIC NARRATIVE content (Plot, Character, Theme).
 
 ### 1. EXHAUSTIVE CAST MANIFEST
 List **EVERY** character mentioned, appearing, or implied in the story.
@@ -7094,23 +7108,28 @@ ${statsBlock}
 ${sourceMaterial}
 `;
       let attempts = 0;
-      const maxAttempts = 2;
+      const maxAttempts = this.settings.tribunalMaxRetries || 2;
       let finalResponse = null;
       let isApproved = false;
+      let previousConsensus = "";
       do {
         attempts++;
         setStatus(attempts > 1 ? `RE-CONVENING TRIBUNAL (ATTEMPT ${attempts})...` : "STARTING TRIBUNAL PROCESS...");
+        const currentInputPayload = previousConsensus ? `${baseInputPayload}
+
+[PREVIOUS CONSENSUS / FEEDBACK]:
+${previousConsensus}` : baseInputPayload;
         setStatus("CONVENING AGENTS: SOUL, JESTER, LOGIC, MARKET...");
         const soulTemp = this.getTemp(0.9);
         const logicTemp = this.getTemp(0.1, true);
         const marketTemp = this.getTemp(0.5);
         const jesterTemp = this.getTemp(1.1);
         const [soulRaw, jesterRaw, logicRaw, marketRaw, forensicRaw] = await Promise.all([
-          this.callAI(baseInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp).catch((e2) => `{"error": "Soul Failed"}`),
-          this.callAI(baseInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp).catch((e2) => `{"error": "Jester Failed"}`),
-          this.callAI(baseInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp).catch((e2) => `{"error": "Logic Failed"}`),
-          this.callAI(baseInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp).catch((e2) => `{"error": "Market Failed"}`),
-          this.callAI(baseInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp).catch((e2) => `{"error": "Forensic Failed"}`)
+          this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp).catch((e2) => `{"error": "Soul Failed"}`),
+          this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp).catch((e2) => `{"error": "Jester Failed"}`),
+          this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp).catch((e2) => `{"error": "Logic Failed"}`),
+          this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp).catch((e2) => `{"error": "Market Failed"}`),
+          this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp).catch((e2) => `{"error": "Forensic Failed"}`)
         ]);
         const soulReport = this.parseJson(soulRaw);
         const jesterReport = this.parseJson(jesterRaw);
@@ -7138,7 +7157,7 @@ ${sourceMaterial}
         finalResponse.niche_score = soulReport.score;
         finalResponse.niche_reason = soulReport.critique;
         finalResponse.cohesion_score = logicReport.score;
-        finalResponse.cohesion_reason = `Plot Holes: ${logicReport.inconsistencies.length}`;
+        finalResponse.cohesion_reason = `Plot Holes: ${logicReport.inconsistencies ? logicReport.inconsistencies.length : 0}`;
         finalResponse.arbitration_log = arbitrationLog;
         finalResponse.tribunal_breakdown = {
           market: marketReport,
@@ -7146,7 +7165,7 @@ ${sourceMaterial}
           lit: soulReport
           // Mapping Soul to Lit slot for UI compatibility
         };
-        if (logicReport.score <= 0) {
+        if (logicReport.score < 0) {
           const vetoFactor = 1 / 6;
           finalResponse.commercial_score = Math.round(finalResponse.commercial_score * vetoFactor);
           finalResponse.commercial_reason += " [LOGIC VETO: Score Slashed]";
@@ -7172,7 +7191,7 @@ ${JSON.stringify(finalResponse)}
       } while (!isApproved && attempts < maxAttempts);
       if (!finalResponse)
         throw new Error("Grading failed to produce response.");
-      if (finalResponse.tribunal_breakdown && finalResponse.tribunal_breakdown.logic.cohesion_score <= 0) {
+      if (finalResponse.tribunal_breakdown && finalResponse.tribunal_breakdown.logic && finalResponse.tribunal_breakdown.logic.score <= 0) {
         const vetoFactor = 1 / 6;
         finalResponse.commercial_score = Math.round(finalResponse.commercial_score * vetoFactor);
         finalResponse.niche_score = Math.round(finalResponse.niche_score * vetoFactor);
@@ -30526,7 +30545,7 @@ ${sourceText}`;
         modeLabel = "RESEARCHING & GENERATING...";
         combinedInput = `TARGET TITLE / CONCEPT: "${instructions}"
 
-DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the accurate plot details and outline the published work.`;
+DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the accurate plot details and outline the published work. DO NOT include reviews, ratings, or critical reception. STRICTLY STORY ONLY.`;
         useSearch = true;
         const sanitizedTitle = instructions.replace(/[^a-z0-9\s]/gi, "").trim().replace(/\s+/g, "_").substring(0, 40);
         if (sanitizedTitle.length > 0)
@@ -31608,6 +31627,10 @@ var NigsSettingTab = class extends import_obsidian8.PluginSettingTab {
     }));
     new import_obsidian8.Setting(containerEl).setName("Enable Tribunal (Multi-Agent Consensus)").setDesc("Uses 3 specialized agents (Market, Logic, Lit) instead of brute-force averaging. (More tokens, better quality).").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableTribunal).onChange(async (val) => {
       this.plugin.settings.enableTribunal = val;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Tribunal Retries").setDesc("Max number of loop attempts (1-5) if the Analyst rejects the result.").addSlider((slider) => slider.setLimits(1, 5, 1).setValue(this.plugin.settings.tribunalMaxRetries).setDynamicTooltip().onChange(async (val) => {
+      this.plugin.settings.tribunalMaxRetries = val;
       await this.plugin.saveSettings();
     }));
     containerEl.createEl("h4", { text: "Chief Justice Arbitration" });

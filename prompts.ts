@@ -233,6 +233,12 @@ export const NIGS_OUTLINE_PROMPT = `
    - **Long Plot:** Create a complex series of events, not a brief overview.
    - **Use Deep Nomenclature.**
 
+[NEGATIVE CONSTRAINTS - STRICTLY FORBIDDEN]:
+- **NO REVIEWS:** Do not mention Rotton Tomatoes, IMDB, or critical reception.
+- **NO META-COMMENTARY:** Do not analyze the "cultural impact" or "production history".
+- **NO RATINGS:** Do not assign stars or grades.
+- **STORY ONLY:** The output must be PURE DIEGETIC NARRATIVE content (Plot, Character, Theme).
+
 ### 1. EXHAUSTIVE CAST MANIFEST
 List **EVERY** character mentioned, appearing, or implied in the story.
 - **Major:** Protagonists, Antagonists.

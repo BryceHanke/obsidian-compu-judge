@@ -473,7 +473,7 @@
                 startLoading(path, estTime, modeLabel);
             } else {
                 modeLabel = "RESEARCHING & GENERATING...";
-                combinedInput = `TARGET TITLE / CONCEPT: "${instructions}"\n\nDIRECTIVE: If this is an existing published story (Book/Movie), retrieve the accurate plot details and outline the published work.`;
+                combinedInput = `TARGET TITLE / CONCEPT: "${instructions}"\n\nDIRECTIVE: If this is an existing published story (Book/Movie), retrieve the accurate plot details and outline the published work. DO NOT include reviews, ratings, or critical reception. STRICTLY STORY ONLY.`;
                 useSearch = true; 
                 const sanitizedTitle = instructions.replace(/[^a-z0-9\s]/gi, '').trim().replace(/\s+/g, '_').substring(0, 40);
                 if (sanitizedTitle.length > 0) outputFilename = sanitizedTitle + "_OUTLINE.md";
