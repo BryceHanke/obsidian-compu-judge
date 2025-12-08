@@ -540,7 +540,7 @@
     }
 
     // [UPDATED] RUN SYNTHESIS WITH OPTIONAL TITLE
-    async function runDriveSynthesis(customTitle?: string) {
+    async function runDriveSynthesis(customTitle?: string, targetQuality?: number) {
         if (!wizardData) return;
         // [UPDATED] Use Local Project Drives
         const drives = wizardData.synthesisDrives || [];
@@ -557,7 +557,7 @@
             const outlineMarkdown = await cloud.synthesizeDrives(
                 drives,
                 customTitle,
-                undefined, // targetQuality
+                targetQuality,
                 controller.signal,
                 (msg) => updateProcessStatus(pid, msg)
             );
