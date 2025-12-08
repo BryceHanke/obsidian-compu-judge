@@ -318,14 +318,20 @@ ${sourceMaterial}
 
         // --- GRADE ANALYST LOOP ---
         let attempts = 0;
-        const maxAttempts = 2; // Allow 1 initial pass + 1 retry max (or 2 retries)
+        const maxAttempts = this.settings.tribunalMaxRetries || 2; // Use setting or default to 2
         let finalResponse: NigsResponse | null = null;
         let isApproved = false;
+        let previousConsensus = "";
 
         // [UPDATED] Tribunal Loop with Soul, Jester, Logic, Market
         do {
             attempts++;
             setStatus(attempts > 1 ? `RE-CONVENING TRIBUNAL (ATTEMPT ${attempts})...` : "STARTING TRIBUNAL PROCESS...");
+
+            // Add previous consensus to the input if it exists
+            const currentInputPayload = previousConsensus
+                ? `${baseInputPayload}\n\n[PREVIOUS CONSENSUS / FEEDBACK]:\n${previousConsensus}`
+                : baseInputPayload;
 
             // --- PARALLEL TRIBUNAL CALL ---
             // We run 4 agents: Soul (Vibe), Logic (Truth), Market (ROI), Jester (Satire)
@@ -340,11 +346,11 @@ ${sourceMaterial}
             const jesterTemp = this.getTemp(1.1); // Chaos
 
             const [soulRaw, jesterRaw, logicRaw, marketRaw, forensicRaw] = await Promise.all([
-                this.callAI(baseInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp).catch(e => `{"error": "Soul Failed"}`),
-                this.callAI(baseInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp).catch(e => `{"error": "Jester Failed"}`),
-                this.callAI(baseInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp).catch(e => `{"error": "Logic Failed"}`),
-                this.callAI(baseInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp).catch(e => `{"error": "Market Failed"}`),
-                this.callAI(baseInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp).catch(e => `{"error": "Forensic Failed"}`)
+                this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp).catch(e => `{"error": "Soul Failed"}`),
+                this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp).catch(e => `{"error": "Jester Failed"}`),
+                this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp).catch(e => `{"error": "Logic Failed"}`),
+                this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp).catch(e => `{"error": "Market Failed"}`),
+                this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp).catch(e => `{"error": "Forensic Failed"}`)
             ]);
 
             // Parse individual reports
@@ -383,7 +389,7 @@ ${sourceMaterial}
             finalResponse.niche_score = soulReport.score;
             finalResponse.niche_reason = soulReport.critique;
             finalResponse.cohesion_score = logicReport.score;
-            finalResponse.cohesion_reason = `Plot Holes: ${logicReport.inconsistencies.length}`;
+            finalResponse.cohesion_reason = `Plot Holes: ${logicReport.inconsistencies ? logicReport.inconsistencies.length : 0}`;
 
             // Attach Arbitration Log
             finalResponse.arbitration_log = arbitrationLog;
@@ -451,7 +457,7 @@ ${JSON.stringify(finalResponse)}
         // We will just return the `finalResponse` from the last loop.)
 
         // [LOGIC VETO PROTOCOL]
-        if (finalResponse.tribunal_breakdown && finalResponse.tribunal_breakdown.logic.cohesion_score <= 0) {
+        if (finalResponse.tribunal_breakdown && finalResponse.tribunal_breakdown.logic && finalResponse.tribunal_breakdown.logic.score <= 0) {
             const vetoFactor = 1 / 6;
             finalResponse.commercial_score = Math.round(finalResponse.commercial_score * vetoFactor);
             finalResponse.niche_score = Math.round(finalResponse.niche_score * vetoFactor);

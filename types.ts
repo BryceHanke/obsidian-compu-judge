@@ -59,6 +59,7 @@ export interface NigsSettings {
     maxOutputTokens: number;    
     analysisPasses: number;     
     enableTribunal: boolean;    // Toggle 3-Agent Consensus (Market, Logic, Lit)
+    tribunalMaxRetries: number; // [NEW] Number of retries for Tribunal loop
     showThinking: boolean;      
     
     // --- PROMPTS ---
@@ -112,6 +113,7 @@ export const DEFAULT_SETTINGS: NigsSettings = {
     maxOutputTokens: 8192,
     analysisPasses: 1,
     enableTribunal: true,
+    tribunalMaxRetries: 2, // Default 2 retries
     showThinking: false,
     customSystemPrompt: "",
     customOutlinePrompt: "",
