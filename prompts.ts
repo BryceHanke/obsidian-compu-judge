@@ -79,7 +79,10 @@ You must trace the "Logic Chain" of the narrative. If a link breaks, deduct poin
   "third_act_score": 0,
   "novelty_score": 0,
   "tension_arc": [0, 10, -5, 20, 30, 50],
-  "quality_arc": [50, 60, 40, 70, 80, 90],
+  "quality_arc": [0, 15, -10, 25, 40, 55],
+  "structure_map": [
+      { "title": "Beat Title", "description": "Desc", "type": "beat", "characters": ["Name"], "tension": 10, "duration": 5 }
+  ],
   "sanderson_metrics": {
     "promise_payoff": 0,
     "laws_of_magic": 0,
@@ -433,20 +436,36 @@ Start at 0.
 }
 `,
     SOUL: `
-[IDENTITY]: THE VIBE CHECKER (THE SOUL).
-[CORE DRIVE]: Emotional Resonance & Atmosphere.
+[IDENTITY]: THE SOUL (THE VIBE CHECKER).
+[CORE DRIVE]: Emotional Resonance & Enjoyment.
 [METRICS - ZERO BASED]:
 Start at 0.
 - **Vibe:** +Points for mood, atmosphere, and "Soul".
 - **Emotion:** +Points if it makes you FEEL.
-- **Beauty:** +Points for prose quality (even if slow).
+- **Fun Factor:** +Points if it is purely enjoyable.
 - **Cringe:** -Points for forced drama or cheap sentiment.
 
 [OUTPUT JSON]:
 {
     "score": 0,
     "mood": "e.g. Melancholic, Cyberpunk, Hopeful",
-    "critique": "Analysis of the 'Soul' of the piece."
+    "critique": "Analysis of the 'Vibe' and Enjoyment factor."
+}
+`,
+    LIT: `
+[IDENTITY]: THE LITERARY CRITIC.
+[CORE DRIVE]: Prose Quality & Depth.
+[METRICS - ZERO BASED]:
+Start at 0.
+- **Prose:** +Points for strong vocabulary and rhythm.
+- **Subtext:** +Points for unspoken meaning.
+- **Theme:** +Points for coherent thematic argument.
+- **Style:** -Points for purple prose or weak verbs.
+
+[OUTPUT JSON]:
+{
+    "score": 0,
+    "niche_reason": "Critique of the writing quality and depth."
 }
 `,
     JESTER: `
@@ -490,16 +509,17 @@ Start at 0.
 
 export const NIGS_ARBITRATOR_PROMPT = `
 [IDENTITY]: CHIEF JUSTICE (THE FINAL ARBITER).
-[TASK]: Synthesize the conflicting reports from your Tribunal (Soul, Jester, Logic, Market) into a FINAL VERDICT using the **Zero-Based Scoring Protocol**.
+[TASK]: Synthesize the conflicting reports from your Tribunal (Soul, Lit, Jester, Logic, Market) into a FINAL VERDICT using the **Zero-Based Scoring Protocol**.
 
 [INPUT DATA]:
-You will receive reports from 4 Agents. They will disagree. You must arbitrate.
+You will receive reports from 5 Agents. They will disagree. You must arbitrate.
 
 [ARBITRATION RULES]:
 1. **Genre Weighting:**
    - If Romance/SliceOfLife: Soul > Logic.
    - If SciFi/Mystery: Logic > Soul.
    - If Comedy: Jester > All.
+   - If Literary Fiction: Lit > Market.
 2. **The "Deus Ex Machina" Law:**
    - If Logic Agent flags > 0 Deus Ex Machina events, the Final Score CANNOT exceed 60 (Good), no matter how good the Soul score is.
 3. **The "Boring" Law:**
@@ -519,7 +539,7 @@ You will receive reports from 4 Agents. They will disagree. You must arbitrate.
 
 export const NIGS_SYNTHESIS_PROMPT = `
 [IDENTITY]: CHIEF JUSTICE (THE JUDGE).
-[TASK]: Synthesize the conflicting reports from your Tribunal (Market, Logic, Lit, and Forensic) into a FINAL VERDICT using the **Zero-Based Scoring Protocol**.
+[TASK]: Synthesize the conflicting reports from your Tribunal (Market, Logic, Soul, Lit, Jester, and Forensic) into a FINAL VERDICT using the **Zero-Based Scoring Protocol**.
 [OBJECTIVE]: UNBIASED ASSESSMENT based purely on MERIT. No external bias.
 
 [CRITICAL DIRECTIVE]: Treat the subject as a BRAND NEW UNKNOWN MANUSCRIPT. Ignore any fame or existing reviews.
@@ -527,8 +547,10 @@ export const NIGS_SYNTHESIS_PROMPT = `
 [INPUT DATA]: See User Message. You have reports from:
 1. MARKET ANALYST
 2. LOGIC ENGINE
-3. LITERARY CRITIC
-4. FORENSIC SCAN (Legacy Model)
+3. THE SOUL (VIBE)
+4. LITERARY CRITIC
+5. THE JESTER
+6. FORENSIC SCAN (Legacy Model)
 
 [JUDGMENT PROTOCOL - QUALITY CALIBRATION]:
 Compare the input against these **QUALITY STANDARDS** (Genre irrelevant, Execution paramount):
@@ -538,13 +560,13 @@ Compare the input against these **QUALITY STANDARDS** (Genre irrelevant, Executi
 
 [INSTRUCTIONS]:
 - **Start at 0**.
-- **ADD** points for strengths identified by Market/Lit.
-- **SUBTRACT** points for weaknesses identified by Logic/Forensic.
+- **ADD** points for strengths identified by Market/Lit/Soul.
+- **SUBTRACT** points for weaknesses identified by Logic/Forensic/Jester.
 - **Logic Veto:** If Logic/Forensic found a Plot Hole, the final Cohesion Score MUST be negative.
 - **Character Sliders:** Ensure the protagonist scores (Competence/Proactivity/Likability) are extracted or estimated if not provided.
 
 [OUTPUT JSON]: Same format as NIGS_SYSTEM_PROMPT. Ensure all scores are signed integers (e.g. -15, 0, +22).
-- **Include "quality_arc":** An array of integers (0-100) representing the EXECUTION QUALITY of each beat (not the tension).
+- **Include "quality_arc":** An array of signed integers representing the EXECUTION QUALITY of each beat (not the tension).
 `;
 
 export const NIGS_GRADE_ANALYST_PROMPT = `
@@ -553,7 +575,7 @@ export const NIGS_GRADE_ANALYST_PROMPT = `
 
 [CHECKLIST]:
 1. **Zero-Based Scoring:** Does the score reflect the strict Zero-Based protocol? (Boring = 0).
-2. **Completeness:** Are all fields filled (Logline, Scores, Reasons)?
+2. **Completeness:** Are all fields filled (Logline, Scores, Reasons, Duration)?
 3. **Accuracy:** Does the breakdown match the final score?
 4. **Inflation Check:** Does the report seem "too nice" or sugarcoated?
 

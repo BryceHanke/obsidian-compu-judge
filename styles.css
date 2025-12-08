@@ -1,4 +1,4 @@
-/* COMPU-JUDGE 98 GLOBAL STYLES (v8.0.0 - REFINED) */
+/* COMPU-JUDGE 98 GLOBAL STYLES (v9.0.0 - OSFrame Edition) */
 
 :root {
   /* Default Win95 (Light) Values */
@@ -12,16 +12,6 @@
   --cj-user-color: #000080;
   --cj-grade-masterpiece: #FFFFFF; 
   --cj-bsod-blue: #0000AA;
-  
-  /* --- PALETTE: TACTICAL HUD --- */
-  --cj-adverb: #ff0000;
-  --cj-filter: #ffd700;
-  --cj-weak: #a9a9a9;
-  
-  /* --- PALETTE: TRIBUNAL AGENTS --- */
-  --cj-agent-market: #008000;
-  --cj-agent-logic: #000080;
-  --cj-agent-lit: #800080;
 }
 
 /* Obsidian Leaf Override to remove padding for full immersion */
@@ -43,9 +33,8 @@
     position: relative;
 }
 
-/* --- VISUAL POLISH: CLEANER BEVELS --- */
+/* --- VISUAL POLISH: SHARP BEVELS (OSFrame Style) --- */
 .bevel-up {
-    /* TRUE WIN95 BORDER LOGIC */
     border-top: 1px solid #fff;
     border-left: 1px solid #fff;
     border-right: 1px solid #000;
@@ -64,13 +53,15 @@
 }
 
 .bevel-groove {
-    border: 2px solid var(--cj-dim);
-    border-right-color: #fff;
+    border: 2px groove #dfdfdf; /* Standard CSS groove approximates it well enough, or use solid borders */
+    border: 2px solid #808080;
     border-bottom-color: #fff;
-    background: transparent;
+    border-right-color: #fff;
+    border-top-color: #808080;
+    border-left-color: #808080;
 }
 
-/* --- BUTTONS (Win95 Authentic) --- */
+/* --- BUTTONS (Win95 Authentic - OSFrame) --- */
 .win95-btn, .action-btn {
     /* TRUE WIN95 BUTTON OUTLINE */
     border-top: 1px solid #fff;
@@ -82,13 +73,13 @@
 
     color: #000;
     font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
-    font-weight: bold;
+    font-weight: normal; /* Buttons in OSFrame image are not bold */
     cursor: pointer;
-    padding: 4px 10px;
-    text-transform: uppercase;
+    padding: 4px 6px;
     font-size: 11px;
     transition: none;
-    border-radius: 0; /* NO ROUNDED CORNERS */
+    border-radius: 0;
+    min-height: 22px;
 }
 
 .win95-btn:active, .action-btn:active {
@@ -97,7 +88,7 @@
     border-right: 1px solid #fff;
     border-bottom: 1px solid #fff;
     box-shadow: inset 1px 1px 0 #808080;
-    padding: 5px 9px 3px 11px; /* The physical text shift */
+    padding: 5px 5px 3px 7px; /* The physical text shift */
 }
 
 .win95-btn:disabled, .action-btn:disabled {
@@ -107,20 +98,99 @@
 }
 
 .win95-btn.primary, .action-btn.primary {
-    font-weight: bold;
-    padding: 6px 12px;
+    font-weight: bold; /* Primary actions can be bold */
 }
 
-.win95-btn.dashed-btn {
-    border: 1px dashed #808080;
-    background: transparent;
-    color: #555;
-    box-shadow: none;
+/* --- TITLE BAR (OSFrame Deep Blue) --- */
+.title-bar, .win95-titlebar {
+    background: #000080; /* Solid Deep Blue per OSFrame image, gradients were Win98/2k usually, but 95 did allow some if Plus! pack. Sticking to solid for authenticity. */
+    color: #fff;
+    padding: 2px 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
+    font-size: 11px;
+    height: 18px;
+    margin-bottom: 2px;
 }
-.win95-btn.dashed-btn:hover {
-    border: 1px solid #000;
+
+.win95-titlebar-text {
+    display: flex; gap: 5px; align-items: center;
+}
+
+.win95-close-btn {
+    width: 14px; height: 12px;
+    background: #c0c0c0;
+    border-top: 1px solid #fff; border-left: 1px solid #fff; border-right: 1px solid #000; border-bottom: 1px solid #000;
+    box-shadow: inset -1px -1px 0 #808080;
+    font-size: 9px; line-height: 9px; padding: 0;
+    color: #000; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; margin-left: 2px;
+}
+.win95-close-btn:active {
+    border-style: inset; padding: 1px 0 0 1px;
+}
+
+/* --- WIN95 POPUP WINDOW (OSFrame Style) --- */
+.win95-popup-window {
+    background: #c0c0c0;
+    border-top: 1px solid #fff;
+    border-left: 1px solid #fff;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
+    box-shadow: 1px 1px 0 #000; /* Drop shadow */
+    padding: 2px;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+}
+
+.win95-menubar {
+    display: flex;
+    gap: 12px;
+    padding: 2px 6px;
+    font-size: 11px;
     color: #000;
-    background: rgba(255,255,255,0.2);
+}
+
+.win95-menu-item {
+    cursor: default;
+    position: relative;
+}
+.win95-menu-item:first-letter { text-decoration: underline; }
+.win95-menu-item:hover {
+    background-color: #000080; color: #fff;
+}
+
+.win95-info-area {
+    padding: 4px 8px; font-size: 11px; color: #000;
+}
+
+/* Content Inset (White Box) */
+.win95-content-inset {
+    background: #fff;
+    border-top: 1px solid #404040;
+    border-left: 1px solid #404040;
+    border-right: 1px solid #fff;
+    border-bottom: 1px solid #fff;
+    box-shadow: inset 1px 1px 0 #808080;
+    padding: 8px; margin: 2px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    color: #000;
+}
+
+/* Status Bar */
+.win95-statusbar {
+    display: flex; gap: 2px; padding: 2px; margin-top: 2px; border-top: 1px solid #808080;
+}
+.win95-status-field {
+    flex: 1;
+    border-top: 1px solid #808080; border-left: 1px solid #808080; border-right: 1px solid #fff; border-bottom: 1px solid #fff;
+    padding: 2px 4px; font-size: 11px; color: #000; background: #c0c0c0;
 }
 
 /* --- GLOBAL INPUT OVERRIDES --- */
@@ -128,321 +198,26 @@
     width: 100%;
     background-color: #fff !important;
     color: #000 !important;
-
-    /* Input Areas need to be Courier New/Consolas */
     font-family: 'Courier New', 'Consolas', monospace;
 
+    /* Sunken Field */
     border-top: 1px solid #404040 !important;
     border-left: 1px solid #404040 !important;
     border-right: 1px solid #fff !important;
     border-bottom: 1px solid #fff !important;
     box-shadow: inset 1px 1px 0 #808080 !important;
 
-    padding: 4px 6px;
-    font-size: 13px;
+    padding: 3px 4px;
+    font-size: 12px;
     font-weight: normal;
     border-radius: 0 !important;
     resize: none;
     line-height: 1.4;
-    -webkit-appearance: none; /* Remove native OS rounded styling */
+    -webkit-appearance: none;
     appearance: none;
 }
 
-/* Dropdown Arrow Hack for non-native appearance */
-.retro-select {
-    background-image: url('data:image/svg+xml;utf8,<svg width="10" height="10" viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><path d="M0 0 L10 0 L5 5 Z" fill="black" /></svg>');
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-}
-
-.retro-input:focus, .retro-select:focus {
-    outline: 1px dotted #000;
-    background-color: #fff !important;
-}
-
-/* --- TITLE BAR --- */
-.title-bar {
-    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
-    color: #fff;
-    padding: 4px 8px;
-    display: flex;
-    justify-content: space-between;
-    font-weight: bold;
-    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
-    font-size: 11px;
-}
-
-/* --- SCROLLBARS --- */
-.window-body::-webkit-scrollbar { width: 16px; background: #dfdfdf; }
-
-.window-body::-webkit-scrollbar-thumb { 
-    background: var(--cj-bg); 
-    border-top: 1px solid #fff;
-    border-left: 1px solid #fff;
-    border-right: 1px solid #000;
-    border-bottom: 1px solid #000;
-}
-
-.window-body::-webkit-scrollbar-track {
-    background: repeating-linear-gradient(45deg, #ddd, #ddd 2px, #fff 2px, #fff 4px);
-}
-
-/* --- TRIBUNAL DASHBOARD (POLISHED) --- */
-.tribunal-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.agent-card {
-    border-top: 1px solid #fff;
-    border-left: 1px solid #fff;
-    border-right: 1px solid #000;
-    border-bottom: 1px solid #000;
-    box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
-    background: #c0c0c0;
-
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    font-size: 11px;
-}
-
-.agent-header {
-    color: white;
-    padding: 4px;
-    font-weight: 900;
-    text-transform: uppercase;
-    font-size: 11px;
-    text-align: center;
-    border-bottom: 1px solid #808080;
-    letter-spacing: 1px;
-}
-
-/* Specific Agent Colors */
-.agent-market { background: linear-gradient(180deg, #008000, #006400); }
-.agent-logic { background: linear-gradient(180deg, #000080, #000060); }
-.agent-lit { background: linear-gradient(180deg, #800080, #600060); }
-
-.agent-verdict {
-    font-weight: 900;
-    background: #000;
-    color: #0f0;
-    padding: 4px;
-    text-align: center;
-    font-family: 'Consolas', monospace;
-    border-bottom: 1px solid #999;
-}
-
-.agent-list {
-    padding: 8px;
-    font-size: 11px;
-    line-height: 1.3;
-    font-weight: bold;
-    color: #333;
-}
-
-/* --- DRIVES (Physical Cartridge Look) --- */
-.drive-block {
-    margin-bottom: 8px;
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
-}
-
-.drive-header {
-    background: linear-gradient(90deg, #000080, #1084d0);
-    padding: 6px;
-    border-bottom: 1px solid rgba(255,255,255,0.3);
-}
-
-.drive-id-badge {
-    background: #000;
-    color: #0f0;
-    padding: 1px 4px;
-    font-family: 'Consolas', monospace;
-    font-size: 10px;
-    border: 1px solid #555;
-    margin-right: 5px;
-}
-
-.lib-item {
-    padding: 6px;
-    border-bottom: 1px solid #ccc;
-    background: #f8f8f8;
-    transition: background 0.1s;
-}
-.lib-item:hover { background: #e8e8ff; }
-
-/* --- MASTERPIECE & CRITICAL (Retained) --- */
-.masterpiece-text {
-    background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: rainbow-text-scroll 3s linear infinite;
-    filter: drop-shadow(1px 1px 0px rgba(0,0,0,0.5));
-}
-
-@keyframes rainbow-text-scroll { to { background-position: 200% center; } }
-
-.critical-crack {
-    border: 4px double #550000 !important;
-    animation: shake-hard 0.5s cubic-bezier(.36,.07,.19,.97) both;
-}
-
-@keyframes shake-hard {
-  10%, 90% { transform: translate3d(-2px, 0, 0); }
-  20%, 80% { transform: translate3d(3px, 0, 0); }
-  30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
-  40%, 60% { transform: translate3d(5px, 0, 0); }
-}
-
-/* --- RESPONSIVE --- */
-@media (max-width: 600px) {
-    .tribunal-grid { grid-template-columns: 1fr; }
-    .score-main { font-size: 42px !important; }
-}
-
-/* --- SCORE CONTAINER Z-INDEX FIX --- */
-.score-container { 
-    background: #d4d4d4; 
-    padding-bottom: 25px; 
-    position: relative; 
-    z-index: 100; /* Ensure tooltips are above following sections */
-}
-
-.sub-score-row {
-    position: relative;
-    z-index: 101; /* Ensure sub-scores are even higher */
-    display: flex; 
-    justify-content: space-around; 
-    align-items: center; 
-    padding-top: 5px; 
-}
-
-/* Ensure tooltips break out of any potential clipping */
-.tooltip-container { 
-    position: relative; 
-    overflow: visible; 
-}
-
-/* --- CHART BOX Z-INDEX FIX --- */
-.chart-box {
-    position: relative;
-    z-index: 50; /* Lower than score but above normal flow if needed */
-}
-
-/* --- WIN95 POPUP WINDOW --- */
-.win95-popup-window {
-    background: #c0c0c0;
-    border-top: 2px solid #dfdfdf;
-    border-left: 2px solid #dfdfdf;
-    border-right: 2px solid #000;
-    border-bottom: 2px solid #000;
-    box-shadow: 1px 1px 0 #000;
-    padding: 2px;
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 15px;
-    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
-}
-
-.win95-titlebar {
-    background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
-    color: #fff;
-    padding: 2px 4px;
-    font-weight: bold;
-    font-size: 11px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 18px;
-    margin-bottom: 1px;
-}
-
-.win95-titlebar.inactive {
-    background: #808080;
-    color: #c0c0c0;
-}
-
-.win95-titlebar-text {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-/* Menu Bar Area - Where dropdowns live */
-.win95-menubar {
-    display: flex;
-    gap: 10px;
-    padding: 2px 6px;
-    font-size: 11px;
-    color: #000;
-    border-bottom: 1px solid #808080; /* Slight separator */
-}
-
-.win95-menu-item {
-    cursor: pointer;
-    text-decoration: underline; /* Standard alt-key hint style */
-    position: relative;
-}
-
-.win95-menu-item:hover {
-    background-color: #000080;
-    color: #fff;
-}
-
-.win95-info-area {
-    padding: 6px 8px;
-    font-size: 11px;
-    color: #000;
-}
-
-/* The Sunken Content Box */
-.win95-content-inset {
-    background: #fff;
-    border-top: 2px solid #404040;
-    border-left: 2px solid #404040;
-    border-right: 2px solid #fff;
-    border-bottom: 2px solid #fff;
-    padding: 8px;
-    margin: 4px;
-    overflow-y: auto;
-    font-family: 'Courier New', monospace; /* As per image content */
-    color: #000;
-}
-
-/* Status Bar */
-.win95-statusbar {
-    display: flex;
-    gap: 2px;
-    padding: 2px;
-    margin-top: 2px;
-}
-
-.win95-status-field {
-    flex: 1;
-    border-top: 1px solid #808080;
-    border-left: 1px solid #808080;
-    border-right: 1px solid #fff;
-    border-bottom: 1px solid #fff;
-    padding: 2px 4px;
-    font-size: 10px;
-    color: #000;
-    background: #c0c0c0;
-}
-
-/* --- DITHER GRADIENT --- */
-/* Using a radial gradient to simulate a glowing center without soft shadow blur */
-.dither-radial {
-    background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.8) 20%, rgba(255,255,255,0) 70%);
-    /* To make it look more "dithered" or retro, we rely on the sharp falloff or pixelated rendering if possible,
-       but standard CSS gradients are smooth.
-       A pattern overlay could work, but a simple radial gradient is requested. */
-}
-
-/* --- WIN95 UNIVERSAL PROGRESS BAR --- */
+/* --- PROGRESS BAR --- */
 .win95-progress-container {
     background: #fff;
     border-top: 1px solid #808080;
@@ -450,106 +225,39 @@
     border-right: 1px solid #fff;
     border-bottom: 1px solid #fff;
     box-shadow: inset 1px 1px 0 #000;
-    height: 18px; /* Standard Win95 height */
+    height: 18px;
     position: relative;
-    padding: 1px;
+    padding: 0;
 }
 
 .win95-progress-fill {
     height: 100%;
-    /* Rainbow Gradient as requested, mimicking the masterpiece text but as a fill */
-    background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
-    background-size: 200% auto;
-    animation: rainbow-bar-scroll 3s linear infinite;
-    /* Optional: Win95 bars were blocks. We can add a repeating-linear-gradient overlay to simulate blocks if desired,
-       but "Rainbow effect" implies smooth. I'll stick to smooth for now as it matches the "Masterpiece" text style. */
+    background: #000080; /* Standard Blue Fill */
 }
 
-@keyframes rainbow-bar-scroll { to { background-position: 200% center; } }
-
-/* --- WIN95 DROPDOWN (SELECT) --- */
-.retro-select {
-    /* Reset */
-    appearance: none;
-    -webkit-appearance: none;
-    border-radius: 0;
-
-    /* Box */
-    background-color: #fff;
-    color: #000;
-    font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
-    font-size: 11px;
-    padding: 2px 20px 2px 4px; /* Room for arrow */
-
-    /* Bevel Inset (Input field look) */
-    border-top: 1px solid #808080;
-    border-left: 1px solid #808080;
-    border-right: 1px solid #fff;
-    border-bottom: 1px solid #fff;
-    box-shadow: inset 1px 1px 0 #000;
-
-    /* Arrow Button Mockup - requires wrapper or background image hack.
-       Since we can't easily add elements inside select, we use background image. */
-    background-image: url('data:image/svg+xml;utf8,<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="16" height="16" fill="%23c0c0c0"/><path d="M0 0 H16 V16 H0 Z" fill="none" stroke="%23dfdfdf" stroke-width="1" stroke-dasharray="16 16"/><path d="M1 1 H15 V15 H1 Z" fill="none" stroke="%23fff" stroke-width="1"/><path d="M15 1 V15 H1" fill="none" stroke="%23000" stroke-width="1"/><path d="M14 2 V14 H2" fill="none" stroke="%23808080" stroke-width="1"/><path d="M5 6 L11 6 L8 9 Z" fill="black"/></svg>');
-    background-repeat: no-repeat;
-    background-position: right 0px center;
-    background-size: 16px 100%;
+/* --- MASTERPIECE TEXT --- */
+.masterpiece-text {
+    /* BLACK TEXT with RAINBOW STROKE/SHADOW */
+    color: #000 !important;
+    text-shadow:
+        2px 0px 0 #ff0000,
+       -2px 0px 0 #00ffff,
+        0px 2px 0 #00ff00,
+        0px -2px 0 #ff00ff;
+    /* Optional Animation */
+    animation: rainbow-pulse 0.2s infinite alternate;
+}
+@keyframes rainbow-pulse {
+    from { text-shadow: 2px 0px 0 #ff0000, -2px 0px 0 #00ffff; }
+    to { text-shadow: 2px 0px 0 #ff00ff, -2px 0px 0 #ffff00; }
 }
 
-.retro-select:focus {
-    outline: none;
-    background-color: #000080;
-    color: #fff;
+/* --- SCROLLBARS (Webkit) --- */
+.window-body::-webkit-scrollbar { width: 16px; background: #dfdfdf; }
+.window-body::-webkit-scrollbar-thumb {
+    background: var(--cj-bg);
+    border-top: 1px solid #fff; border-left: 1px solid #fff; border-right: 1px solid #000; border-bottom: 1px solid #000;
 }
-
-/* --- TRUBY LOGIC WRAPPING --- */
-.raw-box pre {
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    font-family: 'Courier New', monospace;
-}
-
-/* --- SLIDER OVERHAUL (Physical Fader) --- */
-input[type=range] {
-    -webkit-appearance: none;
-    width: 100%;
-    margin: 8px 0;
-    background: transparent;
-}
-
-input[type=range]:focus {
-    outline: none;
-}
-
-/* TRACK: Sunken Groove */
-input[type=range]::-webkit-slider-runnable-track {
-    width: 100%;
-    height: 8px;
-    cursor: pointer;
-    background: #c0c0c0;
-    border-top: 2px solid #808080;
-    border-left: 2px solid #808080;
-    border-right: 2px solid #fff;
-    border-bottom: 2px solid #fff;
-    box-shadow: inset 1px 1px 0 #000;
-}
-
-/* THUMB: Physical Fader Cap */
-input[type=range]::-webkit-slider-thumb {
-    height: 20px;
-    width: 12px;
-    background: #c0c0c0;
-    border-top: 2px solid #fff;
-    border-left: 2px solid #fff;
-    border-right: 2px solid #000;
-    border-bottom: 2px solid #000;
-    box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
-    cursor: grab;
-    -webkit-appearance: none;
-    margin-top: -8px; /* Offset to center on track */
-}
-
-input[type=range]::-webkit-slider-thumb:active {
-    cursor: grabbing;
-    background: #a0a0a0;
+.window-body::-webkit-scrollbar-track {
+    background: repeating-linear-gradient(45deg, #ddd, #ddd 2px, #fff 2px, #fff 4px);
 }
