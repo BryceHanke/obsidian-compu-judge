@@ -529,7 +529,7 @@
 
                             <div class="input-row">
                                 <label for="synth-quality">TARGET QUALITY: {targetQuality}</label>
-                                <input type="range" id="synth-quality" min="50" max="100" step="5" style="flex:1"
+                                <input type="range" id="synth-quality" class="retro-range" min="50" max="100" step="5" style="flex:1"
                                     bind:value={targetQuality} />
                             </div>
 
@@ -880,8 +880,8 @@
     }
 
     /* Sidebar Variants */
-    .wizard-sidebar.alchemy .sidebar-image-placeholder { background: linear-gradient(to bottom, #004040, #008080); }
-    .wizard-sidebar.architect .sidebar-image-placeholder { background: linear-gradient(to bottom, #300030, #600060); }
+    .wizard-sidebar.alchemy .sidebar-image-placeholder { background: #008080; }
+    .wizard-sidebar.architect .sidebar-image-placeholder { background: #800080; }
 
     .sidebar-image-placeholder {
         width: 100%; height: 100%;
@@ -954,19 +954,29 @@
         display: flex;
         align-items: center;
         gap: 15px;
-        background: #fff;
+        background: #c0c0c0;
         border: 2px outset #fff;
+        border-right-color: #000;
+        border-bottom-color: #000;
         padding: 10px;
         text-align: left;
         cursor: pointer;
         color: #000;
-        transition: all 0.1s;
+        transition: none;
     }
-    .mode-card:active { border-style: inset; background: #eee; }
+    .mode-card:active {
+        border-style: inset;
+        border-top-color: #000;
+        border-left-color: #000;
+        border-right-color: #fff;
+        border-bottom-color: #fff;
+        background: #c0c0c0;
+        padding: 11px 9px 9px 11px;
+    }
     .mode-icon { font-size: 24px; }
     .mode-info { display: flex; flex-direction: column; }
-    .mode-title { font-weight: bold; font-size: 13px; color: #000080; }
-    .mode-desc { font-size: 11px; color: #555; }
+    .mode-title { font-weight: bold; font-size: 13px; color: #000; }
+    .mode-desc { font-size: 11px; color: #000; }
 
     /* FORM STYLES & BEVELS */
     .bevel-down { border: 2px inset #fff; background: #fff; }
@@ -1027,6 +1037,40 @@
     .win95-btn.dashed-btn { border: 1px dashed #000; background: transparent; width: 100%; margin-top: 5px; }
     .library-toggle { margin-bottom: 5px; width: 100%; text-align: left; }
     .input-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+
+    /* RETRO RANGE SLIDER */
+    .retro-range {
+        -webkit-appearance: none;
+        width: 100%;
+        background: transparent;
+        margin: 10px 0;
+    }
+    .retro-range:focus { outline: none; }
+    .retro-range::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: 20px;
+        width: 10px;
+        background: #c0c0c0;
+        cursor: pointer;
+        margin-top: -8px;
+        border-top: 1px solid #fff;
+        border-left: 1px solid #fff;
+        border-right: 1px solid #000;
+        border-bottom: 1px solid #000;
+        box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
+        border-radius: 0;
+    }
+    .retro-range::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 4px;
+        cursor: pointer;
+        background: #fff;
+        border-top: 1px solid #808080;
+        border-left: 1px solid #808080;
+        border-right: 1px solid #fff;
+        border-bottom: 1px solid #fff;
+        box-shadow: inset 1px 1px 0 #000;
+    }
 
     @media (max-width: 600px) {
         .grid-3-p, .grid-2 { grid-template-columns: 1fr; }
