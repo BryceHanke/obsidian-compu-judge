@@ -681,7 +681,6 @@
                             </div>
                             <div class="win95-menubar" style="position: relative;">
                                 <!-- [WIN95 UPDATE]: 'Help' Replaced with Dynamic Smart Repair -->
-                                <span class="win95-menu-item">Messages</span>
                                 <!-- svelte-ignore a11y-click-events-have-key-events -->
                                 <!-- svelte-ignore a11y-no-static-element-interactions -->
                                 <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); showQuickScanMenu = !showQuickScanMenu; }}>

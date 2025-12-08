@@ -16,6 +16,11 @@
     }
 
     let { app, settings, drives, onUpdateDrives, onUpdateSettings, onRunSynthesis, onGetActiveContent }: Props = $props();
+
+    // Wizard State
+    let currentStep = $state(0);
+    const TOTAL_STEPS = 4;
+
     let targetTitle = $state("");
     let targetQuality = $state(settings.defaultTargetQuality); // Default from global
     let libraryDrives: DriveBlock[] = $state([]);
@@ -23,6 +28,26 @@
     
     // Default path for the global library
     const LIBRARY_PATH = "_NARRATIVE_DRIVES.md";
+
+    // --- NAVIGATION ---
+    function nextStep() {
+        if (currentStep < TOTAL_STEPS - 1) currentStep++;
+    }
+
+    function prevStep() {
+        if (currentStep > 0) currentStep--;
+    }
+
+    function cancelWizard() {
+        if (confirm("Cancel Narrative Synthesis Wizard?")) {
+            currentStep = 0;
+            // Optionally clear state? keeping it for now
+        }
+    }
+
+    function finishWizard() {
+        onRunSynthesis(targetTitle, targetQuality);
+    }
 
     // --- ACTIVE DRIVE MANAGEMENT ---
 
@@ -166,195 +191,284 @@
     }
 </script>
 
-<div class="synthesizer-container">
+<div class="synthesizer-container win95-window">
+    <div class="win95-titlebar">
+        <div class="win95-titlebar-text">Narrative Synthesis Wizard</div>
+    </div>
     
-    <fieldset class="bevel-groove control-panel">
-        <legend>FUSION CONTROL</legend>
-        
-        <div class="input-row">
-            <label for="synth-title">TARGET CODENAME:</label>
-            <input type="text" id="synth-title" class="retro-input" 
-                bind:value={targetTitle} 
-                placeholder="e.g. PROJECT CHIMERA (Optional)" />
-        </div>
-        
-        <div class="input-row">
-            <label for="synth-quality">TARGET QUALITY: {targetQuality}</label>
-            <input type="range" id="synth-quality" min="50" max="100" step="5" style="flex:1" 
-                bind:value={targetQuality} />
+    <div class="wizard-body">
+        <!-- LEFT SIDEBAR IMAGE -->
+        <div class="wizard-sidebar">
+            <div class="sidebar-image-placeholder">
+                <div class="sidebar-computer-icon">🖥️</div>
+            </div>
         </div>
 
-        <p class="synth-desc">
-            Mount multiple Context Drives to fuse them into a single Epic Narrative.
-            <br><strong>Status:</strong> {drives?.length || 0} Drives Mounted.
-        </p>
+        <!-- RIGHT CONTENT AREA -->
+        <div class="wizard-content">
 
-        <button class="win95-btn primary" onclick={() => onRunSynthesis(targetTitle, targetQuality)}>
-            INITIALIZE FUSION SEQUENCE
-        </button>
-    </fieldset>
+            {#if currentStep === 0}
+                <div class="step-content" transition:slide>
+                    <h3>Welcome to the Narrative Synthesis Wizard</h3>
+                    <p>This wizard will guide you through the process of fusing multiple Narrative Drives into a cohesive Masterpiece Story.</p>
+                    <p>It is recommended that you have your source materials (Drives) ready before proceeding.</p>
+                    <br>
+                    <p>To continue, click Next.</p>
+                </div>
 
-    <div class="drive-section-header">ACTIVE PROJECT DRIVES</div>
-    <div class="drive-list">
-        {#if drives}
-            {#each drives as drive, i (drive.id)}
-                <div class="drive-block bevel-up" animate:flip={{duration: 300}}>
-                    <div class="drive-header" onclick={() => toggleExpandDrive(i)}>
-                        <div class="drive-title-row">
-                            <span class="drive-icon">💾</span>
-                            <span class="drive-id-badge">DRIVE {i+1}:</span>
-                            <input type="text" class="drive-name-input" 
-                                bind:value={drive.name} 
-                                oninput={handleDriveInput} 
-                                onclick={(e) => e.stopPropagation()} 
-                                placeholder="Drive Label" />
-                        </div>
-                        <div class="drive-controls">
-                            <button onclick={(e) => { e.stopPropagation(); saveToLibrary(drive); }} class="win95-btn small" title="Save to Library">💾</button>
-                            <button onclick={(e) => { e.stopPropagation(); removeDrive(i); }} class="win95-btn small" title="Unmount">×</button>
+            {:else if currentStep === 1}
+                <div class="step-content" transition:slide>
+                    <h3>Step 1: Mount Narrative Drives</h3>
+                    <p>Please mount the context drives you wish to fuse.</p>
+
+                    <div class="drive-scroll-area bevel-down">
+                        <div class="drive-list">
+                            {#if drives}
+                                {#each drives as drive, i (drive.id)}
+                                    <div class="drive-block bevel-up">
+                                        <div class="drive-header" onclick={() => toggleExpandDrive(i)}>
+                                            <div class="drive-title-row">
+                                                <span class="drive-icon">💾</span>
+                                                <span class="drive-id-badge">DRIVE {i+1}:</span>
+                                                <input type="text" class="drive-name-input"
+                                                    bind:value={drive.name}
+                                                    oninput={handleDriveInput}
+                                                    onclick={(e) => e.stopPropagation()}
+                                                    placeholder="Drive Label" />
+                                            </div>
+                                            <div class="drive-controls">
+                                                <button onclick={(e) => { e.stopPropagation(); saveToLibrary(drive); }} class="win95-btn small" title="Save to Library">💾</button>
+                                                <button onclick={(e) => { e.stopPropagation(); removeDrive(i); }} class="win95-btn small" title="Unmount">×</button>
+                                            </div>
+                                        </div>
+
+                                        {#if drive.expanded}
+                                            <div class="drive-body">
+                                                <div class="memory-indicator">
+                                                    <span class="led {drive.content.length > 0 ? 'on' : 'off'}"></span>
+                                                    <span class="mem-text">{drive.content.length > 0 ? `BUFFER: ${drive.content.length} BYTES` : 'BUFFER EMPTY'}</span>
+                                                </div>
+
+                                                <div class="input-wrap">
+                                                    <textarea class="retro-input" rows="4"
+                                                        bind:value={drive.content}
+                                                        use:autoResize={drive.content}
+                                                        oninput={handleDriveInput}
+                                                        placeholder="Paste raw narrative data or..."></textarea>
+
+                                                    <button class="win95-btn full-width" onclick={() => uploadToDrive(i)}>
+                                                        📥 IMPORT FROM ACTIVE FILE
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        {/if}
+                                    </div>
+                                {/each}
+                            {/if}
+                            <button class="win95-btn dashed-btn" onclick={addDrive}>+ MOUNT NEW EMPTY DRIVE</button>
                         </div>
                     </div>
+                </div>
+
+            {:else if currentStep === 2}
+                <div class="step-content" transition:slide>
+                    <h3>Step 2: Drive Library (Optional)</h3>
+                    <p>You can load existing drives from your local library.</p>
                     
-                    {#if drive.expanded}
-                        <div class="drive-body" transition:slide>
-                            <div class="memory-indicator">
-                                <span class="led {drive.content.length > 0 ? 'on' : 'off'}"></span>
-                                <span class="mem-text">{drive.content.length > 0 ? `BUFFER: ${drive.content.length} BYTES` : 'BUFFER EMPTY'}</span>
+                    <button class="win95-btn library-toggle" onclick={toggleLibrary}>
+                        {isLibraryOpen ? '▼ CLOSE DRIVE LIBRARY' : '► OPEN DRIVE LIBRARY'}
+                    </button>
+
+                    {#if isLibraryOpen}
+                        <div class="library-container bevel-down" transition:slide>
+                            <div class="library-header">
+                                <span>SOURCE: _NARRATIVE_DRIVES.MD</span>
+                                <button class="refresh-btn" onclick={loadLibrary}>↻</button>
                             </div>
                             
-                            <div class="input-wrap">
-                                <textarea class="retro-input" rows="6" 
-                                    bind:value={drive.content} 
-                                    use:autoResize={drive.content} 
-                                    oninput={handleDriveInput} 
-                                    placeholder="Paste raw narrative data or..."></textarea>
-                                
-                                <button class="win95-btn full-width" onclick={() => uploadToDrive(i)}>
-                                    📥 IMPORT FROM ACTIVE FILE
-                                </button>
-                            </div>
+                            {#if libraryDrives.length === 0}
+                                <div class="empty-lib">LIBRARY IS EMPTY. SAVE ACTIVE DRIVES TO POPULATE.</div>
+                            {:else}
+                                {#each libraryDrives as libDrive, i}
+                                    <div class="lib-item">
+                                        <span class="lib-icon">💿</span>
+                                        <span class="lib-name">{libDrive.name}</span>
+                                        <div class="lib-actions">
+                                            <button onclick={() => mountFromLibrary(libDrive)} class="win95-btn small" title="Mount to Project">▲ LOAD</button>
+                                            <button onclick={() => deleteFromLibrary(i)} class="win95-btn small del-btn" title="Delete from Library">×</button>
+                                        </div>
+                                    </div>
+                                {/each}
+                            {/if}
                         </div>
                     {/if}
                 </div>
-            {/each}
-        {/if}
-        <button class="win95-btn dashed-btn" onclick={addDrive}>+ MOUNT NEW EMPTY DRIVE</button>
+
+            {:else if currentStep === 3}
+                <div class="step-content" transition:slide>
+                    <h3>Step 3: Fusion Parameters</h3>
+                    <p>Configure the final parameters for the synthesis engine.</p>
+
+                    <fieldset class="bevel-groove control-panel">
+                        <legend>SETTINGS</legend>
+
+                        <div class="input-row">
+                            <label for="synth-title">TARGET CODENAME:</label>
+                            <input type="text" id="synth-title" class="retro-input"
+                                bind:value={targetTitle}
+                                placeholder="e.g. PROJECT CHIMERA (Optional)" />
+                        </div>
+
+                        <div class="input-row">
+                            <label for="synth-quality">TARGET QUALITY: {targetQuality}</label>
+                            <input type="range" id="synth-quality" min="50" max="100" step="5" style="flex:1"
+                                bind:value={targetQuality} />
+                        </div>
+
+                        <p class="synth-desc">
+                            <strong>Status:</strong> {drives?.length || 0} Drives Mounted.<br>
+                            Ready to Initialize Fusion Sequence.
+                        </p>
+                    </fieldset>
+                </div>
+            {/if}
+        </div>
     </div>
 
-    <!-- LIBRARY SECTION -->
-    <div class="library-section">
-        <button class="win95-btn library-toggle" onclick={toggleLibrary}>
-            {isLibraryOpen ? '▼ CLOSE DRIVE LIBRARY' : '► OPEN DRIVE LIBRARY'}
-        </button>
+    <!-- BOTTOM BUTTON BAR -->
+    <div class="wizard-footer">
+        <div class="footer-divider"></div>
+        <div class="footer-buttons">
+            <button class="win95-btn" onclick={prevStep} disabled={currentStep === 0}>&lt; Back</button>
 
-        {#if isLibraryOpen}
-            <div class="library-container bevel-down" transition:slide>
-                <div class="library-header">
-                    <span>SOURCE: _NARRATIVE_DRIVES.MD</span>
-                    <button class="refresh-btn" onclick={loadLibrary}>↻</button>
-                </div>
-                
-                {#if libraryDrives.length === 0}
-                    <div class="empty-lib">LIBRARY IS EMPTY. SAVE ACTIVE DRIVES TO POPULATE.</div>
-                {:else}
-                    {#each libraryDrives as libDrive, i}
-                        <div class="lib-item">
-                            <span class="lib-icon">💿</span>
-                            <span class="lib-name">{libDrive.name}</span>
-                            <div class="lib-actions">
-                                <button onclick={() => mountFromLibrary(libDrive)} class="win95-btn small" title="Mount to Project">▲ LOAD</button>
-                                <button onclick={() => deleteFromLibrary(i)} class="win95-btn small del-btn" title="Delete from Library">×</button>
-                            </div>
-                        </div>
-                    {/each}
-                {/if}
-            </div>
-        {/if}
+            {#if currentStep < TOTAL_STEPS - 1}
+                <button class="win95-btn" onclick={nextStep}>Next &gt;</button>
+            {:else}
+                <button class="win95-btn" onclick={finishWizard}>Finish</button>
+            {/if}
+
+            <button class="win95-btn" style="margin-left: 10px;" onclick={cancelWizard}>Cancel</button>
+        </div>
     </div>
 </div>
 
 <style>
-    .synthesizer-container { display: flex; flex-direction: column; gap: 15px; padding-bottom: 20px; }
+    .synthesizer-container {
+        display: flex;
+        flex-direction: column;
+        height: 500px; /* Fixed height for Wizard feel */
+        border: 2px outset #fff;
+        background: #c0c0c0;
+        box-shadow: 2px 2px 10px rgba(0,0,0,0.5);
+    }
     
-    /* WIN95 PRIMITIVES */
-    .bevel-groove { border: 2px groove #fff; padding: 10px; background: transparent; margin: 0; }
-    .bevel-up { border: 2px outset #fff; background: var(--cj-bg); padding: 2px; }
-    .bevel-down { border: 2px inset #fff; background: #fff; }
-    legend { font-weight: bold; color: var(--cj-text); padding: 0 4px; }
+    .win95-titlebar {
+        background: #000080;
+        color: #fff;
+        padding: 2px 4px;
+        font-weight: bold;
+    }
+
+    .wizard-body {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .wizard-sidebar {
+        width: 150px;
+        background: #008080; /* Teal background for sidebar image */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-right: 1px solid #808080;
+        position: relative;
+    }
     
-    .control-panel { background: rgba(0,0,0,0.05); }
-    .input-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-    label { font-weight: bold; font-size: 11px; white-space: nowrap; }
+    .sidebar-image-placeholder {
+        width: 100%; height: 100%;
+        background: linear-gradient(to bottom, #004040, #008080);
+        display: flex; align-items: center; justify-content: center;
+    }
+
+    .sidebar-computer-icon {
+        font-size: 64px;
+        text-shadow: 2px 2px 0 #000;
+    }
+
+    .wizard-content {
+        flex: 1;
+        padding: 20px;
+        background: #c0c0c0;
+        overflow-y: auto;
+    }
+
+    .step-content h3 { margin-top: 0; font-family: 'Times New Roman', serif; font-size: 20px; margin-bottom: 10px; }
+    .step-content p { font-family: 'Arial', sans-serif; font-size: 12px; margin-bottom: 10px; }
+
+    .wizard-footer {
+        padding: 10px;
+        background: #c0c0c0;
+    }
     
-    .synth-desc { font-size: 11px; margin-bottom: 15px; color: var(--cj-dim); text-align: center; border: 1px dotted var(--cj-dim); padding: 4px; }
+    .footer-divider {
+        border-top: 1px solid #808080;
+        border-bottom: 1px solid #fff;
+        margin-bottom: 10px;
+    }
+
+    .footer-buttons {
+        display: flex;
+        justify-content: flex-end;
+    }
     
-    /* BUTTONS */
     .win95-btn {
-        background: var(--cj-bg);
-        color: var(--cj-text);
+        min-width: 75px;
+        margin-left: 5px;
+        background: #c0c0c0;
         border: 2px outset #fff;
         border-right-color: #000;
         border-bottom-color: #000;
-        font-family: 'Courier New', monospace;
-        font-weight: 900;
-        cursor: pointer;
-        padding: 6px 12px;
-        text-transform: uppercase;
-        font-size: 12px;
+        padding: 4px 10px;
+        font-family: 'MS Sans Serif', 'Tahoma', sans-serif;
+        font-size: 11px;
     }
-    .win95-btn:active { border-style: inset; padding-top: 7px; padding-left: 13px; }
-    .win95-btn.primary { width: 100%; padding: 10px; font-size: 14px; border: 2px outset #fff; border-right-color: #000; border-bottom-color: #000; }
-    .win95-btn.small { padding: 2px 6px; min-width: 20px; font-size: 12px; line-height: 1; }
-    .win95-btn.full-width { width: 100%; margin-top: 4px; }
-    .win95-btn.dashed-btn { border: 2px dashed var(--cj-dim); background: transparent; color: var(--cj-dim); width: 100%; padding: 10px; }
-    .win95-btn.dashed-btn:hover { border-style: solid; color: var(--cj-text); background: rgba(255,255,255,0.2); }
+    .win95-btn:active { border-style: inset; padding: 5px 9px 3px 11px; }
+    .win95-btn:disabled { color: #808080; text-shadow: 1px 1px 0 #fff; }
 
-    /* DRIVE LIST */
-    .drive-section-header { font-size: 11px; font-weight: 900; color: var(--cj-dim); border-bottom: 2px solid var(--cj-dim); margin-bottom: 5px; }
-    .drive-list { display: flex; flex-direction: column; gap: 10px; }
+    /* Drive List Styles inside Wizard */
+    .drive-scroll-area {
+        height: 250px;
+        overflow-y: auto;
+        padding: 5px;
+        background: #fff;
+        border: 2px inset #fff; /* Bevel down override */
+    }
+
+    .bevel-down { border: 2px inset #fff; background: #fff; }
+    .bevel-up { border: 2px outset #fff; background: var(--cj-bg); padding: 2px; }
+    .bevel-groove { border: 2px groove #fff; padding: 10px; background: transparent; margin: 0; }
+
+    .drive-list { display: flex; flex-direction: column; gap: 5px; }
     
     .drive-header { 
         display: flex; justify-content: space-between; align-items: center; 
-        background: #000080; /* Win95 Title Bar Blue */
-        color: #fff;
-        padding: 4px 6px; 
+        background: #000080; color: #fff;
+        padding: 2px 4px;
         cursor: pointer; 
     }
     
-    .drive-title-row { display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; }
-    .drive-icon { font-size: 12px; }
-    .drive-id-badge { font-size: 11px; font-weight: bold; white-space: nowrap; }
+    .drive-title-row { display: flex; align-items: center; gap: 5px; flex: 1; }
+    .drive-name-input { background: transparent; border: none; color: #fff; width: 100%; font-weight: bold; }
     
-    .drive-name-input { 
-        background: transparent; border: none; font-weight: bold; 
-        font-family: inherit; font-size: 12px; color: #fff; width: 100%; 
-    }
-    .drive-name-input:focus { background: #fff; color: #000; outline: none; }
-    .drive-name-input::placeholder { color: #ccc; }
+    .win95-btn.small { min-width: 20px; padding: 0 4px; font-size: 10px; }
+    .win95-btn.dashed-btn { border: 1px dashed #000; background: transparent; width: 100%; margin-top: 5px; }
     
-    .drive-controls { display: flex; gap: 4px; }
+    .input-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .synth-desc { margin-top: 10px; border: 1px dotted #000; padding: 5px; background: #eee; }
     
-    .drive-body { padding: 10px; background: var(--cj-bg); border: 1px solid var(--cj-dim); border-top: none; }
+    .library-container { margin-top: 10px; padding: 5px; height: 150px; overflow-y: auto; border: 2px inset #fff; background: #fff; }
+    .lib-item { display: flex; justify-content: space-between; padding: 2px; border-bottom: 1px dotted #ccc; }
     
-    .memory-indicator { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 10px; font-weight: bold; border-bottom: 1px solid var(--cj-dim); padding-bottom: 4px; }
-    .led { width: 8px; height: 8px; border-radius: 50%; border: 1px solid #808080; background: #004400; }
-    .led.on { background: #00FF00; box-shadow: 0 0 4px #00FF00; }
-    .mem-text { color: var(--cj-dim); }
-
-    /* LIBRARY STYLES */
-    .library-section { margin-top: 20px; border-top: 2px groove #fff; padding-top: 10px; }
-    .library-toggle { width: 100%; text-align: left; }
-    .library-container { margin-top: 5px; padding: 5px; height: 200px; overflow-y: auto; background: #fff; color: #000; }
-    .library-header { display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-bottom: 4px; color: #555; }
-    .refresh-btn { background: none; border: none; cursor: pointer; font-weight: bold; }
-    
-    .lib-item { display: flex; align-items: center; padding: 4px; border-bottom: 1px dotted #ccc; font-size: 12px; }
-    .lib-item:hover { background: #eee; }
-    .lib-icon { margin-right: 6px; }
-    .lib-name { flex: 1; font-weight: bold; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    .lib-actions { display: flex; gap: 4px; }
-    .del-btn { color: red !important; }
-    
-    .empty-lib { text-align: center; color: #999; padding: 20px; font-size: 11px; font-style: italic; }
-
+    .control-panel { margin-top: 10px; }
 </style>
