@@ -182,6 +182,7 @@ You must trace the "Logic Chain" of the narrative. If a link breaks, deduct poin
   "third_act_score": 0,
   "novelty_score": 0,
   "tension_arc": [0, 10, -5, 20, 30, 50],
+  "quality_arc": [50, 60, 40, 70, 80, 90],
   "sanderson_metrics": {
     "promise_payoff": 0,
     "laws_of_magic": 0,
@@ -597,6 +598,7 @@ Compare the input against these **QUALITY STANDARDS** (Genre irrelevant, Executi
 - **Character Sliders:** Ensure the protagonist scores (Competence/Proactivity/Likability) are extracted or estimated if not provided.
 
 [OUTPUT JSON]: Same format as NIGS_SYSTEM_PROMPT. Ensure all scores are signed integers (e.g. -15, 0, +22).
+- **Include "quality_arc":** An array of integers (0-100) representing the EXECUTION QUALITY of each beat (not the tension).
 `;
 
 // node_modules/esm-env/true.js
@@ -7008,12 +7010,12 @@ ${nameRules}${titleInstruction}${qualityInstruction}`;
       return await this.callAI(finalPrompt, NIGS_DRIVE_SYNTHESIS_PROMPT, false, false, temp);
     };
     // --- GRADING (Unified System) ---
+    // [UPDATED] Iterative Tribunal with Veto Protocol
     this.gradeContent = async (text2, context, nlpStats, wizardState) => {
       if (!this.settings.enableTribunal) {
         return this.gradeContentLegacy(text2, context, nlpStats);
       }
       setStatus("CONVENING THE TRIBUNAL...");
-      const deepThought = this.settings.aiThinkingLevel >= 4 ? "\n[THOUGHT PROCESS]: Use logic chains to verify every claim. Ignore bias." : "";
       const sourceMaterial = (context == null ? void 0 : context.inspiration) ? `
 [SOURCE MATERIAL]: "${context.inspiration}"
 ` : "";
@@ -7027,57 +7029,90 @@ ${nameRules}${titleInstruction}${qualityInstruction}`;
 - Dialogue Ratio: ${nlpStats.dialogueRatio}%
 `;
       }
-      const inputPayload = `
+      const baseInputPayload = `
 === NARRATIVE ARTIFACT ===
 ${text2}
 === END ARTIFACT ===
 ${statsBlock}
 ${sourceMaterial}
 `;
-      setStatus("DEPLOYING AGENTS (MARKET, LOGIC, LIT, FORENSIC)...");
-      const strictTemp = this.getTemp(0.1, true);
-      const [marketRaw, logicRaw, litRaw, forensicRaw] = await Promise.all([
-        this.callAI(inputPayload + deepThought, NIGS_TRIBUNAL.MARKET, true, false, 0.7).catch((e2) => `{"error": "Market Agent Failed: ${e2.message}"}`),
-        this.callAI(inputPayload + deepThought, NIGS_TRIBUNAL.LOGIC, true, false, strictTemp).catch((e2) => `{"error": "Logic Agent Failed: ${e2.message}"}`),
-        this.callAI(inputPayload + deepThought, NIGS_TRIBUNAL.LITERARY, true, false, 0.9).catch((e2) => `{"error": "Lit Agent Failed: ${e2.message}"}`),
-        // Legacy Pass as "Forensic Agent"
-        this.callAI(inputPayload + deepThought, NIGS_SYSTEM_PROMPT, true, false, strictTemp).catch((e2) => `{"error": "Forensic Agent Failed: ${e2.message}"}`)
-      ]);
-      setStatus("SYNTHESIZING VERDICT...");
-      const synthesisPayload = `
-[TRIBUNAL REPORTS]:
+      let previousConsensus = "";
+      let finalTribunalResults = { market: "", logic: "", lit: "", forensic: "" };
+      const cycles = [
+        { mult: 1, label: "BASELINE" },
+        { mult: 1.5, label: "STRESS TEST (HIGH TEMP)" },
+        { mult: 0.5, label: "FACT CHECK (LOW TEMP)" }
+      ];
+      for (const cycle of cycles) {
+        setStatus(`TRIBUNAL CYCLE: ${cycle.label}...`);
+        const consensusBlock = previousConsensus ? `
+[PREVIOUS TRIBUNAL CONSENSUS]:
+The agents have previously debated and found:
+${previousConsensus}
+
+[INSTRUCTION]: Review the consensus above. If you agree, deepen the analysis. If you disagree, provide evidence.
+` : "";
+        const fullPrompt = `${baseInputPayload}
+${consensusBlock}`;
+        const baseTemp = 0.7;
+        const cycleTemp = Math.min(2, Math.max(0.1, baseTemp * cycle.mult));
+        const logicTemp = Math.min(0.5, Math.max(0, 0.1 * cycle.mult));
+        const [marketRaw, logicRaw, litRaw, forensicRaw] = await Promise.all([
+          this.callAI(fullPrompt, NIGS_TRIBUNAL.MARKET, true, false, cycleTemp).catch((e2) => `{"error": "Market Agent Failed: ${e2.message}"}`),
+          this.callAI(fullPrompt, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp).catch((e2) => `{"error": "Logic Agent Failed: ${e2.message}"}`),
+          this.callAI(fullPrompt, NIGS_TRIBUNAL.LITERARY, true, false, cycleTemp).catch((e2) => `{"error": "Lit Agent Failed: ${e2.message}"}`),
+          this.callAI(fullPrompt, NIGS_SYSTEM_PROMPT, true, false, logicTemp).catch((e2) => `{"error": "Forensic Agent Failed: ${e2.message}"}`)
+        ]);
+        finalTribunalResults = { market: marketRaw, logic: logicRaw, lit: litRaw, forensic: forensicRaw };
+        if (cycle.label !== "FACT CHECK (LOW TEMP)") {
+          setStatus(`SYNTHESIZING CONSENSUS (${cycle.label})...`);
+          const synthesisPrompt = `
+[INTERIM DEBATE]:
+1. MARKET: ${marketRaw}
+2. LOGIC: ${logicRaw}
+3. LIT: ${litRaw}
+
+[TASK]: Summarize the key points of agreement and disagreement. Output a brief textual summary.
+`;
+          previousConsensus = await this.callAI(synthesisPrompt, "You are the Tribunal Clerk. Summarize findings.", false, false, 0.5);
+        }
+      }
+      setStatus("ISSUING FINAL JUDGMENT...");
+      const finalSynthesisPayload = `
+[FINAL TRIBUNAL REPORTS]:
 1. MARKET ANALYST:
-${marketRaw}
+${finalTribunalResults.market}
 2. LOGIC ENGINE:
-${logicRaw}
+${finalTribunalResults.logic}
 3. LITERARY CRITIC:
-${litRaw}
-4. FORENSIC SCAN (Legacy):
-${forensicRaw}
+${finalTribunalResults.lit}
+4. FORENSIC SCAN:
+${finalTribunalResults.forensic}
 
 [TASK]: Synthesize a FINAL NigsResponse JSON.
-- **ZERO-BASED SCORING:** Start at 0. Add for strengths, subtract for weaknesses.
+- **ZERO-BASED SCORING:** Start at 0.
 - **LOGIC VETO:** If Logic/Forensic found a Plot Hole, the final score MUST be negative.
 - **MARKET REALITY:** If Market says boring, the final score cannot be positive.
 `;
-      const finalResStr = await this.callAI(synthesisPayload, NIGS_SYNTHESIS_PROMPT, true, false, strictTemp);
+      const strictTemp = this.getTemp(0.1, true);
+      const finalResStr = await this.callAI(finalSynthesisPayload, NIGS_SYNTHESIS_PROMPT, true, false, strictTemp);
       const finalRes = this.parseJson(finalResStr);
       try {
         finalRes.tribunal_breakdown = {
-          market: JSON.parse(marketRaw),
-          logic: JSON.parse(logicRaw),
-          lit: JSON.parse(litRaw)
+          market: JSON.parse(finalTribunalResults.market),
+          logic: JSON.parse(finalTribunalResults.logic),
+          lit: JSON.parse(finalTribunalResults.lit)
         };
       } catch (e2) {
         console.warn("Agent raw data parse error", e2);
       }
-      if (finalRes.tribunal_breakdown) {
-        if (finalRes.tribunal_breakdown.logic.cohesion_score <= -10) {
-          if (finalRes.commercial_score > 50) {
-            finalRes.commercial_score = 50;
-            finalRes.commercial_reason += " [CAPPED BY LOGIC VETO]";
-          }
-        }
+      if (finalRes.tribunal_breakdown && finalRes.tribunal_breakdown.logic.cohesion_score <= 0) {
+        const vetoFactor = 1 / 6;
+        finalRes.commercial_score = Math.round(finalRes.commercial_score * vetoFactor);
+        finalRes.niche_score = Math.round(finalRes.niche_score * vetoFactor);
+        finalRes.commercial_reason += " [LOGIC VETO APPLIED: Score Slashed]";
+        finalRes.niche_reason += " [LOGIC VETO APPLIED: Score Slashed]";
+        console.log("LOGIC VETO APPLIED: Scores slashed by factor of 6.");
       }
       return finalRes;
     };
@@ -7468,6 +7503,17 @@ ${inputBlock}`;
       (_2, idx) => Math.round(results.reduce((sum, r2) => {
         var _a3;
         return sum + (((_a3 = r2.tension_arc) == null ? void 0 : _a3[idx]) || 0);
+      }, 0) / count)
+    );
+    const maxQualLen = results.reduce((max3, r2) => {
+      var _a3;
+      return Math.max(max3, ((_a3 = r2.quality_arc) == null ? void 0 : _a3.length) || 0);
+    }, 0) || 6;
+    base.quality_arc = Array.from(
+      { length: maxQualLen },
+      (_2, idx) => Math.round(results.reduce((sum, r2) => {
+        var _a3;
+        return sum + (((_a3 = r2.quality_arc) == null ? void 0 : _a3[idx]) || 0);
       }, 0) / count)
     );
     const longest = (fn) => results.reduce((a2, b) => fn(a2).length > fn(b).length ? a2 : b);
@@ -28701,43 +28747,68 @@ var IDEAL_ARCS = {
 
 // CriticDisplay.svelte
 var root_1 = from_html(`<div class="warning-box warning-stripe svelte-1wfho06" style="margin-top: 15px;"><span class="warning-icon">\u26A0</span> <span class="warning-text"> </span></div>`);
-var root_33 = from_html(`<div class="slider-item svelte-1wfho06"><div class="slider-text-row svelte-1wfho06"><span class="s-label"> </span> <span class="s-val"> </span></div> <div class="slider-track svelte-1wfho06"><div class="slider-fill svelte-1wfho06"></div></div></div>`);
+var root_33 = from_html(`<div class="slider-item svelte-1wfho06"><div class="slider-text-row svelte-1wfho06"><span class="s-label"> </span> <span class="s-val"> </span></div> <div class="win95-progress-container"><div class="win95-progress-fill"></div></div></div>`);
 var root_23 = from_html(`<div class="slider-group svelte-1wfho06"><div class="slider-label svelte-1wfho06">PROTAGONIST SCALE</div> <!></div>`);
-var root_43 = from_html(`<div class="module-item svelte-1wfho06"><span class="mod-label svelte-1wfho06"> </span> <div class="diverging-bar-container svelte-1wfho06"><div class="center-line svelte-1wfho06"></div> <div></div></div> <span> </span></div>`);
-var root_72 = from_html(`<div class="metric-card svelte-1wfho06"><div class="metric-top svelte-1wfho06"><span class="metric-name svelte-1wfho06"> </span> <span> </span></div> <div class="metric-bar-container diverging-bar-container svelte-1wfho06"><div class="center-line svelte-1wfho06"></div> <div></div></div> <div class="metric-diagnosis svelte-1wfho06"><span class="diag-label svelte-1wfho06">DIAGNOSIS:</span> <span class="diag-text svelte-1wfho06"> </span></div></div>`);
+var root_43 = from_html(`<div class="module-item svelte-1wfho06"><span class="mod-label svelte-1wfho06"> </span> <div class="win95-progress-container" style="flex: 1;"><div class="center-line svelte-1wfho06" style="position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed #555; z-index:2;"></div> <div class="win95-progress-fill"></div></div> <span> </span></div>`);
+var root_72 = from_html(`<div class="metric-card svelte-1wfho06"><div class="metric-top svelte-1wfho06"><span class="metric-name svelte-1wfho06"> </span> <span> </span></div> <div class="win95-progress-container" style="margin-bottom: 6px;"><div class="center-line svelte-1wfho06" style="position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed #555; z-index:2;"></div> <div class="win95-progress-fill"></div></div> <div class="metric-diagnosis svelte-1wfho06"><span class="diag-label svelte-1wfho06">DIAGNOSIS:</span> <span class="diag-text svelte-1wfho06"> </span></div></div>`);
 var root_62 = from_html(`<div class="detail-category svelte-1wfho06"><div class="cat-header svelte-1wfho06"><span class="cat-name"> </span> <span> </span></div> <div class="cat-items svelte-1wfho06"></div></div>`);
 var root_53 = from_html(`<div class="section-header svelte-1wfho06">FORENSIC REPORT</div> <div class="details-grid bevel-down svelte-1wfho06"></div>`, 1);
-var root_8 = from_html(`<div class="section-header svelte-1wfho06">TRIBUNAL CONSENSUS</div> <div class="tribunal-grid"><div class="agent-card"><div class="agent-header agent-market">MARKET ANALYST</div> <div> </div> <div class="agent-list"> </div> <div class="agent-list" style="margin-top:4px;"><i> </i></div></div> <div class="agent-card"><div class="agent-header agent-logic">LOGIC ENGINE</div> <div> </div> <div class="agent-list" style="color:#800000;"> </div> <div class="agent-list" style="margin-top:4px;"><i> </i></div></div> <div class="agent-card"><div class="agent-header agent-lit">LITERARY CRITIC</div> <div> </div> <div class="agent-list"> </div> <div class="agent-list" style="margin-top:4px;"><i> </i></div></div></div>`, 1);
-var root_9 = from_html(`<option> </option>`);
-var root_10 = from_html(`<div class="bar-col tooltip-container svelte-1wfho06"><div></div> <div class="tooltip chart-tooltip svelte-1wfho06"><strong> </strong><br/> <br/> <span style="font-size:0.8em; opacity:0.8"> </span></div></div>`);
-var root_12 = from_html(`<div><div class="node-header svelte-1wfho06"><span class="node-type svelte-1wfho06"> </span> <span class="node-title"> </span> <span> </span></div> <div class="node-desc svelte-1wfho06"> </div> <div class="node-chars svelte-1wfho06"> </div></div>`);
-var root_14 = from_html(`<div class="structure-item"><div class="square-bullet">\u25A0</div> <div class="beat-text"> </div></div>`);
-var root_16 = from_html(`<div class="raw-box svelte-1wfho06"><pre> </pre></div>`);
-var root_15 = from_html(`<button class="toggle-btn svelte-1wfho06"> </button> <!>`, 1);
-var root3 = from_html(`<div class="critic-display svelte-1wfho06"><div><div class="main-score-row svelte-1wfho06"><div class="score-block main svelte-1wfho06"><div class="score-title svelte-1wfho06">OVERALL SCORE</div> <div> </div> <div> </div></div></div> <div class="score-divider-horizontal svelte-1wfho06"></div> <div class="sub-score-row svelte-1wfho06"><div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">COMMERCIAL</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">LITERARY</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">COHESION</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div></div> <!> <div class="log-section svelte-1wfho06" style="margin-top: 10px;"><span class="log-label svelte-1wfho06">LOGLINE:</span> <span class="log-text-blue"> </span></div></div> <div class="section-header svelte-1wfho06">SANDERSON ENGINE METRICS</div> <div class="modules-grid bevel-down svelte-1wfho06"><!> <div class="divider-line svelte-1wfho06"></div> <!></div> <!> <!> <div class="section-header svelte-1wfho06"><span>NARRATIVE TENSION ARC</span> <select class="retro-select svelte-1wfho06"></select></div> <div class="chart-box bevel-down svelte-1wfho06"><div class="chart-area zero-center svelte-1wfho06"><div class="chart-center-line svelte-1wfho06"></div> <svg class="chart-overlay svelte-1wfho06" preserveAspectRatio="none" viewBox="0 0 100 100"><path fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6"></path></svg> <!></div> <div class="chart-axis svelte-1wfho06"><span>START</span> <div style="display:flex; align-items:center; gap:5px;"><span class="legend-box svelte-1wfho06" style="border:1px dashed #000080;"></span> <span style="font-size:9px; color:#000080;"> </span></div> <span>END</span></div></div> <div class="section-header svelte-1wfho06">UNIVERSAL OUTLINE</div> <div class="structure-box bevel-down svelte-1wfho06"><!></div> <!> <button class="action-btn secondary">RUN DEEP META-ANALYSIS</button></div>`);
+var root_9 = from_html(`<div class="dropdown-list svelte-1wfho06"><div class="dd-item svelte-1wfho06">Inject Issue to Repair</div> <div class="dd-item svelte-1wfho06">Focus on Commercial Appeal</div></div>`);
+var root_10 = from_html(`<div class="dropdown-list svelte-1wfho06"><div class="dd-item svelte-1wfho06">Inject Logic Fix</div> <div class="dd-item svelte-1wfho06">Focus on Cohesion</div></div>`);
+var root_11 = from_html(`<div class="dropdown-list svelte-1wfho06"><div class="dd-item svelte-1wfho06">Inject Thematic Repair</div> <div class="dd-item svelte-1wfho06">Focus on Novelty</div></div>`);
+var root_8 = from_html(`<div class="section-header svelte-1wfho06">TRIBUNAL CONSENSUS</div> <div class="tribunal-grid"><div class="win95-popup-window"><div><div class="win95-titlebar-text"><span>\u{1F4C8}</span> <span>MARKET ANALYST</span></div></div> <div class="win95-menubar" style="position:relative;"><span class="win95-menu-item">Actions</span> <!></div> <div class="win95-info-area"><b> </b></div> <div class="win95-content-inset"> <br/><br/> <i> </i></div></div>  <div class="win95-popup-window"><div><div class="win95-titlebar-text"><span>\u{1F9E0}</span> <span>LOGIC ENGINE</span></div></div> <div class="win95-menubar" style="position:relative;"><span class="win95-menu-item">Actions</span> <!></div> <div class="win95-info-area"><b> </b></div> <div class="win95-content-inset" style="color: #800000;"> <br/><br/> <span style="color:#000;"><i> </i></span></div></div>  <div class="win95-popup-window"><div><div class="win95-titlebar-text"><span>\u2712\uFE0F</span> <span>LITERARY CRITIC</span></div></div> <div class="win95-menubar" style="position:relative;"><span class="win95-menu-item">Actions</span> <!></div> <div class="win95-info-area"><b> </b></div> <div class="win95-content-inset"> <br/><br/> <i> </i></div></div></div>`, 1);
+var root_13 = from_html(`<option> </option>`);
+var root_12 = from_html(`<select class="retro-select svelte-1wfho06"></select>`);
+var root_14 = from_html(`<div class="chart-center-line svelte-1wfho06"></div> <svg class="chart-overlay svelte-1wfho06" preserveAspectRatio="none" viewBox="0 0 100 100"><path fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6"></path></svg>`, 1);
+var root_16 = from_html(`<div class="win95-progress-fill"></div>`);
+var root_17 = from_html(`<div class="win95-progress-fill"></div>`);
+var root_15 = from_html(`<div class="bar-col tooltip-container svelte-1wfho06"><div class="win95-progress-container" style="
+                            width: 100%; height: 100%;
+                            background: transparent; box-shadow: none; border: none;
+                            position: relative;
+                         "><!></div> <div class="tooltip chart-tooltip svelte-1wfho06"><strong> </strong><br/> <br/> <span style="font-size:0.8em; opacity:0.8"> </span></div></div>`);
+var root_18 = from_html(`<div style="display:flex; align-items:center; gap:5px;"><span class="legend-box svelte-1wfho06" style="border:1px dashed #000080;"></span> <span style="font-size:9px; color:#000080;"> </span></div>`);
+var root_20 = from_html(`<div class="dd-item svelte-1wfho06"> </div>`);
+var root_19 = from_html(`<div class="dropdown-list svelte-1wfho06" style="right:0; left:auto; width: 250px;"></div>`);
+var root_222 = from_html(`<div><div class="node-header svelte-1wfho06"><span class="node-type svelte-1wfho06"> </span> <span class="node-title"> </span> <span> </span></div> <div class="node-desc svelte-1wfho06"> </div> <div class="node-chars svelte-1wfho06"> </div></div>`);
+var root_232 = from_html(`<div style="padding:10px; color:#555; font-style:italic;">[BUFFER EMPTY: No Universal Outline Data]</div>`);
+var root_21 = from_html(`<!> <!>`, 1);
+var root_25 = from_html(`<div class="structure-item"><div class="square-bullet">\u25A0</div> <div class="beat-text"> </div></div>`);
+var root_26 = from_html(`<div style="padding:10px; color:#555; font-style:italic;">[BUFFER EMPTY: No Structure Data]</div>`);
+var root_24 = from_html(`<!> <!>`, 1);
+var root_28 = from_html(`<div class="raw-box svelte-1wfho06"><pre> </pre></div>`);
+var root_27 = from_html(`<button class="toggle-btn svelte-1wfho06"> </button> <!>`, 1);
+var root3 = from_html(`<div class="critic-display svelte-1wfho06"><div><div class="main-score-row svelte-1wfho06"><div class="score-block main svelte-1wfho06"><div class="score-title svelte-1wfho06">OVERALL SCORE</div> <div> </div> <div> </div></div></div> <div class="score-divider-horizontal svelte-1wfho06"></div> <div class="sub-score-row svelte-1wfho06"><div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">COMMERCIAL</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">LITERARY</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div> <div class="sub-divider svelte-1wfho06"></div> <div class="sub-score-block tooltip-container svelte-1wfho06"><div class="sub-title svelte-1wfho06">COHESION</div> <div> </div> <div class="tooltip bottom svelte-1wfho06"> </div></div></div> <!> <div class="log-section svelte-1wfho06" style="margin-top: 10px;"><span class="log-label svelte-1wfho06">LOGLINE:</span> <span class="log-text-blue"> </span></div></div> <div class="section-header svelte-1wfho06">SANDERSON ENGINE METRICS</div> <div class="modules-grid bevel-down svelte-1wfho06"><!> <div class="divider-line svelte-1wfho06"></div> <!></div> <!> <!> <div class="section-header svelte-1wfho06"><span>STORY GRAPH</span> <select class="retro-select svelte-1wfho06" style="margin-left: auto; margin-right: 10px;"><option>Narrative Tension</option><option>Beat Quality</option></select> <!></div> <div class="chart-box bevel-down svelte-1wfho06"><div class="chart-area zero-center svelte-1wfho06" style="display: flex; width: 100%;"><!> <!></div> <div class="chart-axis svelte-1wfho06"><span>START</span> <!> <span>END</span></div></div> <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px;"><div class="section-header svelte-1wfho06" style="margin:0;">UNIVERSAL OUTLINE</div> <div class="dropdown-wrapper" style="position:relative;"><button class="retro-btn svelte-1wfho06"> </button> <!></div></div> <div class="structure-box bevel-down svelte-1wfho06"><!></div> <!> <button class="action-btn secondary">RUN DEEP META-ANALYSIS</button></div>`);
 var $$css3 = {
   hash: "svelte-1wfho06",
-  code: `.critic-display.svelte-1wfho06 {display:flex;flex-direction:column;gap:15px;font-family:'Courier New', monospace;color:#000;font-weight:bold;}.bevel-down.svelte-1wfho06 {border:2px solid #808080;border-bottom-color:#fff;border-right-color:#fff;background:#c0c0c0;padding:10px;}
+  code: `.critic-display.svelte-1wfho06 {display:flex;flex-direction:column;gap:15px;font-family:'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;color:#000;font-weight:normal;}.bevel-down.svelte-1wfho06 {border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;background:#fff;  /* Typically input backgrounds, but for panels might need grey */background:#c0c0c0; /* Keeping original logic but with Win95 bevels */padding:10px;}
     
     /* SCORES */.score-container.svelte-1wfho06 {background:#d4d4d4;padding-bottom:25px;position:relative;z-index:100; /* Ensure tooltips are above following sections */}
     
-    /* NEW LAYOUT */.main-score-row.svelte-1wfho06 {display:flex;justify-content:center;padding:15px 0;}.score-block.main.svelte-1wfho06 {display:flex;flex-direction:column;align-items:center;}.score-title.svelte-1wfho06 {font-size:14px;color:#555;font-weight:900;letter-spacing:2px;margin-bottom:5px;}.score-main.svelte-1wfho06 {font-size:64px;font-weight:900;line-height:0.9;text-shadow:2px 2px 0px rgba(255,255,255,0.5);}.score-verdict.svelte-1wfho06 {font-size:16px;font-weight:900;margin-top:5px;text-shadow:1px 1px 0px #000;letter-spacing:3px;}.score-divider-horizontal.svelte-1wfho06 {height:2px;background:#808080;width:80%;margin:10px auto;}.sub-score-row.svelte-1wfho06 {position:relative;z-index:101; /* Ensure sub-scores are even higher */display:flex;justify-content:space-around;align-items:center;padding-top:5px;}.sub-score-block.svelte-1wfho06 {text-align:center;flex:1;position:relative;cursor:help;} /* Added relative/cursor */.sub-title.svelte-1wfho06 {font-size:10px;font-weight:bold;color:#555;margin-bottom:2px;}.sub-val.svelte-1wfho06 {font-size:18px;font-weight:900;}.sub-divider.svelte-1wfho06 {width:1px;height:20px;background:#999;}
+    /* NEW LAYOUT */.main-score-row.svelte-1wfho06 {display:flex;justify-content:center;padding:15px 0;}.score-block.main.svelte-1wfho06 {display:flex;flex-direction:column;align-items:center;}.score-title.svelte-1wfho06 {font-size:11px;color:#555;font-weight:900;letter-spacing:2px;margin-bottom:5px;}.score-main.svelte-1wfho06 {font-size:64px;font-weight:900;line-height:0.9;text-shadow:2px 2px 0px rgba(255,255,255,0.5);}.score-verdict.svelte-1wfho06 {font-size:16px;font-weight:900;margin-top:5px;text-shadow:1px 1px 0px #000;letter-spacing:3px;}.score-divider-horizontal.svelte-1wfho06 {height:2px;background:#808080;width:80%;margin:10px auto;}.sub-score-row.svelte-1wfho06 {position:relative;z-index:101; /* Ensure sub-scores are even higher */display:flex;justify-content:space-around;align-items:center;padding-top:5px;}.sub-score-block.svelte-1wfho06 {text-align:center;flex:1;position:relative;cursor:help;} /* Added relative/cursor */.sub-title.svelte-1wfho06 {font-size:10px;font-weight:bold;color:#555;margin-bottom:2px;}.sub-val.svelte-1wfho06 {font-size:18px;font-weight:900;}.sub-divider.svelte-1wfho06 {width:1px;height:20px;background:#999;}
 
-    /* TOOLTIPS */.tooltip-container.svelte-1wfho06 {position:relative;overflow:visible;}.tooltip.svelte-1wfho06 {visibility:hidden;opacity:0;background-color:#FFFFE0;color:#000;text-align:center;border:2px solid #000;padding:5px 8px;position:absolute;z-index:10000; /* FORCE TOP LAYER */font-size:11px;width:140px;box-shadow:4px 4px 0px rgba(0,0,0,0.2);transition:opacity 0.2s;pointer-events:none;}.tooltip.bottom.svelte-1wfho06 {top:100%;left:50%;transform:translateX(-50%);margin-top:8px;}
+    /* TOOLTIPS */.tooltip-container.svelte-1wfho06 {position:relative;overflow:visible;}.tooltip.svelte-1wfho06 {visibility:hidden;opacity:0;background-color:#FFFFE0;color:#000;text-align:center;border:1px solid #000;padding:5px 8px;position:absolute;z-index:10000; /* FORCE TOP LAYER */font-size:11px;width:140px;box-shadow:2px 2px 0px rgba(0,0,0,0.2);transition:opacity 0.2s;pointer-events:none;}.tooltip.bottom.svelte-1wfho06 {top:100%;left:50%;transform:translateX(-50%);margin-top:8px;}
 
     /* Standard tooltip arrow (CSS triangle) */.tooltip.bottom.svelte-1wfho06::after {content:"";position:absolute;bottom:100%;left:50%;margin-left:-5px;border-width:5px;border-style:solid;border-color:transparent transparent #000 transparent;}.tooltip-container.svelte-1wfho06:hover .tooltip:where(.svelte-1wfho06) {visibility:visible;opacity:1;}
 
-    /* ANIMATIONS */.masterpiece.svelte-1wfho06 {color:var(--cj-grade-masterpiece) !important; animation: god-mode 1.5s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95);text-shadow:0 0 10px var(--cj-grade-masterpiece), 0 0 20px var(--cj-grade-masterpiece);z-index:5;position:relative;}.glow-bar.svelte-1wfho06 {background-color:var(--cj-grade-masterpiece) !important;box-shadow:0 0 10px var(--cj-grade-masterpiece), 0 0 15px var(--cj-grade-masterpiece); animation: pulse-bar 0.8s infinite alternate;}
+    /* ANIMATIONS */
+    /* [UPDATED] Replaced Glow with Dither/Flat effects */.masterpiece.svelte-1wfho06 {color:var(--cj-grade-masterpiece) !important; animation: god-mode 1.5s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95);z-index:5;position:relative;}.masterpiece-text.svelte-1wfho06 {text-shadow:1px 1px 0 #000;} /* Hard shadow instead of glow */.glow-bar.svelte-1wfho06 {background-color:var(--cj-grade-masterpiece) !important;background-image:radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 80%) !important;
+        animation: pulse-bar 0.8s infinite alternate;border:1px solid #fff; /* Hard border */box-shadow:none !important;}
 
-    /* SANDERSON METRICS (Updated for Diverging Bars) */.modules-grid.svelte-1wfho06 {padding:10px;}.module-item.svelte-1wfho06 {display:flex;align-items:center;gap:8px;font-size:10px;margin-bottom:8px;}.mod-label.svelte-1wfho06 {width:110px;text-align:right;color:#444;font-weight:900;}.diverging-bar-container.svelte-1wfho06 {flex:1;height:16px;background:#ddd;border:2px solid #808080;position:relative;overflow:hidden;}.center-line.svelte-1wfho06 {position:absolute;left:50%;top:0;bottom:0;width:2px;background:#555;z-index:2;opacity:0.5;}.fill.svelte-1wfho06 {height:100%;transition:width 0.5s ease;position:absolute;z-index:1;}.mod-score.svelte-1wfho06 {font-weight:900;width:35px;text-align:center;font-size:12px;text-shadow:1px 1px 0 #fff;}
+    /* DROPDOWN MENU */.dropdown-list.svelte-1wfho06 {position:absolute;top:100%;left:0;background:#c0c0c0;border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:2px 2px 5px rgba(0,0,0,0.5);z-index:9999;min-width:150px;padding:2px;}.dd-item.svelte-1wfho06 {padding:4px 8px;cursor:pointer;color:#000;}.dd-item.svelte-1wfho06:hover {background:#000080;color:#fff;}
 
-    /* NEW SLIDER STYLES */.slider-group.svelte-1wfho06 {padding:0 0 10px 0;}.slider-label.svelte-1wfho06 {font-size:11px;font-weight:900;color:#000080;border-bottom:1px dashed #888;margin-bottom:6px;}.slider-item.svelte-1wfho06 {margin-bottom:6px;}.slider-text-row.svelte-1wfho06 {display:flex;justify-content:space-between;font-size:10px;font-weight:bold;margin-bottom:2px;}.slider-track.svelte-1wfho06 {height:10px;background:#fff;border:1px inset #fff;border-top-color:#888;border-left-color:#888;}.slider-fill.svelte-1wfho06 {height:100%;background:#008080; /* Teal for sliders */}.divider-line.svelte-1wfho06 {height:1px;background:#808080;margin:10px 0;}
+    /* BUTTONS */.retro-btn.svelte-1wfho06 {background:#c0c0c0;border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:1px 1px 0 #000;color:#000;font-family:inherit;font-size:11px;padding:4px 8px;cursor:pointer;}.retro-btn.svelte-1wfho06:active {border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:none;transform:translate(1px, 1px);}.retro-btn.svelte-1wfho06:disabled {color:#888;cursor:not-allowed;}
 
-    /* DETAILED METRICS (Updated) */.details-grid.svelte-1wfho06 {display:flex;flex-direction:column;gap:15px;background:#dcdcdc;padding:12px;}.detail-category.svelte-1wfho06 {border:2px groove #fff;background:#e0e0e0;padding:8px;}.cat-header.svelte-1wfho06 {display:flex;justify-content:space-between;font-weight:900;font-size:12px;color:#000080;margin-bottom:8px;border-bottom:2px dotted #808080;padding-bottom:4px;}.cat-items.svelte-1wfho06 {display:flex;flex-direction:column;gap:8px;}.metric-card.svelte-1wfho06 {background:#f0f0f0;border:2px solid #aaa;padding:6px;}.metric-top.svelte-1wfho06 {display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;}.metric-name.svelte-1wfho06 {font-weight:bold;color:#222;}.metric-val.svelte-1wfho06 {font-weight:900;}.metric-bar-container.svelte-1wfho06 {height:8px;background:#fff;border:1px solid #888;margin-bottom:6px;}.metric-bar.svelte-1wfho06 {height:100%;transition:width 0.5s ease;position:absolute;top:0;bottom:0;}.metric-diagnosis.svelte-1wfho06 {font-size:10px;line-height:1.3;color:#333;border-top:1px dashed #ccc;padding-top:4px;}.diag-label.svelte-1wfho06 {font-weight:900;color:#800000;margin-right:4px;}.diag-text.svelte-1wfho06 {font-style:italic;}
+
+    /* SANDERSON METRICS (Updated for Diverging Bars) */.modules-grid.svelte-1wfho06 {padding:10px;z-index:1;position:relative;}.module-item.svelte-1wfho06 {display:flex;align-items:center;gap:8px;font-size:10px;margin-bottom:8px;}.mod-label.svelte-1wfho06 {width:110px;text-align:right;color:#444;font-weight:900;}.diverging-bar-container.svelte-1wfho06 {flex:1;height:16px;background:#ddd;border:1px solid #808080;box-shadow:inset 1px 1px 0 #000;position:relative;overflow:hidden;}.center-line.svelte-1wfho06 {position:absolute;left:50%;top:0;bottom:0;width:2px;background:#555;z-index:2;opacity:0.5;}.fill.svelte-1wfho06 {height:100%;transition:width 0.5s ease;position:absolute;z-index:1;}.mod-score.svelte-1wfho06 {font-weight:900;width:35px;text-align:center;font-size:12px;text-shadow:1px 1px 0 #fff;}
+
+    /* NEW SLIDER STYLES */.slider-group.svelte-1wfho06 {padding:0 0 10px 0;}.slider-label.svelte-1wfho06 {font-size:11px;font-weight:900;color:#000080;border-bottom:1px dashed #888;margin-bottom:6px;}.slider-item.svelte-1wfho06 {margin-bottom:6px;}.slider-text-row.svelte-1wfho06 {display:flex;justify-content:space-between;font-size:10px;font-weight:bold;margin-bottom:2px;}.slider-track.svelte-1wfho06 {height:10px;background:#fff;border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;}.slider-fill.svelte-1wfho06 {height:100%;background:#008080; /* Teal for sliders */}.divider-line.svelte-1wfho06 {height:1px;background:#808080;margin:10px 0;}
+
+    /* DETAILED METRICS (Updated) */.details-grid.svelte-1wfho06 {display:flex;flex-direction:column;gap:15px;background:#dcdcdc;padding:12px;}.detail-category.svelte-1wfho06 {border:2px groove #fff;background:#e0e0e0;padding:8px;}.cat-header.svelte-1wfho06 {display:flex;justify-content:space-between;font-weight:900;font-size:12px;color:#000080;margin-bottom:8px;border-bottom:2px dotted #808080;padding-bottom:4px;}.cat-items.svelte-1wfho06 {display:flex;flex-direction:column;gap:8px;}.metric-card.svelte-1wfho06 {background:#f0f0f0;border:1px solid #808080;padding:6px;}.metric-top.svelte-1wfho06 {display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;}.metric-name.svelte-1wfho06 {font-weight:bold;color:#222;}.metric-val.svelte-1wfho06 {font-weight:900;}.metric-bar-container.svelte-1wfho06 {height:8px;background:#fff;border:1px solid #888;margin-bottom:6px;}.metric-bar.svelte-1wfho06 {height:100%;transition:width 0.5s ease;position:absolute;top:0;bottom:0;}.metric-diagnosis.svelte-1wfho06 {font-size:10px;line-height:1.3;color:#333;border-top:1px dashed #ccc;padding-top:4px;}.diag-label.svelte-1wfho06 {font-weight:900;color:#800000;margin-right:4px;}.diag-text.svelte-1wfho06 {font-style:italic;}
 
     /* CHART AREA (Diverging) */.chart-box.svelte-1wfho06 {padding:10px;background:#d4d4d4;position:relative;z-index:50; /* Lower than score but above normal flow if needed */}.chart-area.svelte-1wfho06 {height:100px;display:flex;align-items:stretch;gap:1px;padding-bottom:4px;border-bottom:2px solid #808080;position:relative;}.chart-center-line.svelte-1wfho06 {position:absolute;top:50%;left:0;right:0;height:1px;background:#555;z-index:0;}.chart-overlay.svelte-1wfho06 {position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;pointer-events:none;}.chart-axis.svelte-1wfho06 {display:flex;justify-content:space-between;font-size:9px;color:#555;margin-top:2px;align-items:center;}.retro-select.svelte-1wfho06 {font-family:inherit;font-size:10px;background:#fff;border:1px solid #808080;margin-left:auto;}.legend-box.svelte-1wfho06 {width:10px;height:10px;display:inline-block;}.bar-col.svelte-1wfho06 {display:flex;flex-direction:column;justify-content:center;align-items:center;min-width:4px;position:relative;transition:opacity 0.2s;height:100%;}.bar-col.svelte-1wfho06:hover {opacity:0.8;}.bar-fill.svelte-1wfho06 {width:100%;transition:height 0.5s ease;border:1px solid rgba(0,0,0,0.2);}.chart-tooltip.svelte-1wfho06 {bottom:100%;margin-bottom:5px;white-space:nowrap;pointer-events:none;}
 
-    /* STRUCTURE NODES */.structure-box.svelte-1wfho06 {padding:12px;background:#d4d4d4;}.structure-node.svelte-1wfho06 {background:#e0e0e0;border:2px inset #fff;padding:8px;margin-bottom:8px;}.structure-node.promise.svelte-1wfho06 {border-left:4px solid #000080;}.structure-node.payoff.svelte-1wfho06 {border-left:4px solid #800000;}.structure-node.progress.svelte-1wfho06 {border-left:4px solid #008000;}.node-header.svelte-1wfho06 {display:flex;justify-content:space-between;font-size:10px;font-weight:900;margin-bottom:4px;border-bottom:1px dashed #999;}.node-type.svelte-1wfho06 {color:#555;}.node-tension.svelte-1wfho06 {color:#BF40BF;}.node-desc.svelte-1wfho06 {font-size:11px;margin-bottom:4px;}.node-chars.svelte-1wfho06 {font-size:9px;color:#666;font-style:italic;}
+    /* STRUCTURE NODES */.structure-box.svelte-1wfho06 {padding:12px;background:#d4d4d4;}.structure-node.svelte-1wfho06 {background:#e0e0e0;border:1px solid #fff;border-top:1px solid #808080;border-left:1px solid #808080;padding:8px;margin-bottom:8px;}.structure-node.promise.svelte-1wfho06 {border-left:4px solid #000080;}.structure-node.payoff.svelte-1wfho06 {border-left:4px solid #800000;}.structure-node.progress.svelte-1wfho06 {border-left:4px solid #008000;}.node-header.svelte-1wfho06 {display:flex;justify-content:space-between;font-size:10px;font-weight:900;margin-bottom:4px;border-bottom:1px dashed #999;}.node-type.svelte-1wfho06 {color:#555;}.node-tension.svelte-1wfho06 {color:#BF40BF;}.node-desc.svelte-1wfho06 {font-size:11px;margin-bottom:4px;}.node-chars.svelte-1wfho06 {font-size:9px;color:#666;font-style:italic;}
 
     /* MISC */.section-header.svelte-1wfho06 {display:flex;align-items:center;gap:10px;font-weight:900;font-size:12px;color:#000;text-transform:uppercase;margin-top:10px;margin-bottom:5px;}.section-header.svelte-1wfho06::after {content:"";flex:1;height:2px;background:#808080;}.warning-box.svelte-1wfho06 {background:#FFFF00;border:2px solid #000;padding:8px;font-size:11px;font-weight:900;display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;}.log-section.svelte-1wfho06 {width:100%;text-align:left;font-size:12px;line-height:1.4;}.log-label.svelte-1wfho06 {color:#000080;font-weight:900;}.log-text.svelte-1wfho06 {color:#222;font-style:italic;font-weight:bold;}.toggle-btn.svelte-1wfho06 {background:none;border:none;color:#444;cursor:pointer;font-size:11px;padding:0;text-align:left;font-weight:bold;}.raw-box.svelte-1wfho06 {background:#000;color:#0f0;padding:10px;overflow-x:auto;font-size:11px;max-height:200px;font-weight:bold;}`
 };
@@ -28745,12 +28816,37 @@ function CriticDisplay($$anchor, $$props) {
   push($$props, true);
   append_styles($$anchor, $$css3);
   let showRaw = state(false);
+  let selectedAgent = state(null);
+  let openDropdown = state(null);
+  let graphMode = state("tension");
+  let selectedArc = state("truby");
+  let showRepairMenu = state(false);
+  let repairIssues = user_derived(() => {
+    const issues = [];
+    if ($$props.data.content_warning && $$props.data.content_warning !== "None")
+      issues.push(`Fix Critical Warning: ${$$props.data.content_warning}`);
+    if ($$props.data.tribunal_breakdown) {
+      if ($$props.data.tribunal_breakdown.logic.content_warning)
+        issues.push(`Logic Fix: ${$$props.data.tribunal_breakdown.logic.content_warning}`);
+      if ($$props.data.tribunal_breakdown.market.commercial_reason)
+        issues.push(`Market Fix: ${$$props.data.tribunal_breakdown.market.commercial_reason}`);
+      if ($$props.data.tribunal_breakdown.lit.niche_reason)
+        issues.push(`Thematic Fix: ${$$props.data.tribunal_breakdown.lit.niche_reason}`);
+    }
+    if ($$props.data.detailed_metrics) {
+      Object.entries($$props.data.detailed_metrics).forEach(([k2, v2]) => {
+        if (v2.score < 0)
+          issues.push(`Improve ${k2.toUpperCase()} (Score: ${v2.score})`);
+      });
+    }
+    return issues;
+  });
   function getBarColor(val) {
-    if (val >= 30)
+    if (val >= 45)
       return $$props.settings.gradingColors.masterpiece;
-    if (val >= 10)
+    if (val >= 30)
       return $$props.settings.gradingColors.excellent;
-    if (val > 0)
+    if (val >= 10)
       return $$props.settings.gradingColors.good;
     if (val === 0)
       return $$props.settings.gradingColors.average;
@@ -28759,7 +28855,7 @@ function CriticDisplay($$anchor, $$props) {
     return $$props.settings.gradingColors.critical;
   }
   function isMasterpieceEffect(val) {
-    return getBarColor(val) === $$props.settings.gradingColors.masterpiece;
+    return val >= 45;
   }
   function isCritical(val) {
     return val <= -20;
@@ -28777,6 +28873,9 @@ function CriticDisplay($$anchor, $$props) {
     const width = Math.abs(clamped) / cap * 50;
     const isNegative = val < 0;
     return { width, isNegative };
+  }
+  function getQualityMetrics(val) {
+    return Math.max(0, Math.min(100, val));
   }
   function getSliderMetrics(val) {
     const clamped = Math.max(0, Math.min(100, val));
@@ -28821,38 +28920,45 @@ function CriticDisplay($$anchor, $$props) {
     const co = $$props.data.cohesion_score || 0;
     return Math.round((c2 + n3 + co) / 3);
   });
-  let selectedArc = state("truby");
   let chartData = user_derived(() => {
-    if (!get(isUniversalOutline)) {
-      const legacyArc = $$props.data.tension_arc || [0, 10, 5, 20, 15, 30];
-      return legacyArc.map((val, i3) => ({
-        tension: val,
-        widthPerc: 100 / legacyArc.length,
-        title: `Beat ${i3 + 1}`,
-        desc: "Legacy Data"
-      }));
+    let sourceArray = [];
+    let labels = [];
+    let descs = [];
+    if (get(graphMode) === "quality" && $$props.data.quality_arc && $$props.data.quality_arc.length > 0) {
+      sourceArray = $$props.data.quality_arc;
+    } else if (get(graphMode) === "tension") {
+      if (get(isUniversalOutline)) {
+        sourceArray = get(structure).map((n3) => n3.tension);
+      } else {
+        sourceArray = $$props.data.tension_arc || [0, 10, 5, 20, 15, 30];
+      }
+    } else {
+      sourceArray = ($$props.data.tension_arc || []).map(() => 50);
     }
-    const nodes = get(structure);
-    const totalChars = nodes.reduce(
-      (acc, node) => {
-        var _a3;
-        return acc + (((_a3 = node.description) === null || _a3 === void 0 ? void 0 : _a3.length) || 50);
-      },
-      0
-    );
-    return nodes.map((node) => {
+    if (get(isUniversalOutline)) {
+      const nodes = get(structure);
+      labels = nodes.map((n3) => n3.title);
+      descs = nodes.map((n3) => n3.description || "");
+    } else {
+      labels = sourceArray.map((_2, i3) => `Beat ${i3 + 1}`);
+      descs = sourceArray.map(() => "Legacy Data");
+    }
+    const finalData = sourceArray.map((val, i3) => {
       var _a3;
-      const len = ((_a3 = node.description) === null || _a3 === void 0 ? void 0 : _a3.length) || 50;
-      let rawPerc = len / totalChars * 100;
+      const len = ((_a3 = descs[i3]) === null || _a3 === void 0 ? void 0 : _a3.length) || 50;
       return {
-        tension: node.tension,
-        widthPerc: rawPerc,
-        title: node.title,
-        desc: node.description
+        val,
+        title: labels[i3] || `Beat ${i3 + 1}`,
+        desc: descs[i3] || "",
+        textLen: len
       };
     });
+    const totalChars = finalData.reduce((acc, d2) => acc + d2.textLen, 0);
+    return finalData.map((d2) => ({ ...d2, widthPerc: d2.textLen / totalChars * 100 }));
   });
   let idealPathD = user_derived(() => {
+    if (get(graphMode) !== "tension")
+      return "";
     if (!get(chartData) || get(chartData).length === 0)
       return "";
     const idealPoints = IDEAL_ARCS[get(selectedArc)].points;
@@ -29026,22 +29132,19 @@ function CriticDisplay($$anchor, $$props) {
       reset(span_5);
       reset(div_28);
       template_effect(
-        ($0, $1, $2, $3, $4) => {
+        ($0, $1, $2) => {
           var _a3;
           set_text(text_12, get(m3).label);
-          set_class(div_30, 1, `fill ${$0 != null ? $0 : ""}`, "svelte-1wfho06");
           set_style(div_30, `
+                            position: absolute;
                             width: ${(_a3 = get(bar).width) != null ? _a3 : ""}%; 
                             left: ${get(bar).isNegative ? 50 - get(bar).width + "%" : "50%"};
-                            background: ${$1 != null ? $1 : ""}
                          `);
-          set_class(span_5, 1, `mod-score ${$2 != null ? $2 : ""}`, "svelte-1wfho06");
-          set_style(span_5, `color: ${$3 != null ? $3 : ""}`);
-          set_text(text_13, $4);
+          set_class(span_5, 1, `mod-score ${$0 != null ? $0 : ""}`, "svelte-1wfho06");
+          set_style(span_5, `color: ${$1 != null ? $1 : ""}`);
+          set_text(text_13, $2);
         },
         [
-          () => isMasterpieceEffect(get(m3).val) ? "glow-bar" : "",
-          () => getBarColor(get(m3).val),
           () => isMasterpieceEffect(get(m3).val) ? "masterpiece-text" : "",
           () => isMasterpieceEffect(get(m3).val) ? "" : getBarColor(get(m3).val),
           () => formatScoreDisplay(get(m3).val)
@@ -29091,26 +29194,23 @@ function CriticDisplay($$anchor, $$props) {
           reset(div_39);
           reset(div_35);
           template_effect(
-            ($0, $1, $2, $3, $4) => {
+            ($0, $1, $2) => {
               var _a3;
               set_text(text_16, get(item).name);
               set_class(span_9, 1, `metric-val ${$0 != null ? $0 : ""}`, "svelte-1wfho06");
               set_style(span_9, `color: ${$1 != null ? $1 : ""}`);
               set_text(text_17, $2);
-              set_class(div_38, 1, `metric-bar ${$3 != null ? $3 : ""}`, "svelte-1wfho06");
               set_style(div_38, `
+                                        position: absolute;
                                         width: ${(_a3 = get(bar).width) != null ? _a3 : ""}%; 
                                         left: ${get(bar).isNegative ? 50 - get(bar).width + "%" : "50%"};
-                                        background: ${$4 != null ? $4 : ""}
                                      `);
               set_text(text_18, get(item).reason);
             },
             [
               () => isMasterpieceEffect(get(item).score) ? "masterpiece-text" : "",
               () => isMasterpieceEffect(get(item).score) ? "" : getBarColor(get(item).score),
-              () => formatScoreDisplay(get(item).score),
-              () => isMasterpieceEffect(get(item).score) ? "glow-bar" : "",
-              () => getBarColor(get(item).score)
+              () => formatScoreDisplay(get(item).score)
             ]
           );
           append($$anchor4, div_35);
@@ -29120,7 +29220,7 @@ function CriticDisplay($$anchor, $$props) {
         template_effect(
           ($0, $1, $2, $3) => {
             set_text(text_14, $0);
-            set_class(span_7, 1, `cat-score ${$1 != null ? $1 : ""}`);
+            set_class(span_7, 1, `cat-score ${$1 != null ? $1 : ""}`, "svelte-1wfho06");
             set_style(span_7, `color: ${$2 != null ? $2 : ""}`);
             set_text(text_15, `AVG: ${$3 != null ? $3 : ""}`);
           },
@@ -29143,71 +29243,166 @@ function CriticDisplay($$anchor, $$props) {
   }
   var node_6 = sibling(node_5, 2);
   {
-    var consequent_3 = ($$anchor2) => {
+    var consequent_6 = ($$anchor2) => {
       var fragment_1 = root_8();
       var div_40 = sibling(first_child(fragment_1), 2);
       var div_41 = child(div_40);
-      var div_42 = sibling(child(div_41), 2);
-      var text_19 = child(div_42);
-      reset(div_42);
+      div_41.__click = () => set(selectedAgent, "market");
+      var div_42 = child(div_41);
       var div_43 = sibling(div_42, 2);
-      var text_20 = child(div_43, true);
+      var span_11 = child(div_43);
+      span_11.__click = (e2) => {
+        e2.stopPropagation();
+        set(openDropdown, get(openDropdown) === "market" ? null : "market", true);
+      };
+      var node_7 = sibling(span_11, 2);
+      {
+        var consequent_3 = ($$anchor3) => {
+          var div_44 = root_9();
+          var div_45 = child(div_44);
+          div_45.__click = () => {
+            var _a3;
+            $$props.onAddRepairInstruction(`Address Commercial Concern: ${(_a3 = $$props.data.tribunal_breakdown) == null ? void 0 : _a3.market.commercial_reason}`);
+            set(openDropdown, null);
+          };
+          var div_46 = sibling(div_45, 2);
+          div_46.__click = () => {
+            $$props.onAddRepairInstruction(`Enhance Commercial Appeal`);
+            set(openDropdown, null);
+          };
+          reset(div_44);
+          append($$anchor3, div_44);
+        };
+        if_block(node_7, ($$render) => {
+          if (get(openDropdown) === "market")
+            $$render(consequent_3);
+        });
+      }
       reset(div_43);
-      var div_44 = sibling(div_43, 2);
-      var i_1 = child(div_44);
-      var text_21 = child(i_1);
-      reset(i_1);
-      reset(div_44);
-      reset(div_41);
-      var div_45 = sibling(div_41, 2);
-      var div_46 = sibling(child(div_45), 2);
-      var text_22 = child(div_46);
-      reset(div_46);
-      var div_47 = sibling(div_46, 2);
-      var text_23 = child(div_47, true);
+      var div_47 = sibling(div_43, 2);
+      var b = child(div_47);
+      var text_19 = child(b);
+      reset(b);
       reset(div_47);
       var div_48 = sibling(div_47, 2);
-      var i_2 = child(div_48);
+      var text_20 = child(div_48, true);
+      var i_1 = sibling(text_20, 4);
+      var text_21 = child(i_1);
+      reset(i_1);
+      reset(div_48);
+      reset(div_41);
+      var div_49 = sibling(div_41, 2);
+      div_49.__click = () => set(selectedAgent, "logic");
+      var div_50 = child(div_49);
+      var div_51 = sibling(div_50, 2);
+      var span_12 = child(div_51);
+      span_12.__click = (e2) => {
+        e2.stopPropagation();
+        set(openDropdown, get(openDropdown) === "logic" ? null : "logic", true);
+      };
+      var node_8 = sibling(span_12, 2);
+      {
+        var consequent_4 = ($$anchor3) => {
+          var div_52 = root_10();
+          var div_53 = child(div_52);
+          div_53.__click = () => {
+            var _a3;
+            $$props.onAddRepairInstruction(`Fix Logic Hole: ${(_a3 = $$props.data.tribunal_breakdown) == null ? void 0 : _a3.logic.content_warning}`);
+            set(openDropdown, null);
+          };
+          var div_54 = sibling(div_53, 2);
+          div_54.__click = () => {
+            $$props.onAddRepairInstruction(`Improve Internal Cohesion`);
+            set(openDropdown, null);
+          };
+          reset(div_52);
+          append($$anchor3, div_52);
+        };
+        if_block(node_8, ($$render) => {
+          if (get(openDropdown) === "logic")
+            $$render(consequent_4);
+        });
+      }
+      reset(div_51);
+      var div_55 = sibling(div_51, 2);
+      var b_1 = child(div_55);
+      var text_22 = child(b_1);
+      reset(b_1);
+      reset(div_55);
+      var div_56 = sibling(div_55, 2);
+      var text_23 = child(div_56, true);
+      var span_13 = sibling(text_23, 4);
+      var i_2 = child(span_13);
       var text_24 = child(i_2);
       reset(i_2);
-      reset(div_48);
-      reset(div_45);
-      var div_49 = sibling(div_45, 2);
-      var div_50 = sibling(child(div_49), 2);
-      var text_25 = child(div_50);
-      reset(div_50);
-      var div_51 = sibling(div_50, 2);
-      var text_26 = child(div_51);
-      reset(div_51);
-      var div_52 = sibling(div_51, 2);
-      var i_3 = child(div_52);
+      reset(span_13);
+      reset(div_56);
+      reset(div_49);
+      var div_57 = sibling(div_49, 2);
+      div_57.__click = () => set(selectedAgent, "lit");
+      var div_58 = child(div_57);
+      var div_59 = sibling(div_58, 2);
+      var span_14 = child(div_59);
+      span_14.__click = (e2) => {
+        e2.stopPropagation();
+        set(openDropdown, get(openDropdown) === "lit" ? null : "lit", true);
+      };
+      var node_9 = sibling(span_14, 2);
+      {
+        var consequent_5 = ($$anchor3) => {
+          var div_60 = root_11();
+          var div_61 = child(div_60);
+          div_61.__click = () => {
+            var _a3;
+            $$props.onAddRepairInstruction(`Refine Theme: ${(_a3 = $$props.data.tribunal_breakdown) == null ? void 0 : _a3.lit.niche_reason}`);
+            set(openDropdown, null);
+          };
+          var div_62 = sibling(div_61, 2);
+          div_62.__click = () => {
+            $$props.onAddRepairInstruction(`Boost Novelty`);
+            set(openDropdown, null);
+          };
+          reset(div_60);
+          append($$anchor3, div_60);
+        };
+        if_block(node_9, ($$render) => {
+          if (get(openDropdown) === "lit")
+            $$render(consequent_5);
+        });
+      }
+      reset(div_59);
+      var div_63 = sibling(div_59, 2);
+      var b_2 = child(div_63);
+      var text_25 = child(b_2);
+      reset(b_2);
+      reset(div_63);
+      var div_64 = sibling(div_63, 2);
+      var text_26 = child(div_64);
+      var i_3 = sibling(text_26, 4);
       var text_27 = child(i_3);
       reset(i_3);
-      reset(div_52);
-      reset(div_49);
+      reset(div_64);
+      reset(div_57);
       reset(div_40);
       template_effect(
-        ($0, $1, $2, $3, $4, $5, $6) => {
+        ($0, $1, $2, $3) => {
           var _a3, _b3, _c2;
-          set_class(div_42, 1, `agent-verdict ${$0 != null ? $0 : ""}`);
-          set_text(text_19, `SCORE: ${$1 != null ? $1 : ""}`);
+          set_class(div_42, 1, `win95-titlebar ${get(selectedAgent) === "market" ? "" : "inactive"}`);
+          set_text(text_19, `SCORE: ${$0 != null ? $0 : ""}`);
           set_text(text_20, $$props.data.tribunal_breakdown.market.log_line || "N/A");
           set_text(text_21, `"${(_a3 = $$props.data.tribunal_breakdown.market.commercial_reason || "") != null ? _a3 : ""}"`);
-          set_class(div_46, 1, `agent-verdict ${$2 != null ? $2 : ""}`);
-          set_text(text_22, `SCORE: ${$3 != null ? $3 : ""}`);
+          set_class(div_50, 1, `win95-titlebar ${get(selectedAgent) === "logic" ? "" : "inactive"}`);
+          set_text(text_22, `COHESION: ${$1 != null ? $1 : ""}`);
           set_text(text_23, $$props.data.tribunal_breakdown.logic.content_warning || "No Logic Holes Detected.");
           set_text(text_24, `"${(_b3 = $$props.data.tribunal_breakdown.logic.cohesion_reason || "") != null ? _b3 : ""}"`);
-          set_class(div_50, 1, `agent-verdict ${$4 != null ? $4 : ""}`);
-          set_text(text_25, `NOVELTY: ${$5 != null ? $5 : ""}`);
-          set_text(text_26, `Theme: ${$6 != null ? $6 : ""}`);
+          set_class(div_58, 1, `win95-titlebar ${get(selectedAgent) === "lit" ? "" : "inactive"}`);
+          set_text(text_25, `NOVELTY: ${$2 != null ? $2 : ""}`);
+          set_text(text_26, `Theme Strength: ${$3 != null ? $3 : ""}`);
           set_text(text_27, `"${(_c2 = $$props.data.tribunal_breakdown.lit.niche_reason || "") != null ? _c2 : ""}"`);
         },
         [
-          () => isMasterpieceEffect($$props.data.tribunal_breakdown.market.commercial_score) ? "masterpiece-text" : "",
           () => formatScoreDisplay($$props.data.tribunal_breakdown.market.commercial_score),
-          () => isMasterpieceEffect($$props.data.tribunal_breakdown.logic.cohesion_score) ? "masterpiece-text" : "",
           () => formatScoreDisplay($$props.data.tribunal_breakdown.logic.cohesion_score),
-          () => isMasterpieceEffect($$props.data.tribunal_breakdown.lit.novelty_score) ? "masterpiece-text" : "",
           () => formatScoreDisplay($$props.data.tribunal_breakdown.lit.novelty_score),
           () => formatScoreDisplay($$props.data.tribunal_breakdown.lit.niche_score)
         ]
@@ -29216,123 +29411,239 @@ function CriticDisplay($$anchor, $$props) {
     };
     if_block(node_6, ($$render) => {
       if ($$props.data.tribunal_breakdown)
-        $$render(consequent_3);
+        $$render(consequent_6);
     });
   }
-  var div_53 = sibling(node_6, 2);
-  var select = sibling(child(div_53), 2);
-  each(select, 21, () => Object.entries(IDEAL_ARCS), index, ($$anchor2, $$item) => {
-    var $$array_1 = user_derived(() => to_array(get($$item), 2));
-    let key2 = () => get($$array_1)[0];
-    let arc = () => get($$array_1)[1];
-    var option = root_9();
-    var text_28 = child(option, true);
-    reset(option);
-    var option_value = {};
-    template_effect(() => {
-      var _a3;
-      set_text(text_28, arc().label);
-      if (option_value !== (option_value = key2())) {
-        option.value = (_a3 = option.__value = key2()) != null ? _a3 : "";
-      }
-    });
-    append($$anchor2, option);
-  });
+  var div_65 = sibling(node_6, 2);
+  var select = sibling(child(div_65), 2);
+  var option = child(select);
+  option.value = option.__value = "tension";
+  var option_1 = sibling(option);
+  option_1.value = option_1.__value = "quality";
   reset(select);
-  reset(div_53);
-  var div_54 = sibling(div_53, 2);
-  var div_55 = child(div_54);
-  var svg = sibling(child(div_55), 2);
-  var path_1 = child(svg);
-  reset(svg);
-  var node_7 = sibling(svg, 2);
-  each(node_7, 17, () => get(chartData), index, ($$anchor2, beat, i3) => {
-    const bar = user_derived(() => getBarMetrics(get(beat).tension));
-    var div_56 = root_10();
-    var div_57 = child(div_56);
-    var div_58 = sibling(div_57, 2);
-    var strong = child(div_58);
+  var node_10 = sibling(select, 2);
+  {
+    var consequent_7 = ($$anchor2) => {
+      var select_1 = root_12();
+      each(select_1, 21, () => Object.entries(IDEAL_ARCS), index, ($$anchor3, $$item) => {
+        var $$array_1 = user_derived(() => to_array(get($$item), 2));
+        let key2 = () => get($$array_1)[0];
+        let arc = () => get($$array_1)[1];
+        var option_2 = root_13();
+        var text_28 = child(option_2, true);
+        reset(option_2);
+        var option_2_value = {};
+        template_effect(() => {
+          var _a3;
+          set_text(text_28, arc().label);
+          if (option_2_value !== (option_2_value = key2())) {
+            option_2.value = (_a3 = option_2.__value = key2()) != null ? _a3 : "";
+          }
+        });
+        append($$anchor3, option_2);
+      });
+      reset(select_1);
+      bind_select_value(select_1, () => get(selectedArc), ($$value) => set(selectedArc, $$value));
+      append($$anchor2, select_1);
+    };
+    if_block(node_10, ($$render) => {
+      if (get(graphMode) === "tension")
+        $$render(consequent_7);
+    });
+  }
+  reset(div_65);
+  var div_66 = sibling(div_65, 2);
+  var div_67 = child(div_66);
+  var node_11 = child(div_67);
+  {
+    var consequent_8 = ($$anchor2) => {
+      var fragment_2 = root_14();
+      var svg = sibling(first_child(fragment_2), 2);
+      var path_1 = child(svg);
+      reset(svg);
+      template_effect(() => set_attribute2(path_1, "d", get(idealPathD)));
+      append($$anchor2, fragment_2);
+    };
+    if_block(node_11, ($$render) => {
+      if (get(graphMode) === "tension")
+        $$render(consequent_8);
+    });
+  }
+  var node_12 = sibling(node_11, 2);
+  each(node_12, 17, () => get(chartData), index, ($$anchor2, beat, i3) => {
+    const bar = user_derived(() => get(graphMode) === "tension" ? getBarMetrics(get(beat).val) : null);
+    const qualityH = user_derived(() => get(graphMode) === "quality" ? getQualityMetrics(get(beat).val) : 0);
+    var div_68 = root_15();
+    var div_69 = child(div_68);
+    var node_13 = child(div_69);
+    {
+      var consequent_9 = ($$anchor3) => {
+        var div_70 = root_16();
+        template_effect(
+          ($0, $1) => {
+            var _a3;
+            return set_style(div_70, `
+                                    width: auto;
+                                    left: 1px; right: 1px;
+                                    top: ${get(bar).isNegative ? "50%" : "auto"};
+                                    bottom: ${get(bar).isNegative ? "auto" : "50%"};
+                                    height: ${(_a3 = get(bar).width) != null ? _a3 : ""}%;
+                                    position: absolute;
+                                    background: ${$0 != null ? $0 : ""};
+                                    background-size: 200% auto;
+                                    animation: ${$1 != null ? $1 : ""};
+                                    border: 1px solid rgba(0,0,0,0.3);
+                                 `);
+          },
+          [
+            () => isMasterpieceEffect(get(beat).val) ? "linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)" : getBarColor(get(beat).val),
+            () => isMasterpieceEffect(get(beat).val) ? "rainbow-bar-scroll 3s linear infinite" : "none"
+          ]
+        );
+        append($$anchor3, div_70);
+      };
+      var alternate = ($$anchor3) => {
+        var div_71 = root_17();
+        template_effect(() => {
+          var _a3;
+          return set_style(div_71, `
+                                    width: auto;
+                                    left: 1px; right: 1px;
+                                    bottom: 0;
+                                    height: ${(_a3 = get(qualityH)) != null ? _a3 : ""}%;
+                                    position: absolute;
+                                    /* Gradient for quality? Or just Green/Gold? */
+                                    background: linear-gradient(to top, #800000, #ffff00, #00ff00);
+                                    border: 1px solid rgba(0,0,0,0.3);
+                                 `);
+        });
+        append($$anchor3, div_71);
+      };
+      if_block(node_13, ($$render) => {
+        if (get(graphMode) === "tension" && get(bar))
+          $$render(consequent_9);
+        else
+          $$render(alternate, false);
+      });
+    }
+    reset(div_69);
+    var div_72 = sibling(div_69, 2);
+    var strong = child(div_72);
     var text_29 = child(strong);
     reset(strong);
     var text_30 = sibling(strong, 2);
-    var span_11 = sibling(text_30, 3);
-    var text_31 = child(span_11);
-    reset(span_11);
-    reset(div_58);
-    reset(div_56);
+    var span_15 = sibling(text_30, 3);
+    var text_31 = child(span_15);
+    reset(span_15);
+    reset(div_72);
+    reset(div_68);
     template_effect(
-      ($0, $1, $2, $3) => {
-        var _a3, _b3, _c2;
-        set_style(div_56, `flex-grow: ${(_a3 = get(beat).widthPerc) != null ? _a3 : ""};`);
-        set_class(div_57, 1, `bar-fill ${$0 != null ? $0 : ""}`, "svelte-1wfho06");
-        set_style(div_57, `
-                            height: ${(_b3 = get(bar).width) != null ? _b3 : ""}%; 
-                            background-color: ${$1 != null ? $1 : ""};
-                            position: absolute;
-                            bottom: ${get(bar).isNegative ? "auto" : "50%"};
-                            top: ${get(bar).isNegative ? "50%" : "auto"};
-                            left: 1px; right: 1px;
-                         `);
-        set_text(text_29, `${i3 + 1}. ${(_c2 = get(beat).title) != null ? _c2 : ""}`);
-        set_text(text_30, ` Tension: ${$2 != null ? $2 : ""}`);
-        set_text(text_31, `Duration: ${$3 != null ? $3 : ""}%`);
+      ($0, $1) => {
+        var _a3, _b3;
+        set_style(div_68, `width: ${(_a3 = get(beat).widthPerc) != null ? _a3 : ""}%; flex-grow: 0; flex-shrink: 0;`);
+        set_text(text_29, `${i3 + 1}. ${(_b3 = get(beat).title) != null ? _b3 : ""}`);
+        set_text(text_30, ` ${get(graphMode) === "tension" ? "Tension" : "Quality"}: ${$0 != null ? $0 : ""}`);
+        set_text(text_31, `Duration: ${$1 != null ? $1 : ""}%`);
       },
       [
-        () => isMasterpieceEffect(get(beat).tension) ? "glow-bar" : "",
-        () => getBarColor(get(beat).tension),
-        () => formatScoreDisplay(get(beat).tension),
+        () => formatScoreDisplay(get(beat).val),
         () => Math.round(get(beat).widthPerc)
       ]
     );
-    append($$anchor2, div_56);
+    append($$anchor2, div_68);
   });
-  reset(div_55);
-  var div_59 = sibling(div_55, 2);
-  var div_60 = sibling(child(div_59), 2);
-  var span_12 = sibling(child(div_60), 2);
-  var text_32 = child(span_12);
-  reset(span_12);
-  reset(div_60);
-  next(2);
-  reset(div_59);
-  reset(div_54);
-  var div_61 = sibling(div_54, 4);
-  var node_8 = child(div_61);
+  reset(div_67);
+  var div_73 = sibling(div_67, 2);
+  var node_14 = sibling(child(div_73), 2);
   {
-    var consequent_4 = ($$anchor2) => {
-      var fragment_2 = comment();
-      var node_9 = first_child(fragment_2);
-      each(node_9, 17, () => get(structure), index, ($$anchor3, node) => {
-        var div_62 = root_12();
-        var div_63 = child(div_62);
-        var span_13 = child(div_63);
-        var text_33 = child(span_13, true);
-        reset(span_13);
-        var span_14 = sibling(span_13, 2);
-        var text_34 = child(span_14, true);
-        reset(span_14);
-        var span_15 = sibling(span_14, 2);
-        var text_35 = child(span_15);
-        reset(span_15);
-        reset(div_63);
-        var div_64 = sibling(div_63, 2);
-        var text_36 = child(div_64, true);
-        reset(div_64);
-        var div_65 = sibling(div_64, 2);
-        var text_37 = child(div_65);
-        reset(div_65);
-        reset(div_62);
+    var consequent_10 = ($$anchor2) => {
+      var div_74 = root_18();
+      var span_16 = sibling(child(div_74), 2);
+      var text_32 = child(span_16);
+      reset(span_16);
+      reset(div_74);
+      template_effect(() => {
+        var _a3;
+        return set_text(text_32, `IDEAL (${(_a3 = IDEAL_ARCS[get(selectedArc)].label) != null ? _a3 : ""})`);
+      });
+      append($$anchor2, div_74);
+    };
+    if_block(node_14, ($$render) => {
+      if (get(graphMode) === "tension")
+        $$render(consequent_10);
+    });
+  }
+  next(2);
+  reset(div_73);
+  reset(div_66);
+  var div_75 = sibling(div_66, 2);
+  var div_76 = sibling(child(div_75), 2);
+  var button = child(div_76);
+  button.__click = () => set(showRepairMenu, !get(showRepairMenu));
+  var text_33 = child(button);
+  reset(button);
+  var node_15 = sibling(button, 2);
+  {
+    var consequent_11 = ($$anchor2) => {
+      var div_77 = root_19();
+      each(div_77, 21, () => get(repairIssues), index, ($$anchor3, issue) => {
+        var div_78 = root_20();
+        div_78.__click = () => {
+          $$props.onAddRepairInstruction(get(issue));
+          set(showRepairMenu, false);
+        };
+        var text_34 = child(div_78, true);
+        reset(div_78);
+        template_effect(() => set_text(text_34, get(issue)));
+        append($$anchor3, div_78);
+      });
+      reset(div_77);
+      append($$anchor2, div_77);
+    };
+    if_block(node_15, ($$render) => {
+      if (get(showRepairMenu))
+        $$render(consequent_11);
+    });
+  }
+  reset(div_76);
+  reset(div_75);
+  var div_79 = sibling(div_75, 2);
+  var node_16 = child(div_79);
+  {
+    var consequent_13 = ($$anchor2) => {
+      var fragment_3 = root_21();
+      var node_17 = first_child(fragment_3);
+      each(node_17, 17, () => get(structure), index, ($$anchor3, node) => {
+        var div_80 = root_222();
+        var div_81 = child(div_80);
+        var span_17 = child(div_81);
+        var text_35 = child(span_17, true);
+        reset(span_17);
+        var span_18 = sibling(span_17, 2);
+        var text_36 = child(span_18, true);
+        reset(span_18);
+        var span_19 = sibling(span_18, 2);
+        var text_37 = child(span_19);
+        reset(span_19);
+        reset(div_81);
+        var div_82 = sibling(div_81, 2);
+        var text_38 = child(div_82, true);
+        reset(div_82);
+        var div_83 = sibling(div_82, 2);
+        var text_39 = child(div_83);
+        reset(div_83);
+        reset(div_80);
         template_effect(
           ($0, $1, $2, $3, $4) => {
             var _a3;
-            set_class(div_62, 1, `structure-node ${(_a3 = get(node).type) != null ? _a3 : ""}`, "svelte-1wfho06");
-            set_text(text_33, $0);
-            set_text(text_34, get(node).title);
-            set_class(span_15, 1, `node-tension ${$1 != null ? $1 : ""}`, "svelte-1wfho06");
-            set_style(span_15, `color: ${$2 != null ? $2 : ""}`);
-            set_text(text_35, `\u26A1 ${$3 != null ? $3 : ""}`);
-            set_text(text_36, get(node).description);
-            set_text(text_37, `ACTORS: ${$4 != null ? $4 : ""}`);
+            set_class(div_80, 1, `structure-node ${(_a3 = get(node).type) != null ? _a3 : ""}`, "svelte-1wfho06");
+            set_text(text_35, $0);
+            set_text(text_36, get(node).title);
+            set_class(span_19, 1, `node-tension ${$1 != null ? $1 : ""}`, "svelte-1wfho06");
+            set_style(span_19, `color: ${$2 != null ? $2 : ""}`);
+            set_text(text_37, `\u26A1 ${$3 != null ? $3 : ""}`);
+            set_text(text_38, get(node).description);
+            set_text(text_39, `ACTORS: ${$4 != null ? $4 : ""}`);
           },
           [
             () => get(node).type.toUpperCase(),
@@ -29342,67 +29653,89 @@ function CriticDisplay($$anchor, $$props) {
             () => get(node).characters.join(", ")
           ]
         );
-        append($$anchor3, div_62);
+        append($$anchor3, div_80);
       });
-      append($$anchor2, fragment_2);
-    };
-    var alternate = ($$anchor2) => {
-      var fragment_3 = comment();
-      var node_10 = first_child(fragment_3);
-      each(node_10, 17, () => get(structure), index, ($$anchor3, beat) => {
-        var div_66 = root_14();
-        var div_67 = sibling(child(div_66), 2);
-        var text_38 = child(div_67, true);
-        reset(div_67);
-        reset(div_66);
-        template_effect(() => set_text(text_38, get(beat)));
-        append($$anchor3, div_66);
-      });
-      append($$anchor2, fragment_3);
-    };
-    if_block(node_8, ($$render) => {
-      if (get(isUniversalOutline))
-        $$render(consequent_4);
-      else
-        $$render(alternate, false);
-    });
-  }
-  reset(div_61);
-  var node_11 = sibling(div_61, 2);
-  {
-    var consequent_6 = ($$anchor2) => {
-      var fragment_4 = root_15();
-      var button = first_child(fragment_4);
-      button.__click = () => set(showRaw, !get(showRaw));
-      var text_39 = child(button, true);
-      reset(button);
-      var node_12 = sibling(button, 2);
+      var node_18 = sibling(node_17, 2);
       {
-        var consequent_5 = ($$anchor3) => {
-          var div_68 = root_16();
-          var pre = child(div_68);
-          var text_40 = child(pre, true);
-          reset(pre);
-          reset(div_68);
-          template_effect(() => set_text(text_40, $$props.data.thought_process));
-          transition(3, div_68, () => slide);
-          append($$anchor3, div_68);
+        var consequent_12 = ($$anchor3) => {
+          var div_84 = root_232();
+          append($$anchor3, div_84);
         };
-        if_block(node_12, ($$render) => {
-          if (get(showRaw))
-            $$render(consequent_5);
+        if_block(node_18, ($$render) => {
+          if (get(structure).length === 0)
+            $$render(consequent_12);
         });
       }
-      template_effect(() => set_text(text_39, get(showRaw) ? "[-] HIDE RAW LOGIC" : "[+] SHOW TRUBY LOGIC"));
+      append($$anchor2, fragment_3);
+    };
+    var alternate_1 = ($$anchor2) => {
+      var fragment_4 = root_24();
+      var node_19 = first_child(fragment_4);
+      each(node_19, 17, () => get(structure), index, ($$anchor3, beat) => {
+        var div_85 = root_25();
+        var div_86 = sibling(child(div_85), 2);
+        var text_40 = child(div_86, true);
+        reset(div_86);
+        reset(div_85);
+        template_effect(() => set_text(text_40, get(beat)));
+        append($$anchor3, div_85);
+      });
+      var node_20 = sibling(node_19, 2);
+      {
+        var consequent_14 = ($$anchor3) => {
+          var div_87 = root_26();
+          append($$anchor3, div_87);
+        };
+        if_block(node_20, ($$render) => {
+          if (get(structure).length === 0)
+            $$render(consequent_14);
+        });
+      }
       append($$anchor2, fragment_4);
     };
-    if_block(node_11, ($$render) => {
-      if ($$props.data.thought_process)
-        $$render(consequent_6);
+    if_block(node_16, ($$render) => {
+      if (get(isUniversalOutline))
+        $$render(consequent_13);
+      else
+        $$render(alternate_1, false);
     });
   }
-  var button_1 = sibling(node_11, 2);
-  button_1.__click = function(...$$args) {
+  reset(div_79);
+  var node_21 = sibling(div_79, 2);
+  {
+    var consequent_16 = ($$anchor2) => {
+      var fragment_5 = root_27();
+      var button_1 = first_child(fragment_5);
+      button_1.__click = () => set(showRaw, !get(showRaw));
+      var text_41 = child(button_1, true);
+      reset(button_1);
+      var node_22 = sibling(button_1, 2);
+      {
+        var consequent_15 = ($$anchor3) => {
+          var div_88 = root_28();
+          var pre = child(div_88);
+          var text_42 = child(pre, true);
+          reset(pre);
+          reset(div_88);
+          template_effect(() => set_text(text_42, $$props.data.thought_process));
+          transition(3, div_88, () => slide);
+          append($$anchor3, div_88);
+        };
+        if_block(node_22, ($$render) => {
+          if (get(showRaw))
+            $$render(consequent_15);
+        });
+      }
+      template_effect(() => set_text(text_41, get(showRaw) ? "[-] HIDE RAW LOGIC" : "[+] SHOW TRUBY LOGIC"));
+      append($$anchor2, fragment_5);
+    };
+    if_block(node_21, ($$render) => {
+      if ($$props.data.thought_process)
+        $$render(consequent_16);
+    });
+  }
+  var button_2 = sibling(node_21, 2);
+  button_2.__click = function(...$$args) {
     var _a3;
     (_a3 = $$props.onRunMeta) == null ? void 0 : _a3.apply(this, $$args);
   };
@@ -29440,9 +29773,9 @@ function CriticDisplay($$anchor, $$props) {
       set_text(text_6, $21);
       set_text(text_7, $$props.data.cohesion_reason || "No reasoning available.");
       set_text(text_9, `"${(_a3 = $$props.data.log_line || "Analysis pending...") != null ? _a3 : ""}"`);
-      set_attribute2(path_1, "d", get(idealPathD));
-      set_text(text_32, `IDEAL (${(_b3 = IDEAL_ARCS[get(selectedArc)].label) != null ? _b3 : ""})`);
-      button_1.disabled = $$props.isProcessing;
+      button.disabled = get(repairIssues).length === 0;
+      set_text(text_33, `\u{1F527} Smart Repair... (${(_b3 = get(repairIssues).length) != null ? _b3 : ""})`);
+      button_2.disabled = $$props.isProcessing;
     },
     [
       () => getContainerClass(get(averageScore)),
@@ -29469,7 +29802,7 @@ function CriticDisplay($$anchor, $$props) {
       () => formatScoreDisplay($$props.data.cohesion_score)
     ]
   );
-  bind_select_value(select, () => get(selectedArc), ($$value) => set(selectedArc, $$value));
+  bind_select_value(select, () => get(graphMode), ($$value) => set(graphMode, $$value));
   append($$anchor, div);
   pop();
 }
@@ -29573,25 +29906,25 @@ function Win95ProgressBar($$anchor, $$props) {
 }
 
 // GradingPanel.svelte
-var root_13 = from_html(`<button class="reset-btn svelte-1ykavxi" title="Force Format / Stop">RST</button>`);
-var root_24 = from_html(`<div class="empty-state svelte-1ykavxi">INSERT DISK (OPEN MARKDOWN FILE)</div>`);
-var root_82 = from_html(`<p class="quick-synopsis"><span class="prefix">LOG:</span> </p>`);
-var root_73 = from_html(`<div class="quick-result svelte-1ykavxi"><div class="quick-header svelte-1ykavxi"><span class="quick-grade svelte-1ykavxi"> </span> <span class="quick-score svelte-1ykavxi"> </span></div> <!> <p class="quick-summary svelte-1ykavxi"> </p> <p class="quick-fix svelte-1ykavxi"> </p></div>`);
+var root_110 = from_html(`<button class="reset-btn svelte-1ykavxi" title="Force Format / Stop">RST</button>`);
+var root_29 = from_html(`<div class="empty-state svelte-1ykavxi">INSERT DISK (OPEN MARKDOWN FILE)</div>`);
+var root_82 = from_html(` <br/><br/>`, 1);
+var root_73 = from_html(`<div class="win95-popup-window"><div class="win95-titlebar"><div class="win95-titlebar-text"><span>\u{1F4E8}</span> <span>WinPopup - Quick Scan</span></div> <div class="win95-controls"></div></div> <div class="win95-menubar"><span class="win95-menu-item">Messages</span> <span class="win95-menu-item">Help</span></div> <div class="win95-info-area">Message from <b>CRITIC_SYS</b> to <b>USER</b><br/> </div> <div class="win95-content-inset"><b> </b><br/><br/> <!> <br/><br/> ----------------------------------------<br/> </div> <div class="win95-statusbar"><div class="win95-status-field">Current message: 1</div> <div class="win95-status-field">Total number of messages: 1</div></div></div>`);
 var root_92 = from_html(`<!> <button class="action-btn tertiary svelte-1ykavxi" style="margin-top:10px;">\u{1F4C4} EXPORT FORENSIC REPORT</button>`, 1);
 var root_54 = from_html(`<div class="panel-critic"><div class="button-row svelte-1ykavxi"><button class="action-btn primary svelte-1ykavxi"> </button> <button class="action-btn secondary svelte-1ykavxi">QUICK SCAN</button></div> <!> <!> <!></div>`);
-var root_11 = from_html(`<div class="panel-wizard"><button class="action-btn secondary svelte-1ykavxi">GENERATE FULL OUTLINE</button> <!> <!></div>`);
+var root_112 = from_html(`<div class="panel-wizard"><button class="action-btn secondary svelte-1ykavxi">GENERATE FULL OUTLINE</button> <!> <!></div>`);
 var root_142 = from_html(`<div class="panel-synth"><!> <!></div>`);
-var root_20 = from_html(`<details class="thought-trace bevel-groove svelte-1ykavxi"><summary class="thought-header svelte-1ykavxi">COGNITIVE TRACE (RAW)</summary> <div class="thought-content svelte-1ykavxi"> </div></details>`);
-var root_222 = from_html(`<div class="repair-item svelte-1ykavxi"><div class="repair-header svelte-1ykavxi"> </div> <div class="repair-body svelte-1ykavxi"> </div> <div class="repair-why svelte-1ykavxi"> </div></div>`);
-var root_21 = from_html(`<div class="repair-list"></div>`);
-var root_25 = from_html(`<li> </li>`);
+var root_202 = from_html(`<details class="thought-trace bevel-groove svelte-1ykavxi"><summary class="thought-header svelte-1ykavxi">COGNITIVE TRACE (RAW)</summary> <div class="thought-content svelte-1ykavxi"> </div></details>`);
+var root_223 = from_html(`<div class="repair-item svelte-1ykavxi"><div class="repair-header svelte-1ykavxi"> </div> <div class="repair-body svelte-1ykavxi"> </div> <div class="repair-why svelte-1ykavxi"> </div></div>`);
+var root_212 = from_html(`<div class="repair-list"></div>`);
+var root_252 = from_html(`<li> </li>`);
 var root_242 = from_html(`<div class="repair-list legacy-mode svelte-1ykavxi"><p class="legacy-note svelte-1ykavxi">[LEGACY REPORT DETECTED - RE-RUN FOR DETAILS]</p> <ol class="forge-steps"></ol></div>`);
-var root_19 = from_html(`<div class="forge-report svelte-1ykavxi"><!> <div class="weakness-alert svelte-1ykavxi"> </div> <!> <button class="action-btn secondary svelte-1ykavxi">EXECUTE REPAIR PROTOCOL (AUTO-PATCH)</button></div>`);
-var root_17 = from_html(`<div class="panel-forge"><button class="action-btn primary svelte-1ykavxi">GENERATE REPAIR PLAN</button> <!> <div class="repair-focus-area svelte-1ykavxi"><label for="repairFocus" class="input-label svelte-1ykavxi">REPAIR FOCUS (OPTIONAL):</label> <textarea id="repairFocus" class="retro-input" rows="2" placeholder="E.g., 'Fix the pacing in Act 2' or 'Make the villain scarier'"></textarea></div> <fieldset class="outline-fieldset svelte-1ykavxi"><legend>PROSE TOOLS</legend> <div class="button-grid"><button class="action-btn secondary svelte-1ykavxi">FIX DIALOGUE PUNCTUATION</button> <button class="action-btn secondary svelte-1ykavxi">HIGHLIGHT ADVERBS (RED)</button> <button class="action-btn secondary svelte-1ykavxi">HIGHLIGHT FILTER WORDS (YELLOW)</button></div></fieldset> <fieldset class="outline-fieldset svelte-1ykavxi"><legend>STRUCTURAL ARCHIVIST</legend> <div class="memory-core bevel-down svelte-1ykavxi"><div class="memory-status svelte-1ykavxi"><div class="status-indicator svelte-1ykavxi"><span></span> <span> </span></div> <div class="status-details"> </div></div> <div class="context-controls svelte-1ykavxi"><button title="Load active file into buffer"> </button> <button class="scrub-btn svelte-1ykavxi">\u{1F5D1}\uFE0F</button></div></div> <textarea class="retro-input archivist-prompt svelte-1ykavxi" rows="2" placeholder="INSTRUCTIONS: Focus area OR Story Title (e.g. 'The Matrix')"></textarea> <div class="grid-2 svelte-1ykavxi"><button class="action-btn tertiary outline-btn svelte-1ykavxi"> </button> <button class="action-btn secondary outline-btn svelte-1ykavxi">\u{1F3F7}\uFE0F RENAME CAST (DEEP)</button></div></fieldset> <!></div>`);
+var root_192 = from_html(`<div class="forge-report svelte-1ykavxi"><!> <div class="weakness-alert svelte-1ykavxi"> </div> <!> <button class="action-btn secondary svelte-1ykavxi">EXECUTE REPAIR PROTOCOL (AUTO-PATCH)</button></div>`);
+var root_172 = from_html(`<div class="panel-forge"><button class="action-btn primary svelte-1ykavxi">GENERATE REPAIR PLAN</button> <!> <div class="repair-focus-area svelte-1ykavxi"><label for="repairFocus" class="input-label svelte-1ykavxi">REPAIR FOCUS (OPTIONAL):</label> <textarea id="repairFocus" class="retro-input" rows="2" placeholder="E.g., 'Fix the pacing in Act 2' or 'Make the villain scarier'"></textarea></div> <fieldset class="outline-fieldset svelte-1ykavxi"><legend>PROSE TOOLS</legend> <div class="button-grid"><button class="action-btn secondary svelte-1ykavxi">FIX DIALOGUE PUNCTUATION</button> <button class="action-btn secondary svelte-1ykavxi">HIGHLIGHT ADVERBS (RED)</button> <button class="action-btn secondary svelte-1ykavxi">HIGHLIGHT FILTER WORDS (YELLOW)</button></div></fieldset> <fieldset class="outline-fieldset svelte-1ykavxi"><legend>STRUCTURAL ARCHIVIST</legend> <div class="memory-core bevel-down svelte-1ykavxi"><div class="memory-status svelte-1ykavxi"><div class="status-indicator svelte-1ykavxi"><span></span> <span> </span></div> <div class="status-details"> </div></div> <div class="context-controls svelte-1ykavxi"><button title="Load active file into buffer"> </button> <button class="scrub-btn svelte-1ykavxi">\u{1F5D1}\uFE0F</button></div></div> <textarea class="retro-input archivist-prompt svelte-1ykavxi" rows="2" placeholder="INSTRUCTIONS: Focus area OR Story Title (e.g. 'The Matrix')"></textarea> <div class="grid-2 svelte-1ykavxi"><button class="action-btn tertiary outline-btn svelte-1ykavxi"> </button> <button class="action-btn secondary outline-btn svelte-1ykavxi">\u{1F3F7}\uFE0F RENAME CAST (DEEP)</button></div></fieldset> <!></div>`);
 var root5 = from_html(`<div class="compu-container theme-win95 svelte-1ykavxi"><div class="title-bar svelte-1ykavxi"><div class="title-bar-text"> </div> <!></div> <div class="tab-strip svelte-1ykavxi"><button>CRITIC</button> <button>WIZARD</button> <button>SYNTH</button> <button>FORGE</button></div> <div class="window-body svelte-1ykavxi"><!></div> <div class="status-bar svelte-1ykavxi"><span> </span> <span class="spacer svelte-1ykavxi"></span> <span>DISK ACT</span></div></div>`);
 var $$css5 = {
   hash: "svelte-1ykavxi",
-  code: ":root {--cj-accent: #000080;--cj-bg: #c0c0c0;--cj-text: #000000;--cj-dim: #808080;}.compu-container.svelte-1ykavxi {height:100%;display:flex;flex-direction:column;font-family:'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;font-size:11px;font-weight:normal;}.window-body.svelte-1ykavxi {flex:1;overflow-y:auto;padding:12px;background:var(--cj-bg);border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;}.title-bar.svelte-1ykavxi {background:linear-gradient(90deg, #000080 0%, #1084d0 100%);color:#fff;padding:4px 8px;display:flex;justify-content:space-between;font-weight:bold;}.tab-strip.svelte-1ykavxi {display:flex;padding:6px 4px 0 4px;gap:2px;}.tab-strip.svelte-1ykavxi button:where(.svelte-1ykavxi) {background:var(--cj-bg);color:var(--cj-text);border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;padding:4px 10px;font-weight:bold;cursor:pointer;border-bottom:none;font-size:11px;}.tab-strip.svelte-1ykavxi button.active:where(.svelte-1ykavxi) {padding-bottom:6px;margin-top:-2px;z-index:10;border-top:2px solid #dfdfdf;}.action-btn.svelte-1ykavxi {width:100%;padding:6px;font-weight:bold;cursor:pointer;border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;background:var(--cj-bg);color:var(--cj-text);margin-bottom:8px;font-size:11px;}.action-btn.svelte-1ykavxi:active {border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;padding:7px 5px 5px 7px;}.outline-fieldset.svelte-1ykavxi {margin-bottom:20px;border:2px groove var(--cj-dim);padding:10px;}.repair-focus-area.svelte-1ykavxi {margin-bottom:15px;}.input-label.svelte-1ykavxi {display:block;font-weight:900;margin-bottom:4px;color:var(--cj-dim);font-size:0.9em;}.archivist-prompt.svelte-1ykavxi {margin-bottom:8px;}.forge-report.svelte-1ykavxi {margin-top:20px;color:var(--cj-text);font-weight:bold;}.weakness-alert.svelte-1ykavxi {background:var(--cj-text);color:var(--cj-bg);padding:8px;font-weight:900;text-align:center;margin-bottom:10px;border:2px solid #fff;}.repair-item.svelte-1ykavxi {margin-bottom:15px;border-bottom:2px dashed var(--cj-dim);padding-bottom:10px;}.repair-header.svelte-1ykavxi {font-weight:900;color:var(--cj-accent);text-transform:uppercase;margin-bottom:4px;}.repair-body.svelte-1ykavxi {margin-bottom:4px;line-height:1.4;font-weight:bold;}.repair-why.svelte-1ykavxi {font-size:0.9em;font-style:italic;color:var(--cj-dim);font-weight:bold;}.legacy-mode.svelte-1ykavxi {opacity:0.7;border:1px dashed red;padding:10px;}.legacy-note.svelte-1ykavxi {color:red;font-weight:bold;font-size:10px;margin-bottom:5px;}.quick-result.svelte-1ykavxi {margin:15px 0;padding:12px;border:2px dotted var(--cj-text);color:var(--cj-text);display:flex;flex-direction:column;gap:10px;background:rgba(255,255,255,0.05);}.quick-header.svelte-1ykavxi {display:flex;justify-content:space-between;align-items:center;width:100%;border-bottom:2px dashed var(--cj-dim);padding-bottom:5px;}.quick-grade.svelte-1ykavxi {font-size:2.5em;font-weight:900;}.quick-score.svelte-1ykavxi {font-size:1.5em;opacity:0.8;font-weight:900;}.quick-summary.svelte-1ykavxi {font-style:italic;font-weight:bold;}.quick-fix.svelte-1ykavxi {background:var(--cj-accent);color:#fff;padding:4px;font-weight:900;width:100%;text-align:center;}.memory-core.svelte-1ykavxi {margin-bottom:10px;background:rgba(0,0,0,0.05);padding:5px;border:2px solid var(--cj-dim);}.memory-status.svelte-1ykavxi {display:flex;justify-content:space-between;align-items:center;background:#000;color:#00ff00;padding:5px 8px;font-size:12px;border:2px inset #808080;margin-bottom:5px;font-weight:bold;}.status-indicator.svelte-1ykavxi {display:flex;gap:8px;align-items:center;font-weight:900;}.led.svelte-1ykavxi {width:8px;height:8px;border-radius:50%;background:#004400;border:1px solid #00ff00;}.led.on.svelte-1ykavxi {background:#00ff00;box-shadow:0 0 5px #00ff00;}.context-controls.svelte-1ykavxi {display:flex;gap:5px;}.upload-btn.svelte-1ykavxi {flex:1;padding:4px;font-size:11px;background:var(--cj-bg);border:2px outset #fff;cursor:pointer;font-weight:bold;}.upload-btn.svelte-1ykavxi:active {border-style:inset;}.upload-btn.synced.svelte-1ykavxi {opacity:0.6;cursor:default;}.scrub-btn.svelte-1ykavxi {width:30px;padding:0;background:var(--cj-bg);border:2px outset #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;}.thought-trace.svelte-1ykavxi {margin-bottom:8px;border:1px dashed var(--cj-dim);padding:2px;}.thought-header.svelte-1ykavxi {cursor:pointer;font-weight:bold;font-size:11px;padding:4px;color:var(--cj-dim);list-style:none;}.thought-content.svelte-1ykavxi {padding:8px;font-family:'Courier New', monospace;font-size:11px;white-space:pre-wrap;max-height:200px;overflow-y:auto;border-top:1px dashed var(--cj-dim);background:var(--cj-bg);color:var(--cj-text);opacity:0.8;font-weight:bold;}.status-bar.svelte-1ykavxi {border-top:2px solid var(--cj-dim);padding:4px 8px;background:var(--cj-bg);color:var(--cj-text);display:flex;gap:15px;font-size:12px;align-items:center;font-weight:900;}.spacer.svelte-1ykavxi {flex:1;}.disk-led.svelte-1ykavxi {font-weight:900;color:#808080;border:2px inset #808080;padding:0 4px;background:#c0c0c0;transition:all 0.1s;}.active-led.svelte-1ykavxi {background:#ff0000;color:#fff;border-color:#ff0000;box-shadow:0 0 5px #ff0000;}.empty-state.svelte-1ykavxi {padding:40px;text-align:center;opacity:0.5;font-weight:900;}.reset-btn.svelte-1ykavxi {font-size:10px;padding:0 4px;background:#ff0000;color:white;border:2px outset #ffaaaa;cursor:pointer;}.reset-btn.svelte-1ykavxi:active {border-style:inset;}\n\n    @media (max-width: 600px) {.button-row.svelte-1ykavxi {flex-direction:column;gap:5px;}.action-btn.svelte-1ykavxi {padding:12px;margin-bottom:5px;}\n    }.grid-2.svelte-1ykavxi {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}"
+  code: ":root {--cj-accent: #000080;--cj-bg: #c0c0c0;--cj-text: #000000;--cj-dim: #808080;}.compu-container.svelte-1ykavxi {height:100%;display:flex;flex-direction:column;font-family:'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;font-size:11px;font-weight:normal;}.window-body.svelte-1ykavxi {flex:1;overflow-y:auto;padding:12px;background:var(--cj-bg);border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;}.title-bar.svelte-1ykavxi {background:linear-gradient(90deg, #000080 0%, #1084d0 100%);color:#fff;padding:4px 8px;display:flex;justify-content:space-between;font-weight:bold;}.tab-strip.svelte-1ykavxi {display:flex;padding:6px 4px 0 4px;gap:2px;}.tab-strip.svelte-1ykavxi button:where(.svelte-1ykavxi) {background:var(--cj-bg);color:var(--cj-text);border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;padding:4px 10px;font-weight:bold;cursor:pointer;border-bottom:none;font-size:11px;}.tab-strip.svelte-1ykavxi button.active:where(.svelte-1ykavxi) {padding-bottom:6px;margin-top:-2px;z-index:10;border-top:2px solid #dfdfdf;}.action-btn.svelte-1ykavxi {width:100%;padding:6px;font-weight:bold;cursor:pointer;border-top:1px solid #fff;border-left:1px solid #fff;border-right:1px solid #000;border-bottom:1px solid #000;box-shadow:inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;background:var(--cj-bg);color:var(--cj-text);margin-bottom:8px;font-size:11px;}.action-btn.svelte-1ykavxi:active {border-top:1px solid #000;border-left:1px solid #000;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #808080;padding:7px 5px 5px 7px;}.outline-fieldset.svelte-1ykavxi {margin-bottom:20px;border:2px groove var(--cj-dim);padding:10px;}.repair-focus-area.svelte-1ykavxi {margin-bottom:15px;}.input-label.svelte-1ykavxi {display:block;font-weight:900;margin-bottom:4px;color:var(--cj-dim);font-size:0.9em;}.archivist-prompt.svelte-1ykavxi {margin-bottom:8px;}.forge-report.svelte-1ykavxi {margin-top:20px;color:var(--cj-text);font-weight:bold;}.weakness-alert.svelte-1ykavxi {background:var(--cj-text);color:var(--cj-bg);padding:8px;font-weight:900;text-align:center;margin-bottom:10px;border:2px solid #fff;}.repair-item.svelte-1ykavxi {margin-bottom:15px;border-bottom:2px dashed var(--cj-dim);padding-bottom:10px;}.repair-header.svelte-1ykavxi {font-weight:900;color:var(--cj-accent);text-transform:uppercase;margin-bottom:4px;}.repair-body.svelte-1ykavxi {margin-bottom:4px;line-height:1.4;font-weight:bold;}.repair-why.svelte-1ykavxi {font-size:0.9em;font-style:italic;color:var(--cj-dim);font-weight:bold;}.legacy-mode.svelte-1ykavxi {opacity:0.7;border:1px dashed red;padding:10px;}.legacy-note.svelte-1ykavxi {color:red;font-weight:bold;font-size:10px;margin-bottom:5px;}.memory-core.svelte-1ykavxi {margin-bottom:10px;background:rgba(0,0,0,0.05);padding:5px;border:2px solid var(--cj-dim);}.memory-status.svelte-1ykavxi {display:flex;justify-content:space-between;align-items:center;background:#000;color:#00ff00;padding:5px 8px;font-size:12px;border:2px inset #808080;margin-bottom:5px;font-weight:bold;}.status-indicator.svelte-1ykavxi {display:flex;gap:8px;align-items:center;font-weight:900;}.led.svelte-1ykavxi {width:8px;height:8px;border-radius:50%;background:#004400;border:1px solid #00ff00;}.led.on.svelte-1ykavxi {background:#00ff00;box-shadow:0 0 5px #00ff00;}.context-controls.svelte-1ykavxi {display:flex;gap:5px;}.upload-btn.svelte-1ykavxi {flex:1;padding:4px;font-size:11px;background:var(--cj-bg);border:2px outset #fff;cursor:pointer;font-weight:bold;}.upload-btn.svelte-1ykavxi:active {border-style:inset;}.upload-btn.synced.svelte-1ykavxi {opacity:0.6;cursor:default;}.scrub-btn.svelte-1ykavxi {width:30px;padding:0;background:var(--cj-bg);border:2px outset #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;}.thought-trace.svelte-1ykavxi {margin-bottom:8px;border:1px dashed var(--cj-dim);padding:2px;}.thought-header.svelte-1ykavxi {cursor:pointer;font-weight:bold;font-size:11px;padding:4px;color:var(--cj-dim);list-style:none;}.thought-content.svelte-1ykavxi {padding:8px;font-family:'Courier New', monospace;font-size:11px;white-space:pre-wrap;max-height:200px;overflow-y:auto;border-top:1px dashed var(--cj-dim);background:var(--cj-bg);color:var(--cj-text);opacity:0.8;font-weight:bold;}.status-bar.svelte-1ykavxi {border-top:2px solid var(--cj-dim);padding:4px 8px;background:var(--cj-bg);color:var(--cj-text);display:flex;gap:15px;font-size:12px;align-items:center;font-weight:900;}.spacer.svelte-1ykavxi {flex:1;}.disk-led.svelte-1ykavxi {font-weight:900;color:#808080;border:2px inset #808080;padding:0 4px;background:#c0c0c0;transition:all 0.1s;}.active-led.svelte-1ykavxi {background:#ff0000;color:#fff;border-color:#ff0000;box-shadow:0 0 5px #ff0000;}.empty-state.svelte-1ykavxi {padding:40px;text-align:center;opacity:0.5;font-weight:900;}.reset-btn.svelte-1ykavxi {font-size:10px;padding:0 4px;background:#ff0000;color:white;border:2px outset #ffaaaa;cursor:pointer;}.reset-btn.svelte-1ykavxi:active {border-style:inset;}\n\n    @media (max-width: 600px) {.button-row.svelte-1ykavxi {flex-direction:column;gap:5px;}.action-btn.svelte-1ykavxi {padding:12px;margin-bottom:5px;}\n    }.grid-2.svelte-1ykavxi {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}"
 };
 function GradingPanel($$anchor, $$props) {
   push($$props, true);
@@ -30149,6 +30482,18 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
       new import_obsidian6.Notice("Disc Formatted.");
     }
   }
+  function handleAddRepairInstruction(instruction) {
+    if (!get(projectData))
+      return;
+    const current = get(projectData).repairFocus ? get(projectData).repairFocus.trim() : "";
+    const entry = `- [TRIBUNAL]: ${instruction}`;
+    if (current.includes(entry))
+      return;
+    get(projectData).repairFocus = current.length > 0 ? `${current}
+${entry}` : entry;
+    new import_obsidian6.Notice("Instruction added to Forge.");
+    debouncedSave();
+  }
   async function runFixDialogue() {
     if (!get(activeFile))
       return;
@@ -30210,7 +30555,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
   var node = sibling(div_2, 2);
   {
     var consequent = ($$anchor2) => {
-      var button = root_13();
+      var button = root_110();
       button.__click = resetCurrentDisc;
       append($$anchor2, button);
     };
@@ -30238,7 +30583,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
   var node_1 = child(div_4);
   {
     var consequent_1 = ($$anchor2) => {
-      var div_5 = root_24();
+      var div_5 = root_29();
       append($$anchor2, div_5);
     };
     var alternate_4 = ($$anchor2) => {
@@ -30278,45 +30623,45 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
               {
                 var consequent_4 = ($$anchor5) => {
                   var div_8 = root_73();
-                  var div_9 = child(div_8);
-                  var span = child(div_9);
-                  var text_2 = child(span, true);
-                  reset(span);
-                  var span_1 = sibling(span, 2);
-                  var text_3 = child(span_1, true);
-                  reset(span_1);
+                  var div_9 = sibling(child(div_8), 4);
+                  var text_2 = sibling(child(div_9), 5);
                   reset(div_9);
-                  var node_6 = sibling(div_9, 2);
+                  var div_10 = sibling(div_9, 2);
+                  var b = child(div_10);
+                  var text_3 = child(b);
+                  reset(b);
+                  var node_6 = sibling(b, 4);
                   {
                     var consequent_3 = ($$anchor6) => {
-                      var p5 = root_82();
-                      var text_4 = sibling(child(p5));
-                      reset(p5);
+                      var fragment_3 = root_82();
+                      var text_4 = first_child(fragment_3);
+                      next(2);
                       template_effect(() => {
                         var _a3;
-                        return set_text(text_4, ` ${(_a3 = get(projectData).lastLightResult.synopsis) != null ? _a3 : ""}`);
+                        return set_text(text_4, `LOG: ${(_a3 = get(projectData).lastLightResult.synopsis) != null ? _a3 : ""}`);
                       });
-                      append($$anchor6, p5);
+                      append($$anchor6, fragment_3);
                     };
                     if_block(node_6, ($$render) => {
                       if (get(projectData).lastLightResult.synopsis)
                         $$render(consequent_3);
                     });
                   }
-                  var p_1 = sibling(node_6, 2);
-                  var text_5 = child(p_1, true);
-                  reset(p_1);
-                  var p_2 = sibling(p_1, 2);
-                  var text_6 = child(p_2);
-                  reset(p_2);
+                  var text_5 = sibling(node_6);
+                  var text_6 = sibling(text_5, 5);
+                  reset(div_10);
+                  next(2);
                   reset(div_8);
-                  template_effect(() => {
-                    var _a3;
-                    set_text(text_2, get(projectData).lastLightResult.letter_grade);
-                    set_text(text_3, get(projectData).lastLightResult.score);
-                    set_text(text_5, get(projectData).lastLightResult.summary_line);
-                    set_text(text_6, `FIX: ${(_a3 = get(projectData).lastLightResult.key_improvement) != null ? _a3 : ""}`);
-                  });
+                  template_effect(
+                    ($0) => {
+                      var _a3, _b3, _c2, _d;
+                      set_text(text_2, ` on ${$0 != null ? $0 : ""}`);
+                      set_text(text_3, `GRADE: ${(_a3 = get(projectData).lastLightResult.letter_grade) != null ? _a3 : ""} (${(_b3 = get(projectData).lastLightResult.score) != null ? _b3 : ""})`);
+                      set_text(text_5, ` ${(_c2 = get(projectData).lastLightResult.summary_line) != null ? _c2 : ""}`);
+                      set_text(text_6, ` FIX: ${(_d = get(projectData).lastLightResult.key_improvement) != null ? _d : ""}`);
+                    },
+                    [() => (/* @__PURE__ */ new Date()).toLocaleTimeString()]
+                  );
                   append($$anchor5, div_8);
                 };
                 if_block(node_5, ($$render) => {
@@ -30327,8 +30672,8 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
               var node_7 = sibling(node_5, 2);
               {
                 var consequent_5 = ($$anchor5) => {
-                  var fragment_3 = root_92();
-                  var node_8 = first_child(fragment_3);
+                  var fragment_4 = root_92();
+                  var node_8 = first_child(fragment_4);
                   CriticDisplay(node_8, {
                     get data() {
                       return get(projectData).lastAiResult;
@@ -30342,11 +30687,12 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                     get settings() {
                       return settings;
                     },
-                    onRunMeta: runMeta
+                    onRunMeta: runMeta,
+                    onAddRepairInstruction: handleAddRepairInstruction
                   });
                   var button_7 = sibling(node_8, 2);
                   button_7.__click = runGenerateReport;
-                  append($$anchor5, fragment_3);
+                  append($$anchor5, fragment_4);
                 };
                 if_block(node_7, ($$render) => {
                   if (get(projectData).lastAiResult)
@@ -30361,12 +30707,12 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
               append($$anchor4, div_6);
             };
             var alternate_3 = ($$anchor4) => {
-              var fragment_4 = comment();
-              var node_9 = first_child(fragment_4);
+              var fragment_5 = comment();
+              var node_9 = first_child(fragment_5);
               {
                 var consequent_8 = ($$anchor5) => {
-                  var div_10 = root_11();
-                  var button_8 = child(div_10);
+                  var div_11 = root_112();
+                  var button_8 = child(div_11);
                   button_8.__click = runGhostwriter;
                   var node_10 = sibling(button_8, 2);
                   {
@@ -30408,16 +30754,16 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                     onGradeCharacter: handleGradeCharacter,
                     onGradeStructure: handleGradeStructure
                   });
-                  reset(div_10);
-                  append($$anchor5, div_10);
+                  reset(div_11);
+                  append($$anchor5, div_11);
                 };
                 var alternate_2 = ($$anchor5) => {
-                  var fragment_6 = comment();
-                  var node_12 = first_child(fragment_6);
+                  var fragment_7 = comment();
+                  var node_12 = first_child(fragment_7);
                   {
                     var consequent_10 = ($$anchor6) => {
-                      var div_11 = root_142();
-                      var node_13 = child(div_11);
+                      var div_12 = root_142();
+                      var node_13 = child(div_12);
                       {
                         var consequent_9 = ($$anchor7) => {
                           Win95ProgressBar($$anchor7, { label: "SYNTHESIZING...", estimatedDuration: 1e4 });
@@ -30446,16 +30792,16 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                           onGetActiveContent: getActiveFileContent
                         });
                       }
-                      reset(div_11);
-                      append($$anchor6, div_11);
+                      reset(div_12);
+                      append($$anchor6, div_12);
                     };
                     var alternate_1 = ($$anchor6) => {
-                      var fragment_8 = comment();
-                      var node_15 = first_child(fragment_8);
+                      var fragment_9 = comment();
+                      var node_15 = first_child(fragment_9);
                       {
                         var consequent_16 = ($$anchor7) => {
-                          var div_12 = root_17();
-                          var button_9 = child(div_12);
+                          var div_13 = root_172();
+                          var button_9 = child(div_13);
                           button_9.__click = runForge;
                           var node_16 = sibling(button_9, 2);
                           {
@@ -30472,74 +30818,74 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                                 $$render(consequent_11);
                             });
                           }
-                          var div_13 = sibling(node_16, 2);
-                          var textarea = sibling(child(div_13), 2);
+                          var div_14 = sibling(node_16, 2);
+                          var textarea = sibling(child(div_14), 2);
                           remove_textarea_child(textarea);
                           effect(() => bind_value(textarea, () => get(projectData).repairFocus, ($$value) => get(projectData).repairFocus = $$value));
                           action(textarea, ($$node, $$action_arg) => {
                             var _a3;
                             return (_a3 = autoResize) == null ? void 0 : _a3($$node, $$action_arg);
                           }, () => get(projectData).repairFocus);
-                          reset(div_13);
-                          var fieldset = sibling(div_13, 2);
-                          var div_14 = sibling(child(fieldset), 2);
-                          var button_10 = child(div_14);
+                          reset(div_14);
+                          var fieldset = sibling(div_14, 2);
+                          var div_15 = sibling(child(fieldset), 2);
+                          var button_10 = child(div_15);
                           button_10.__click = runFixDialogue;
                           var button_11 = sibling(button_10, 2);
                           button_11.__click = () => runAdverbKiller("highlight");
                           var button_12 = sibling(button_11, 2);
                           button_12.__click = runFilterHighlight;
-                          reset(div_14);
+                          reset(div_15);
                           reset(fieldset);
                           var fieldset_1 = sibling(fieldset, 2);
-                          var div_15 = sibling(child(fieldset_1), 2);
-                          var div_16 = child(div_15);
+                          var div_16 = sibling(child(fieldset_1), 2);
                           var div_17 = child(div_16);
-                          var span_2 = child(div_17);
-                          var span_3 = sibling(span_2, 2);
-                          var text_7 = child(span_3, true);
-                          reset(span_3);
-                          reset(div_17);
-                          var div_18 = sibling(div_17, 2);
-                          var text_8 = child(div_18);
+                          var div_18 = child(div_17);
+                          var span = child(div_18);
+                          var span_1 = sibling(span, 2);
+                          var text_7 = child(span_1, true);
+                          reset(span_1);
                           reset(div_18);
-                          reset(div_16);
-                          var div_19 = sibling(div_16, 2);
-                          var button_13 = child(div_19);
+                          var div_19 = sibling(div_18, 2);
+                          var text_8 = child(div_19);
+                          reset(div_19);
+                          reset(div_17);
+                          var div_20 = sibling(div_17, 2);
+                          var button_13 = child(div_20);
                           button_13.__click = handleUploadArchivist;
                           var text_9 = child(button_13, true);
                           reset(button_13);
                           var button_14 = sibling(button_13, 2);
                           button_14.__click = handleScrubArchivist;
-                          reset(div_19);
-                          reset(div_15);
-                          var textarea_1 = sibling(div_15, 2);
+                          reset(div_20);
+                          reset(div_16);
+                          var textarea_1 = sibling(div_16, 2);
                           remove_textarea_child(textarea_1);
                           effect(() => bind_value(textarea_1, () => get(projectData).archivistPrompt, ($$value) => get(projectData).archivistPrompt = $$value));
                           action(textarea_1, ($$node, $$action_arg) => {
                             var _a3;
                             return (_a3 = autoResize) == null ? void 0 : _a3($$node, $$action_arg);
                           }, () => get(projectData).archivistPrompt);
-                          var div_20 = sibling(textarea_1, 2);
-                          var button_15 = child(div_20);
+                          var div_21 = sibling(textarea_1, 2);
+                          var button_15 = child(div_21);
                           button_15.__click = runOutlineGeneration;
                           var text_10 = child(button_15, true);
                           reset(button_15);
                           var button_16 = sibling(button_15, 2);
                           button_16.__click = runDeepRename;
-                          reset(div_20);
+                          reset(div_21);
                           reset(fieldset_1);
                           var node_17 = sibling(fieldset_1, 2);
                           {
                             var consequent_15 = ($$anchor8) => {
-                              var div_21 = root_19();
-                              var node_18 = child(div_21);
+                              var div_22 = root_192();
+                              var node_18 = child(div_22);
                               {
                                 var consequent_12 = ($$anchor9) => {
-                                  var details = root_20();
-                                  var div_22 = sibling(child(details), 2);
-                                  var text_11 = child(div_22, true);
-                                  reset(div_22);
+                                  var details = root_202();
+                                  var div_23 = sibling(child(details), 2);
+                                  var text_11 = child(div_23, true);
+                                  reset(div_23);
                                   reset(details);
                                   template_effect(() => set_text(text_11, get(projectData).lastActionPlan.thought_process));
                                   append($$anchor9, details);
@@ -30549,53 +30895,53 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                                     $$render(consequent_12);
                                 });
                               }
-                              var div_23 = sibling(node_18, 2);
-                              var text_12 = child(div_23);
-                              reset(div_23);
-                              var node_19 = sibling(div_23, 2);
+                              var div_24 = sibling(node_18, 2);
+                              var text_12 = child(div_24);
+                              reset(div_24);
+                              var node_19 = sibling(div_24, 2);
                               {
                                 var consequent_13 = ($$anchor9) => {
-                                  var div_24 = root_21();
-                                  each(div_24, 21, () => get(projectData).lastActionPlan.repairs, index, ($$anchor10, repair, i3) => {
-                                    var div_25 = root_222();
-                                    var div_26 = child(div_25);
-                                    var text_13 = child(div_26);
-                                    reset(div_26);
-                                    var div_27 = sibling(div_26, 2);
-                                    var text_14 = child(div_27, true);
+                                  var div_25 = root_212();
+                                  each(div_25, 21, () => get(projectData).lastActionPlan.repairs, index, ($$anchor10, repair, i3) => {
+                                    var div_26 = root_223();
+                                    var div_27 = child(div_26);
+                                    var text_13 = child(div_27);
                                     reset(div_27);
                                     var div_28 = sibling(div_27, 2);
-                                    var text_15 = child(div_28);
+                                    var text_14 = child(div_28, true);
                                     reset(div_28);
-                                    reset(div_25);
+                                    var div_29 = sibling(div_28, 2);
+                                    var text_15 = child(div_29);
+                                    reset(div_29);
+                                    reset(div_26);
                                     template_effect(() => {
                                       var _a3, _b3;
                                       set_text(text_13, `ISSUE ${i3 + 1}: ${(_a3 = get(repair).issue) != null ? _a3 : ""}`);
                                       set_text(text_14, get(repair).instruction);
                                       set_text(text_15, `RATIONALE: ${(_b3 = get(repair).why) != null ? _b3 : ""}`);
                                     });
-                                    append($$anchor10, div_25);
+                                    append($$anchor10, div_26);
                                   });
-                                  reset(div_24);
-                                  append($$anchor9, div_24);
+                                  reset(div_25);
+                                  append($$anchor9, div_25);
                                 };
                                 var alternate = ($$anchor9) => {
-                                  var fragment_10 = comment();
-                                  var node_20 = first_child(fragment_10);
+                                  var fragment_11 = comment();
+                                  var node_20 = first_child(fragment_11);
                                   {
                                     var consequent_14 = ($$anchor10) => {
-                                      var div_29 = root_242();
-                                      var ol = sibling(child(div_29), 2);
+                                      var div_30 = root_242();
+                                      var ol = sibling(child(div_30), 2);
                                       each(ol, 21, () => get(projectData).lastActionPlan.steps, index, ($$anchor11, step) => {
-                                        var li = root_25();
+                                        var li = root_252();
                                         var text_16 = child(li, true);
                                         reset(li);
                                         template_effect(() => set_text(text_16, get(step)));
                                         append($$anchor11, li);
                                       });
                                       reset(ol);
-                                      reset(div_29);
-                                      append($$anchor10, div_29);
+                                      reset(div_30);
+                                      append($$anchor10, div_30);
                                     };
                                     if_block(
                                       node_20,
@@ -30606,7 +30952,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                                       true
                                     );
                                   }
-                                  append($$anchor9, fragment_10);
+                                  append($$anchor9, fragment_11);
                                 };
                                 if_block(node_19, ($$render) => {
                                   if (get(projectData).lastActionPlan.repairs)
@@ -30617,22 +30963,22 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                               }
                               var button_17 = sibling(node_19, 2);
                               button_17.__click = runAutoRepair;
-                              reset(div_21);
+                              reset(div_22);
                               template_effect(() => {
                                 var _a3;
                                 return set_text(text_12, `WEAK LINK: ${(_a3 = get(projectData).lastActionPlan.weakest_link) != null ? _a3 : ""}`);
                               });
-                              append($$anchor8, div_21);
+                              append($$anchor8, div_22);
                             };
                             if_block(node_17, ($$render) => {
                               if (get(projectData).lastActionPlan)
                                 $$render(consequent_15);
                             });
                           }
-                          reset(div_12);
+                          reset(div_13);
                           template_effect(() => {
                             var _a3;
-                            set_class(span_2, 1, `led ${get(hasArchivistData) ? "on" : "off"}`, "svelte-1ykavxi");
+                            set_class(span, 1, `led ${get(hasArchivistData) ? "on" : "off"}`, "svelte-1ykavxi");
                             set_text(text_7, get(hasArchivistData) ? "BUFFER LOADED" : "BUFFER EMPTY");
                             set_text(text_8, `${(_a3 = get(archivistLength)) != null ? _a3 : ""} CHARS`);
                             set_class(button_13, 1, `upload-btn ${get(isArchivistSynced) ? "synced" : ""}`, "svelte-1ykavxi");
@@ -30641,7 +30987,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                             button_14.disabled = !get(hasArchivistData);
                             set_text(text_10, get(hasArchivistData) ? "ANALYZE BUFFER" : "GENERATE FROM TITLE");
                           });
-                          append($$anchor7, div_12);
+                          append($$anchor7, div_13);
                         };
                         if_block(
                           node_15,
@@ -30652,7 +30998,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                           true
                         );
                       }
-                      append($$anchor6, fragment_8);
+                      append($$anchor6, fragment_9);
                     };
                     if_block(
                       node_12,
@@ -30665,7 +31011,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                       true
                     );
                   }
-                  append($$anchor5, fragment_6);
+                  append($$anchor5, fragment_7);
                 };
                 if_block(
                   node_9,
@@ -30678,7 +31024,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
                   true
                 );
               }
-              append($$anchor4, fragment_4);
+              append($$anchor4, fragment_5);
             };
             if_block(node_3, ($$render) => {
               if (get(currentTab) === "critic")
@@ -30708,13 +31054,13 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
     });
   }
   reset(div_4);
-  var div_30 = sibling(div_4, 2);
-  var span_4 = child(div_30);
-  var text_17 = child(span_4);
-  reset(span_4);
-  var span_5 = sibling(span_4, 4);
+  var div_31 = sibling(div_4, 2);
+  var span_2 = child(div_31);
+  var text_17 = child(span_2);
+  reset(span_2);
+  var span_3 = sibling(span_2, 4);
   let classes_4;
-  reset(div_30);
+  reset(div_31);
   reset(div);
   template_effect(
     ($0) => {
@@ -30726,7 +31072,7 @@ DIRECTIVE: If this is an existing published story (Book/Movie), retrieve the acc
       classes_2 = set_class(button_3, 1, "svelte-1ykavxi", null, classes_2, { active: get(currentTab) === "synth" });
       classes_3 = set_class(button_4, 1, "svelte-1ykavxi", null, classes_3, { active: get(currentTab) === "forge" });
       set_text(text_17, `STATUS: ${(_b3 = get(activeFileStatus)) != null ? _b3 : ""}`);
-      classes_4 = set_class(span_5, 1, "disk-led svelte-1ykavxi", null, classes_4, { "active-led": get(isSaving) });
+      classes_4 = set_class(span_3, 1, "disk-led svelte-1ykavxi", null, classes_4, { "active-led": get(isSaving) });
     },
     [
       () => get(activeFile) ? `[${get(activeFile).basename.toUpperCase()}]` : "[NO DISC]"

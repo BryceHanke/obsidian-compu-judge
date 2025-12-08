@@ -50,6 +50,7 @@ You must trace the "Logic Chain" of the narrative. If a link breaks, deduct poin
   "third_act_score": 0,
   "novelty_score": 0,
   "tension_arc": [0, 10, -5, 20, 30, 50],
+  "quality_arc": [50, 60, 40, 70, 80, 90],
   "sanderson_metrics": {
     "promise_payoff": 0,
     "laws_of_magic": 0,
@@ -481,4 +482,5 @@ Compare the input against these **QUALITY STANDARDS** (Genre irrelevant, Executi
 - **Character Sliders:** Ensure the protagonist scores (Competence/Proactivity/Likability) are extracted or estimated if not provided.
 
 [OUTPUT JSON]: Same format as NIGS_SYSTEM_PROMPT. Ensure all scores are signed integers (e.g. -15, 0, +22).
+- **Include "quality_arc":** An array of integers (0-100) representing the EXECUTION QUALITY of each beat (not the tension).
 `;
