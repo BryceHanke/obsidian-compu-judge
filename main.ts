@@ -365,6 +365,18 @@ class NigsSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
+        new Setting(containerEl)
+            .setName('Tribunal Retries')
+            .setDesc('Max number of loop attempts (1-5) if the Analyst rejects the result.')
+            .addSlider(slider => slider
+                .setLimits(1, 5, 1)
+                .setValue(this.plugin.settings.tribunalMaxRetries)
+                .setDynamicTooltip()
+                .onChange(async (val) => {
+                    this.plugin.settings.tribunalMaxRetries = val;
+                    await this.plugin.saveSettings();
+                }));
+
         // --- 5B. ARBITRATION & CONTROL ---
         containerEl.createEl('h4', { text: 'Chief Justice Arbitration' });
 
