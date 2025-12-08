@@ -532,16 +532,6 @@
         </div>
     </div>
 
-    {#if data.thought_process}
-        <button class="toggle-btn" onclick={() => showRaw = !showRaw}>
-             {showRaw ? '[-] HIDE RAW LOGIC' : '[+] SHOW TRUBY LOGIC'}
-        </button>
-        {#if showRaw}
-            <div class="raw-box" transition:slide>
-                <pre>{data.thought_process}</pre>
-            </div>
-        {/if}
-    {/if}
 
     <button class="action-btn secondary" onclick={onRunMeta} disabled={isProcessing}>
         RUN DEEP META-ANALYSIS

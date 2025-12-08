@@ -32,15 +32,18 @@ const FORENSIC_CALIBRATION = `
 
 import type { ImageInput } from './types';
 
+// Callback for status updates
+type StatusUpdate = (msg: string) => void;
+
 interface AIAdapter {
-    generate(text: string, systemPrompt?: string, jsonMode?: boolean, useSearch?: boolean, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[]): Promise<string>;
+    generate(text: string, systemPrompt?: string, jsonMode?: boolean, useSearch?: boolean, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate): Promise<string>;
 }
 
 // --- GEMINI ADAPTER ---
 class GeminiAdapter implements AIAdapter {
     constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
 
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[]): Promise<string> {
+    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate): Promise<string> {
         if (!this.apiKey) throw new Error("MISSING GEMINI API KEY");
         
         const targetModel = useSearch ? (this.settings.searchModelId || this.model) : this.model;
@@ -93,7 +96,9 @@ class GeminiAdapter implements AIAdapter {
             body.tools = [{ googleSearch: {} }];
         }
 
-        setStatus(`QUERYING ${targetModel}...`);
+        const statusMsg = `QUERYING ${targetModel}...`;
+        if (onStatus) onStatus(statusMsg);
+        else setStatus(statusMsg); // Fallback to global if no callback
 
         // Check cancellation before request
         if (signal?.aborted) throw new Error("Cancelled by user.");
@@ -140,10 +145,13 @@ class GeminiAdapter implements AIAdapter {
 class OpenAIAdapter implements AIAdapter {
     constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
 
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[]): Promise<string> {
+    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate): Promise<string> {
         if (!this.apiKey) throw new Error("MISSING OPENAI API KEY");
-        setStatus(`CONNECTING TO OPENAI (${this.model})...`);
         
+        const statusMsg = `CONNECTING TO OPENAI (${this.model})...`;
+        if (onStatus) onStatus(statusMsg);
+        else setStatus(statusMsg);
+
         const baseSys = sys || "";
         const userSys = this.settings.customSystemPrompt ? `[USER OVERRIDE]: ${this.settings.customSystemPrompt}` : FORENSIC_CALIBRATION;
         
@@ -187,9 +195,12 @@ class OpenAIAdapter implements AIAdapter {
 class AnthropicAdapter implements AIAdapter {
     constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
 
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[]): Promise<string> {
+    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate): Promise<string> {
         if (!this.apiKey) throw new Error("MISSING ANTHROPIC API KEY");
-        setStatus(`CONNECTING TO CLAUDE (${this.model})...`);
+
+        const statusMsg = `CONNECTING TO CLAUDE (${this.model})...`;
+        if (onStatus) onStatus(statusMsg);
+        else setStatus(statusMsg);
 
         const baseSys = sys || "";
         const userSys = this.settings.customSystemPrompt ? `[USER OVERRIDE]: ${this.settings.customSystemPrompt}` : FORENSIC_CALIBRATION;
@@ -269,9 +280,14 @@ export class CloudGenService {
         return Math.min(60000, baseTime + (tokenCount * 20 * mult));
     }
 
-    public async callAI(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[]): Promise<string> {
+    public async callAI(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate): Promise<string> {
         const adapter = this.getAdapter();
-        return await adapter.generate(text, sys, json, useSearch, tempOverride, signal, images);
+        return await adapter.generate(text, sys, json, useSearch, tempOverride, signal, images, onStatus);
+    }
+
+    private updateStatus(msg: string, onStatus?: StatusUpdate) {
+        if (onStatus) onStatus(msg);
+        else setStatus(msg);
     }
 
     // [HELPER]: Generate Name Protocol String
@@ -290,8 +306,8 @@ export class CloudGenService {
     }
 
     // --- AUTO-FILL WIZARD (Architect Mode) ---
-    autoFillWizard = async (concept: string, currentContext: string, signal?: AbortSignal): Promise<Partial<NigsWizardState>> => {
-        setStatus("ARCHITECTING STORY BIBLE...");
+    autoFillWizard = async (concept: string, currentContext: string, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<Partial<NigsWizardState>> => {
+        this.updateStatus("ARCHITECTING STORY BIBLE...", onStatus);
         
         const nameRules = this.getNameProtocol();
 
@@ -307,14 +323,14 @@ export class CloudGenService {
         `;
 
         const temp = this.getTemp(this.settings.tempWizard);
-        const res = await this.callAI(prompt, NIGS_AUTOFILL_PROMPT, true, false, temp, signal);
+        const res = await this.callAI(prompt, NIGS_AUTOFILL_PROMPT, true, false, temp, signal, undefined, onStatus);
         return this.parseJson<Partial<NigsWizardState>>(res);
     }
 
     // --- DRIVE SYNTHESIS (Alchemy Mode) ---
     // [UPDATED] Uses full concatenated context & [NEW] Thinking Agent Loop
-    synthesizeDrives = async (drives: DriveBlock[], customTitle?: string, targetQuality?: number, signal?: AbortSignal): Promise<string> => {
-        setStatus("FUSING NARRATIVE DRIVES...");
+    synthesizeDrives = async (drives: DriveBlock[], customTitle?: string, targetQuality?: number, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<string> => {
+        this.updateStatus("FUSING NARRATIVE DRIVES...", onStatus);
         
         // [SAFETY]: Explicitly concat full content without trimming
         let driveContext = "";
@@ -351,17 +367,17 @@ export class CloudGenService {
 
         do {
             attempts++;
-            if (attempts > 1) setStatus(`SYNTH AGENT: REFINING FUSION (ATTEMPT ${attempts})...`);
+            if (attempts > 1) this.updateStatus(`SYNTH AGENT: REFINING FUSION (ATTEMPT ${attempts})...`, onStatus);
 
             const currentPrompt = previousCritique ? `${finalPrompt}\n\n[PREVIOUS CRITIQUE - FIX THIS]:\n${previousCritique}` : finalPrompt;
 
-            draft = await this.callAI(currentPrompt, NIGS_DRIVE_SYNTHESIS_PROMPT, false, false, temp, signal);
+            draft = await this.callAI(currentPrompt, NIGS_DRIVE_SYNTHESIS_PROMPT, false, false, temp, signal, undefined, onStatus);
 
             // If Agent disabled, accept first draft
             if (!this.settings.synthAgentEnabled) return draft;
 
             // [AGENT REVIEW]
-            setStatus("STRUCTURAL ARCHITECT: REVIEWING FUSION...");
+            this.updateStatus("STRUCTURAL ARCHITECT: REVIEWING FUSION...", onStatus);
             const reviewPrompt = `
 [TASK]: Review this generated narrative fusion.
 [CRITERIA]:
@@ -375,17 +391,17 @@ ${draft.substring(0, 5000)}... (truncated)
 Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 `;
             // Simple check using basic temp
-            const reviewRaw = await this.callAI(reviewPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal);
+            const reviewRaw = await this.callAI(reviewPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal, undefined, onStatus);
             const review = this.parseJson<{ verdict: string, reason: string }>(reviewRaw);
 
             if (review.verdict === "PASS") {
                 isApproved = true;
-                setStatus("STRUCTURAL ARCHITECT: APPROVED.");
+                this.updateStatus("STRUCTURAL ARCHITECT: APPROVED.", onStatus);
             } else {
                 console.warn(`SYNTH AGENT REJECTED: ${review.reason}`);
                 previousCritique = review.reason;
                 if (attempts >= maxAttempts) {
-                    setStatus("MAX RETRIES REACHED. RETURNING BEST EFFORT.");
+                    this.updateStatus("MAX RETRIES REACHED. RETURNING BEST EFFORT.", onStatus);
                 }
             }
 
@@ -396,13 +412,13 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 
     // --- GRADING (Unified System) ---
     // [UPDATED] Iterative/Parallel Tribunal with Veto Protocol & Analyst Loop
-    gradeContent = async (text: string, context?: { inspiration: string; target: number }, nlpStats?: NlpMetrics, wizardState?: NigsWizardState, signal?: AbortSignal): Promise<NigsResponse> => {
+    gradeContent = async (text: string, context?: { inspiration: string; target: number }, nlpStats?: NlpMetrics, wizardState?: NigsWizardState, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<NigsResponse> => {
         // 1. CHECK SETTINGS: Fallback to Legacy if Tribunal is disabled
         if (!this.settings.enableTribunal) {
-            return this.gradeContentLegacy(text, context, nlpStats, signal);
+            return this.gradeContentLegacy(text, context, nlpStats, signal, onStatus);
         }
 
-        setStatus("CONVENING THE TRIBUNAL...");
+        this.updateStatus("CONVENING THE TRIBUNAL...", onStatus);
 
         const sourceMaterial = context?.inspiration ? `\n[SOURCE MATERIAL]: "${context.inspiration}"\n` : "";
         let statsBlock = "";
@@ -435,7 +451,7 @@ ${sourceMaterial}
         // [UPDATED] Tribunal Loop with Soul, Lit, Jester, Logic, Market
         do {
             attempts++;
-            setStatus(attempts > 1 ? `RE-CONVENING TRIBUNAL (ATTEMPT ${attempts})...` : "STARTING TRIBUNAL PROCESS...");
+            this.updateStatus(attempts > 1 ? `RE-CONVENING TRIBUNAL (ATTEMPT ${attempts})...` : "STARTING TRIBUNAL PROCESS...", onStatus);
 
             if (signal?.aborted) throw new Error("Cancelled by user.");
 
@@ -443,7 +459,7 @@ ${sourceMaterial}
                 ? `${baseInputPayload}\n\n[PREVIOUS CONSENSUS / FEEDBACK]:\n${previousConsensus}`
                 : baseInputPayload;
 
-            setStatus("CONVENING AGENTS: MARKET, LOGIC, SOUL, LIT, JESTER...");
+            this.updateStatus("CONVENING AGENTS: MARKET, LOGIC, SOUL, LIT, JESTER...", onStatus);
 
             // Temps
             const soulTemp = this.getTemp(0.9); // High creativity
@@ -463,38 +479,38 @@ ${sourceMaterial}
 
             if (this.settings.tribunalConfiguration === 'Iterative') {
                 // SEQUENTIAL CHAIN
-                setStatus("AGENT 1/5: LOGIC ENGINE...");
-                const logicRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp, signal);
+                this.updateStatus("AGENT 1/5: LOGIC ENGINE...", onStatus);
+                const logicRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp, signal, undefined, onStatus);
                 logicReport = this.parseJson<NigsFactReport>(logicRaw);
 
-                setStatus("AGENT 2/5: MARKET ANALYST...");
-                const marketRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp, signal);
+                this.updateStatus("AGENT 2/5: MARKET ANALYST...", onStatus);
+                const marketRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp, signal, undefined, onStatus);
                 marketReport = this.parseJson<any>(marketRaw);
 
-                setStatus("AGENT 3/5: THE SOUL...");
-                const soulRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp, signal);
+                this.updateStatus("AGENT 3/5: THE SOUL...", onStatus);
+                const soulRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp, signal, undefined, onStatus);
                 soulReport = this.parseJson<NigsVibeCheck>(soulRaw);
 
-                setStatus("AGENT 4/5: LITERARY CRITIC...");
-                const litRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.LIT, true, false, litTemp, signal);
+                this.updateStatus("AGENT 4/5: LITERARY CRITIC...", onStatus);
+                const litRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.LIT, true, false, litTemp, signal, undefined, onStatus);
                 litReport = this.parseJson<any>(litRaw);
 
-                setStatus("AGENT 5/5: THE JESTER...");
-                const jesterRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp, signal);
+                this.updateStatus("AGENT 5/5: THE JESTER...", onStatus);
+                const jesterRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp, signal, undefined, onStatus);
                 jesterReport = this.parseJson<any>(jesterRaw);
 
-                setStatus("FORENSIC SYSTEM SCAN...");
-                forensicRaw = await this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal);
+                this.updateStatus("FORENSIC SYSTEM SCAN...", onStatus);
+                forensicRaw = await this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal, undefined, onStatus);
 
             } else {
                 // PARALLEL (Default)
                 const [soulRaw, jesterRaw, logicRaw, marketRaw, litRaw, fRaw] = await Promise.all([
-                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp, signal).catch(e => `{"error": "Soul Failed"}`),
-                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp, signal).catch(e => `{"error": "Jester Failed"}`),
-                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp, signal).catch(e => `{"error": "Logic Failed"}`),
-                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp, signal).catch(e => `{"error": "Market Failed"}`),
-                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.LIT, true, false, litTemp, signal).catch(e => `{"error": "Lit Failed"}`),
-                    this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal).catch(e => `{"error": "Forensic Failed"}`)
+                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp, signal, undefined, onStatus).catch(e => `{"error": "Soul Failed"}`),
+                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp, signal, undefined, onStatus).catch(e => `{"error": "Jester Failed"}`),
+                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp, signal, undefined, onStatus).catch(e => `{"error": "Logic Failed"}`),
+                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp, signal, undefined, onStatus).catch(e => `{"error": "Market Failed"}`),
+                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.LIT, true, false, litTemp, signal, undefined, onStatus).catch(e => `{"error": "Lit Failed"}`),
+                    this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal, undefined, onStatus).catch(e => `{"error": "Forensic Failed"}`)
                 ]);
 
                 soulReport = this.parseJson<NigsVibeCheck>(soulRaw);
@@ -506,7 +522,7 @@ ${sourceMaterial}
             }
 
             // --- CHIEF JUSTICE ARBITRATION ---
-            setStatus("CHIEF JUSTICE: DELIBERATING...");
+            this.updateStatus("CHIEF JUSTICE: DELIBERATING...", onStatus);
 
             const arbitrationPayload = `
 [TRIBUNAL REPORTS]:
@@ -523,7 +539,7 @@ ${sourceMaterial}
 - Luck Tolerance: ${this.settings.luckTolerance}
 `;
 
-            const arbitrationRaw = await this.callAI(arbitrationPayload, NIGS_ARBITRATOR_PROMPT, true, false, 0.2, signal);
+            const arbitrationRaw = await this.callAI(arbitrationPayload, NIGS_ARBITRATOR_PROMPT, true, false, 0.2, signal, undefined, onStatus);
             const arbitrationLog = this.parseJson<NigsArbitrationLog>(arbitrationRaw);
 
             // --- SYNTHESIS (Generating Final NigsResponse) ---
@@ -566,22 +582,22 @@ ${sourceMaterial}
             }
 
             // --- GRADE ANALYST CHECK ---
-            setStatus("GRADE ANALYST: VERIFYING OUTPUT...");
+            this.updateStatus("GRADE ANALYST: VERIFYING OUTPUT...", onStatus);
             const analystPrompt = `
 [INPUT REPORT]:
 ${JSON.stringify(finalResponse)}
 
 [TASK]: Verify this report matches the Zero-Based Scoring Protocol and is complete.
 `;
-            const analystResStr = await this.callAI(analystPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal);
+            const analystResStr = await this.callAI(analystPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal, undefined, onStatus);
             const analystRes = this.parseJson<{ verdict: string, reason: string }>(analystResStr);
 
             if (analystRes.verdict === "PASS") {
                 isApproved = true;
-                setStatus("GRADE ANALYST: APPROVED.");
+                this.updateStatus("GRADE ANALYST: APPROVED.", onStatus);
             } else {
                 console.warn(`GRADE ANALYST REJECTED (Attempt ${attempts}): ${analystRes.reason}`);
-                setStatus(`ANALYST REJECTED: ${analystRes.reason}. RETRYING...`);
+                this.updateStatus(`ANALYST REJECTED: ${analystRes.reason}. RETRYING...`, onStatus);
                 previousConsensus += `\n[ANALYST REJECTION]: The previous draft was rejected because: ${analystRes.reason}. FIX THIS.`;
             }
 
@@ -593,7 +609,7 @@ ${JSON.stringify(finalResponse)}
     }
 
 
-    private gradeContentLegacy = async (text: string, context?: { inspiration: string; target: number }, nlpStats?: NlpMetrics, signal?: AbortSignal): Promise<NigsResponse> => {
+    private gradeContentLegacy = async (text: string, context?: { inspiration: string; target: number }, nlpStats?: NlpMetrics, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<NigsResponse> => {
         // [LEGACY] Map "Cores" to Analysis Passes
         const passes = Math.max(1, Math.min(10, this.settings.criticCores || 1));
         const contextBlock = context?.inspiration ? `\n[UPLOADED SOURCE CONTEXT]: "${context.inspiration}"\n` : "";
@@ -619,13 +635,13 @@ Only score positive if it is innovative.
 
         const wrapped = `\n=== NARRATIVE TO ANALYZE ===\n${text}\n=== END ===\n${statsBlock}${contextBlock}\n${instructionBlock}`;
         
-        setStatus(`INITIALIZING ${passes} FORENSIC CORES...`);
+        this.updateStatus(`INITIALIZING ${passes} FORENSIC CORES...`, onStatus);
         
         // Enforce STRICT temperature for Grading
         const temp = this.getTemp(this.settings.tempCritic, true);
 
         const promises = Array.from({ length: passes }, (_, i) => {
-            return this.callAI(wrapped, NIGS_SYSTEM_PROMPT, true, false, temp, signal)
+            return this.callAI(wrapped, NIGS_SYSTEM_PROMPT, true, false, temp, signal, undefined, onStatus)
                 .then(resStr => this.parseJson<NigsResponse>(resStr))
                 .catch(e => { console.error(`Core ${i+1} Failed:`, e); return null; });
         });
@@ -633,7 +649,7 @@ Only score positive if it is innovative.
         const results = (await Promise.all(promises)).filter((r): r is NigsResponse => r !== null);
         if (results.length === 0) throw new Error("ALL CORES FAILED.");
         
-        setStatus("SYNTHESIZING FORENSIC REPORT...");
+        this.updateStatus("SYNTHESIZING FORENSIC REPORT...", onStatus);
         
         const finalRes = this.averageResults(results);
         if (results[0].thought_process) finalRes.thought_process = results[0].thought_process;
@@ -725,16 +741,16 @@ Only score positive if it is innovative.
     }
 
     // --- PASSTHROUGHS ---
-    generateOutline = async (text: string, useSearch = false, signal?: AbortSignal, images?: ImageInput[]) => {
-        setStatus("INITIALIZING ARCHIVIST PROTOCOL...");
+    generateOutline = async (text: string, useSearch = false, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate) => {
+        this.updateStatus("INITIALIZING ARCHIVIST PROTOCOL...", onStatus);
         const prompt = this.settings.customOutlinePrompt ? this.settings.customOutlinePrompt : NIGS_OUTLINE_PROMPT;
         const temp = this.getTemp(this.settings.tempArchitect);
-        return await this.callAI(text, prompt, false, useSearch, temp, signal, images);
+        return await this.callAI(text, prompt, false, useSearch, temp, signal, images, onStatus);
     }
 
     // [UPDATED] Pass Scan Telemetry to Action Plan
-    getActionPlan = async (text: string, focus?: string, deepScan?: NigsResponse, quickScan?: NigsLightGrade, signal?: AbortSignal) => {
-        setStatus("ANALYZING WEAKNESSES...");
+    getActionPlan = async (text: string, focus?: string, deepScan?: NigsResponse, quickScan?: NigsLightGrade, signal?: AbortSignal, onStatus?: StatusUpdate) => {
+        this.updateStatus("ANALYZING WEAKNESSES...", onStatus);
         
         let diagnosticBlock = "";
         let specificComplaints = "";
@@ -790,32 +806,32 @@ Only score positive if it is innovative.
         if (focus && focus.trim().length > 0) inputBlock = `USER DIRECTIVE: Focus on "${focus}".\n\n${inputBlock}`;
         
         const temp = this.getTemp(this.settings.tempArchitect);
-        return this.parseJson<NigsActionPlan>(await this.callAI(inputBlock, NIGS_FORGE_PROMPT, true, false, temp, signal));
+        return this.parseJson<NigsActionPlan>(await this.callAI(inputBlock, NIGS_FORGE_PROMPT, true, false, temp, signal, undefined, onStatus));
     }
 
-    autoRepair = async (text: string, plan: NigsActionPlan, signal?: AbortSignal) => {
-        setStatus("INITIATING REPAIR...");
+    autoRepair = async (text: string, plan: NigsActionPlan, signal?: AbortSignal, onStatus?: StatusUpdate) => {
+        this.updateStatus("INITIATING REPAIR...", onStatus);
         const prompt = this.settings.customRepairPrompt ? this.settings.customRepairPrompt : NIGS_AUTO_REPAIR_PROMPT;
         // Enforce STRICT temperature for Repair
         const temp = this.getTemp(this.settings.tempRepair, true);
-        return await this.callAI(JSON.stringify(plan) + "\n\n" + text, prompt, false, false, temp, signal);
+        return await this.callAI(JSON.stringify(plan) + "\n\n" + text, prompt, false, false, temp, signal, undefined, onStatus);
     }
     
-    getMetaAnalysis = async (text: string, signal?: AbortSignal) => {
-        setStatus("RUNNING DIAGNOSTICS...");
+    getMetaAnalysis = async (text: string, signal?: AbortSignal, onStatus?: StatusUpdate) => {
+        this.updateStatus("RUNNING DIAGNOSTICS...", onStatus);
         const temp = this.getTemp(this.settings.tempCritic, true);
-        return this.parseJson<NigsMetaResponse>(await this.callAI(text, NIGS_META_PROMPT, true, false, temp, signal));
+        return this.parseJson<NigsMetaResponse>(await this.callAI(text, NIGS_META_PROMPT, true, false, temp, signal, undefined, onStatus));
     }
     
-    getLightGrade = async (text: string, signal?: AbortSignal) => {
-        setStatus("PERFORMING QUICK SCAN...");
+    getLightGrade = async (text: string, signal?: AbortSignal, onStatus?: StatusUpdate) => {
+        this.updateStatus("PERFORMING QUICK SCAN...", onStatus);
         const temp = this.getTemp(this.settings.tempCritic, true);
-        return this.parseJson<NigsLightGrade>(await this.callAI(text, NIGS_QUICK_SCAN_PROMPT, true, false, temp, signal));
+        return this.parseJson<NigsLightGrade>(await this.callAI(text, NIGS_QUICK_SCAN_PROMPT, true, false, temp, signal, undefined, onStatus));
     }
     
     // --- CHARACTER AUTO-GRADER ---
-    gradeCharacter = async (char: CharacterBlock, context: string, signal?: AbortSignal): Promise<CharacterBlock> => {
-        setStatus(`ANALYZING ${char.name.toUpperCase()}...`);
+    gradeCharacter = async (char: CharacterBlock, context: string, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<CharacterBlock> => {
+        this.updateStatus(`ANALYZING ${char.name.toUpperCase()}...`, onStatus);
         const prompt = `
         [TASK]: Calibrate Character Scales.
         [UPLOADED SOURCE]: ${context}...
@@ -828,7 +844,7 @@ Only score positive if it is innovative.
         `;
         
         const temp = this.getTemp(this.settings.tempCritic, true);
-        const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp, signal);
+        const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp, signal, undefined, onStatus);
         const data = this.parseJson<any>(res);
         
         return {
@@ -842,8 +858,8 @@ Only score positive if it is innovative.
     }
 
     // --- STRUCTURE AUTO-GRADER ---
-    gradeStructureBeat = async (beat: StoryBlock, context: string, signal?: AbortSignal): Promise<StoryBlock> => {
-        setStatus(`ANALYZING STORY BEAT...`);
+    gradeStructureBeat = async (beat: StoryBlock, context: string, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<StoryBlock> => {
+        this.updateStatus(`ANALYZING STORY BEAT...`, onStatus);
         const prompt = `
         Analyze this story beat. 
         1. CLASSIFY: Determine structural role.
@@ -856,7 +872,7 @@ Only score positive if it is innovative.
         `;
         
         const temp = this.getTemp(this.settings.tempCritic, true);
-        const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp, signal);
+        const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp, signal, undefined, onStatus);
         const data = this.parseJson<{ tension: number, type: any }>(res);
         
         return {
@@ -867,8 +883,8 @@ Only score positive if it is innovative.
     }
 
     // --- ASSIST WIZARD (Logic Hardened + Name Protocol) & [NEW] Thinking Agent ---
-    assistWizard = async (field: string, state: NigsWizardState, signal?: AbortSignal) => {
-        setStatus("CONSULTING NARRATIVE DATABASE...");
+    assistWizard = async (field: string, state: NigsWizardState, signal?: AbortSignal, onStatus?: StatusUpdate) => {
+        this.updateStatus("CONSULTING NARRATIVE DATABASE...", onStatus);
         const sourceMaterial = state.inspirationContext || "No source file loaded.";
         
         // [REFACTOR] Targeted Context Injection
@@ -982,11 +998,11 @@ Only score positive if it is innovative.
 
         do {
             attempts++;
-            if (attempts > 1) setStatus(`CREATIVE CONSULTANT: REFINING IDEA (ATTEMPT ${attempts})...`);
+            if (attempts > 1) this.updateStatus(`CREATIVE CONSULTANT: REFINING IDEA (ATTEMPT ${attempts})...`, onStatus);
 
             const currentPrompt = previousCritique ? `${prompt}\n\n[PREVIOUS CRITIQUE]: The previous suggestion was rejected because: ${previousCritique}. TRY AGAIN.` : prompt;
 
-            const res = await this.callAI(currentPrompt, NIGS_WIZARD_ASSIST_PROMPT, true, true, temp, signal);
+            const res = await this.callAI(currentPrompt, NIGS_WIZARD_ASSIST_PROMPT, true, true, temp, signal, undefined, onStatus);
             const data = this.parseJson<{ suggestion: string }>(res);
             suggestion = data.suggestion;
 
@@ -994,7 +1010,7 @@ Only score positive if it is innovative.
             if (!this.settings.wizardAgentEnabled) return suggestion;
 
             // [AGENT REVIEW]
-            setStatus("CREATIVE CONSULTANT: REVIEWING...");
+            this.updateStatus("CREATIVE CONSULTANT: REVIEWING...", onStatus);
             const reviewPrompt = `
 [TASK]: Review this narrative suggestion.
 [CRITERIA]:
@@ -1006,17 +1022,17 @@ Only score positive if it is innovative.
 
 Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 `;
-            const reviewRaw = await this.callAI(reviewPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal);
+            const reviewRaw = await this.callAI(reviewPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal, undefined, onStatus);
             const review = this.parseJson<{ verdict: string, reason: string }>(reviewRaw);
 
             if (review.verdict === "PASS") {
                 isApproved = true;
-                setStatus("CREATIVE CONSULTANT: APPROVED.");
+                this.updateStatus("CREATIVE CONSULTANT: APPROVED.", onStatus);
             } else {
                 console.warn(`WIZARD AGENT REJECTED: ${review.reason}`);
                 previousCritique = review.reason;
                 if (attempts >= maxAttempts) {
-                    setStatus("MAX RETRIES REACHED. RETURNING BEST EFFORT.");
+                    this.updateStatus("MAX RETRIES REACHED. RETURNING BEST EFFORT.", onStatus);
                 }
             }
         } while (!isApproved && attempts < maxAttempts);
@@ -1024,8 +1040,8 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
         return suggestion;
     }
     
-    wizardCompose = async (state: NigsWizardState, signal?: AbortSignal) => {
-        setStatus("ARCHITECTING OUTLINE...");
+    wizardCompose = async (state: NigsWizardState, signal?: AbortSignal, onStatus?: StatusUpdate) => {
+        this.updateStatus("ARCHITECTING OUTLINE...", onStatus);
         const targetQ = state.targetScore || this.settings.defaultTargetQuality;
         const promptContext = `
         [SOURCE DATA]:
@@ -1037,12 +1053,12 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
         Ensure every scene and character beat is generated to meet the Target Quality.
         `;
         const temp = this.getTemp(this.settings.tempArchitect);
-        return await this.callAI(promptContext, NIGS_WIZARD_COMPOSITION_PROMPT, false, false, temp, signal);
+        return await this.callAI(promptContext, NIGS_WIZARD_COMPOSITION_PROMPT, false, false, temp, signal, undefined, onStatus);
     }
 
     // --- DEEP RENAME (NEW) ---
-    generateDeepNames = async (characters: CharacterBlock[], context: string, signal?: AbortSignal): Promise<Record<string, string>> => {
-        setStatus("ETYMOLOGIST ACTIVE: DEEP RENAMING...");
+    generateDeepNames = async (characters: CharacterBlock[], context: string, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<Record<string, string>> => {
+        this.updateStatus("ETYMOLOGIST ACTIVE: DEEP RENAMING...", onStatus);
         
         // Prepare simplified character list for the prompt
         const charInput = characters.map(c => `- Name: ${c.name} (Role: ${c.role}) | Bio: ${c.description}`).join('\n');
@@ -1057,7 +1073,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 
         // Use Wizard Temp for creativity
         const temp = this.getTemp(this.settings.tempWizard);
-        const res = await this.callAI(input, NIGS_RENAME_PROMPT, true, false, temp, signal);
+        const res = await this.callAI(input, NIGS_RENAME_PROMPT, true, false, temp, signal, undefined, onStatus);
         return this.parseJson<Record<string, string>>(res);
     }
 }
