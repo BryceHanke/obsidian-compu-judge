@@ -45,6 +45,9 @@
         activeFile && $processRegistry[activeFile.path] ? 'PROCESSING' : 'READY'
     );
 
+    // [FIX]: Loading state for project data
+    let isProjectDataLoading = $derived(activeFile && !projectData);
+
     // [OPTIMIZATION] Debounced save for text inputs
     const debouncedSave = debounce(() => saveProject(false), 1000);
 
@@ -74,6 +77,14 @@
 
     export const updateActiveFile = async (file: TFile | null) => {
         if (activeFile?.path === file?.path) return;
+
+        // [FIX]: Robust null check to prevent clearing if unnecessary
+        if (file === null && activeFile !== null) {
+            // Verify if we really want to clear (e.g. all files closed)
+            const leaves = app.workspace.getLeavesOfType("markdown");
+            if (leaves.length > 0) return; // Keep last state if markdown files exist
+        }
+
         activeFile = file;
         projectData = null; 
         if (file) await loadProjectData(file);
@@ -652,6 +663,9 @@
     <div class="window-body">
         {#if !activeFile}
              <div class="empty-state">INSERT DISK (OPEN MARKDOWN FILE)</div>
+        {:else if isProjectDataLoading}
+             <div class="empty-state">LOADING PROJECT DATA...</div>
+             <Win95ProgressBar label="READING DISK..." estimatedDuration={1000} />
         {:else if projectData}
             
             {#if currentTab === 'critic'}

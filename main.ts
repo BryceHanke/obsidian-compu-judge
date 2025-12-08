@@ -66,6 +66,15 @@ export default class CompuJudgePlugin extends Plugin {
     }
     
     updateViewFile(file: TFile | null) {
+        // [FIX]: Prevent clearing state when clicking the plugin pane itself
+        if (!file) {
+            const activeLeaf = this.app.workspace.activeLeaf;
+            // If the active leaf is the CompuJudge view, ignore the null update
+            if (activeLeaf?.view.getViewType() === VIEW_TYPE_COMPU_JUDGE) {
+                return;
+            }
+        }
+
         const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_COMPU_JUDGE);
         leaves.forEach(leaf => {
             if (leaf.view instanceof CompuJudgeView) leaf.view.updateActiveFile(file);
