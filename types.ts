@@ -2,6 +2,11 @@
 
 export type AIProvider = 'gemini' | 'openai' | 'anthropic';
 
+export interface ImageInput {
+    data: string; // Base64
+    mimeType: string;
+}
+
 export interface GradingColors {
     critical: string;    // 0-20
     poor: string;        // 20-40

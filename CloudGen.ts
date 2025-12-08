@@ -30,22 +30,37 @@ const FORENSIC_CALIBRATION = `
 5. **IGNORE INTENT:** Judge only what is on the page.
 `;
 
+import type { ImageInput } from './types';
+
 interface AIAdapter {
-    generate(text: string, systemPrompt?: string, jsonMode?: boolean, useSearch?: boolean, tempOverride?: number, signal?: AbortSignal): Promise<string>;
+    generate(text: string, systemPrompt?: string, jsonMode?: boolean, useSearch?: boolean, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[]): Promise<string>;
 }
 
 // --- GEMINI ADAPTER ---
 class GeminiAdapter implements AIAdapter {
     constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
 
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal): Promise<string> {
+    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[]): Promise<string> {
         if (!this.apiKey) throw new Error("MISSING GEMINI API KEY");
         
         const targetModel = useSearch ? (this.settings.searchModelId || this.model) : this.model;
         const temp = tempOverride !== undefined ? tempOverride : 0.7; 
 
+        const parts: any[] = [{ text }];
+
+        if (images && images.length > 0) {
+            images.forEach(img => {
+                parts.push({
+                    inlineData: {
+                        mimeType: img.mimeType,
+                        data: img.data
+                    }
+                });
+            });
+        }
+
         const body: any = {
-            contents: [{ role: "user", parts: [{ text }] }],
+            contents: [{ role: "user", parts: parts }],
             generationConfig: { 
                 temperature: temp,
                 maxOutputTokens: this.settings.maxOutputTokens
@@ -125,16 +140,29 @@ class GeminiAdapter implements AIAdapter {
 class OpenAIAdapter implements AIAdapter {
     constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
 
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal): Promise<string> {
+    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[]): Promise<string> {
         if (!this.apiKey) throw new Error("MISSING OPENAI API KEY");
         setStatus(`CONNECTING TO OPENAI (${this.model})...`);
         
         const baseSys = sys || "";
         const userSys = this.settings.customSystemPrompt ? `[USER OVERRIDE]: ${this.settings.customSystemPrompt}` : FORENSIC_CALIBRATION;
         
+        const content: any[] = [{ type: "text", text: text }];
+
+        if (images && images.length > 0) {
+             images.forEach(img => {
+                 content.push({
+                     type: "image_url",
+                     image_url: {
+                         url: `data:${img.mimeType};base64,${img.data}`
+                     }
+                 });
+             });
+        }
+
         const body: any = {
             model: this.model || 'gpt-4o',
-            messages: [{ role: "system", content: `${baseSys}\n${userSys}` }, { role: "user", content: text }],
+            messages: [{ role: "system", content: `${baseSys}\n${userSys}` }, { role: "user", content: content }],
             temperature: tempOverride !== undefined ? tempOverride : 0.7,
             max_tokens: this.settings.maxOutputTokens,
             response_format: json ? { type: "json_object" } : undefined
@@ -159,18 +187,33 @@ class OpenAIAdapter implements AIAdapter {
 class AnthropicAdapter implements AIAdapter {
     constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
 
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal): Promise<string> {
+    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[]): Promise<string> {
         if (!this.apiKey) throw new Error("MISSING ANTHROPIC API KEY");
         setStatus(`CONNECTING TO CLAUDE (${this.model})...`);
 
         const baseSys = sys || "";
         const userSys = this.settings.customSystemPrompt ? `[USER OVERRIDE]: ${this.settings.customSystemPrompt}` : FORENSIC_CALIBRATION;
 
+        const content: any[] = [{ type: "text", text: text }];
+
+        if (images && images.length > 0) {
+            images.forEach(img => {
+                content.push({
+                    type: "image",
+                    source: {
+                        type: "base64",
+                        media_type: img.mimeType,
+                        data: img.data
+                    }
+                });
+            });
+        }
+
         const body: any = {
             model: this.model || 'claude-3-7-sonnet-20250219',
             max_tokens: this.settings.maxOutputTokens, 
             system: `${baseSys}\n${userSys}`,
-            messages: [{ role: "user", content: text }],
+            messages: [{ role: "user", content: content }],
             temperature: tempOverride !== undefined ? tempOverride : 0.7
         };
         
@@ -226,9 +269,9 @@ export class CloudGenService {
         return Math.min(60000, baseTime + (tokenCount * 20 * mult));
     }
 
-    public async callAI(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal): Promise<string> {
+    public async callAI(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[]): Promise<string> {
         const adapter = this.getAdapter();
-        return await adapter.generate(text, sys, json, useSearch, tempOverride, signal);
+        return await adapter.generate(text, sys, json, useSearch, tempOverride, signal, images);
     }
 
     // [HELPER]: Generate Name Protocol String
@@ -675,11 +718,11 @@ Only score positive if it is innovative.
     }
 
     // --- PASSTHROUGHS ---
-    generateOutline = async (text: string, useSearch = false, signal?: AbortSignal) => {
+    generateOutline = async (text: string, useSearch = false, signal?: AbortSignal, images?: ImageInput[]) => {
         setStatus("INITIALIZING ARCHIVIST PROTOCOL...");
         const prompt = this.settings.customOutlinePrompt ? this.settings.customOutlinePrompt : NIGS_OUTLINE_PROMPT;
         const temp = this.getTemp(this.settings.tempArchitect);
-        return await this.callAI(text, prompt, false, useSearch, temp, signal);
+        return await this.callAI(text, prompt, false, useSearch, temp, signal, images);
     }
 
     // [UPDATED] Pass Scan Telemetry to Action Plan
