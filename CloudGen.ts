@@ -530,7 +530,13 @@ ${sourceMaterial}
             finalResponse = this.parseJson<NigsResponse>(forensicRaw);
 
             // Apply Arbitration Overrides
-            finalResponse.commercial_score = arbitrationLog.final_verdict;
+            const sumScore = (marketReport.commercial_score || 0)
+                           + (logicReport.score || 0)
+                           + (soulReport.score || 0)
+                           + (litReport.score || 0)
+                           + (jesterReport.score_modifier || 0);
+
+            finalResponse.commercial_score = sumScore;
             finalResponse.commercial_reason = `[CHIEF JUSTICE RULING]: ${arbitrationLog.ruling}`;
 
             // Map specific agent scores
