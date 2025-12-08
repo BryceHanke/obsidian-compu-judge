@@ -294,6 +294,12 @@ export const NIGS_AUTO_REPAIR_PROMPT = `
 4.  **Show, Don't Tell**: If an emotion is named, remove it and describe the physical action instead.
 5.  **Redundancy**: Remove phrases that repeat information.
 
+[CRITICAL INSTRUCTION - FORMAT PRESERVATION]:
+You must output the repaired text in the SAME FORMAT as the input text.
+- If the input is an OUTLINE (bullet points, headers), keep it as an outline. Do not expand it into prose.
+- If the input is PROSE (paragraphs, dialogue), keep it as prose.
+- Preserve all Markdown formatting (headers, bolding, etc.).
+
 DO NOT CHANGE THE PLOT. JUST OPTIMIZE THE RESOLUTION AND TEXTURE.
 `;
 
