@@ -19,13 +19,13 @@
     // [WIN95 UPDATE] Selected Agent Logic
     let selectedAgent = $state<string | null>(null);
     let openDropdown = $state<string | null>(null);
+    let showQuickScanMenu = $state(false); // [UPDATED]
 
     // [UPDATED] Graph Toggle
     let graphMode = $state<'tension' | 'quality'>('tension');
     let selectedArc = $state("truby");
 
     // [UPDATED] Dynamic Repair Issues
-    let showRepairMenu = $state(false);
     let repairIssues = $derived.by(() => {
         const issues: string[] = [];
         if (data.content_warning && data.content_warning !== 'None') issues.push(`Fix Critical Warning: ${data.content_warning}`);
@@ -227,6 +227,39 @@
     
     <div class="{getContainerClass(averageScore)}">
         
+        <!-- [WIN95 UPDATE] QUICK SCAN POPUP (Inside the main score container or above?)
+             Actually, Quick Scan is usually a separate tool or overlay.
+             But here, the 'Main Score Row' essentially IS the Quick Scan result display.
+             The user asked to "replace the 'help' button anchored on the top left of IT'S UI".
+             This suggests the Score Container IS the Quick Scan UI.
+        -->
+
+        <!-- Win95 Menu Bar for Quick Scan Area -->
+         <div class="win95-menubar" style="margin-bottom: 10px; border-bottom: 1px solid #808080;">
+             <!-- svelte-ignore a11y-click-events-have-key-events -->
+             <!-- svelte-ignore a11y-no-static-element-interactions -->
+             <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); showQuickScanMenu = !showQuickScanMenu; }}>
+                Smart Repair... ({repairIssues.length})
+             </span>
+             <!-- Replaces 'Help' -->
+
+             {#if showQuickScanMenu}
+                <div class="dropdown-list" style="left:0; top: 20px; width: 250px;">
+                    {#if repairIssues.length === 0}
+                        <div class="dd-item" style="color:#666; cursor:default;">No Issues Detected</div>
+                    {:else}
+                        {#each repairIssues as issue}
+                             <!-- svelte-ignore a11y-click-events-have-key-events -->
+                             <!-- svelte-ignore a11y-no-static-element-interactions -->
+                            <div class="dd-item" onclick={() => { onAddRepairInstruction(issue); showQuickScanMenu = false; }}>
+                                {issue}
+                            </div>
+                        {/each}
+                    {/if}
+                </div>
+            {/if}
+         </div>
+
         <div class="main-score-row">
             <div class="score-block main">
                 <div class="score-title" style="color: {isMasterpieceEffect(averageScore) || isCritical(averageScore) ? '#999' : '#555'}">OVERALL SCORE</div>
@@ -332,11 +365,15 @@
                 <!-- Diverging Bar Container (Universal Bar Style) -->
                 <div class="win95-progress-container" style="flex: 1;">
                     <div class="center-line" style="position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed #555; z-index:2;"></div>
+                    <!-- [FIXED] Rainbow logic strictly follows isMasterpieceEffect (>= 45) -->
                     <div class="win95-progress-fill"
                          style="
                             position: absolute;
                             width: {bar.width}%; 
                             left: {bar.isNegative ? (50 - bar.width) + '%' : '50%'};
+                            background: {isMasterpieceEffect(m.val) ? 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' : getBarColor(m.val)};
+                            background-size: 200% auto;
+                            animation: {isMasterpieceEffect(m.val) ? 'rainbow-bar-scroll 3s linear infinite' : 'none'};
                          ">
                     </div>
                 </div>
@@ -375,11 +412,15 @@
                             <!-- Diverging Metric Bar (Universal Style) -->
                             <div class="win95-progress-container" style="margin-bottom: 6px;">
                                 <div class="center-line" style="position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed #555; z-index:2;"></div>
+                                <!-- [FIXED] Rainbow logic strictly follows isMasterpieceEffect (>= 45) -->
                                 <div class="win95-progress-fill"
                                      style="
                                         position: absolute;
                                         width: {bar.width}%; 
                                         left: {bar.isNegative ? (50 - bar.width) + '%' : '50%'};
+                                        background: {isMasterpieceEffect(item.score) ? 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' : getBarColor(item.score)};
+                                        background-size: 200% auto;
+                                        animation: {isMasterpieceEffect(item.score) ? 'rainbow-bar-scroll 3s linear infinite' : 'none'};
                                      ">
                                 </div>
                             </div>
@@ -529,6 +570,7 @@
                          ">
                         {#if graphMode === 'tension' && bar}
                             <!-- Tension Bar (Diverging) -->
+                            <!-- [FIXED] Rainbow logic strictly follows isMasterpieceEffect (>= 45) -->
                             <div class="win95-progress-fill"
                                  style="
                                     width: auto;
@@ -545,6 +587,7 @@
                             </div>
                         {:else}
                             <!-- Quality Bar (0-100 from bottom) -->
+                            <!-- [FIXED] Rainbow logic strictly follows isMasterpieceEffect (>= 45) -->
                             <div class="win95-progress-fill"
                                  style="
                                     width: auto;
@@ -552,8 +595,9 @@
                                     bottom: 0;
                                     height: {qualityH}%;
                                     position: absolute;
-                                    /* Gradient for quality? Or just Green/Gold? */
-                                    background: linear-gradient(to top, #800000, #ffff00, #00ff00);
+                                    background: {isMasterpieceEffect(beat.val) ? 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' : 'linear-gradient(to top, #800000, #ffff00, #00ff00)'};
+                                    background-size: {isMasterpieceEffect(beat.val) ? '200% auto' : 'auto'};
+                                    animation: {isMasterpieceEffect(beat.val) ? 'rainbow-bar-scroll 3s linear infinite' : 'none'};
                                     border: 1px solid rgba(0,0,0,0.3);
                                  ">
                             </div>
@@ -580,29 +624,9 @@
         </div>
     </div>
 
-    <!-- [WIN95 UPDATE] Smart Repair Dropdown -->
+    <!-- [WIN95 UPDATE] Smart Repair Dropdown removed from here (moved to Quick Scan) -->
     <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px;">
         <div class="section-header" style="margin:0;">UNIVERSAL OUTLINE</div>
-
-        <!-- Repair Dropdown -->
-        <div class="dropdown-wrapper" style="position:relative;">
-             <!-- svelte-ignore a11y-click-events-have-key-events -->
-             <!-- svelte-ignore a11y-no-static-element-interactions -->
-            <button class="retro-btn" onclick={() => showRepairMenu = !showRepairMenu} disabled={repairIssues.length === 0}>
-                🔧 Smart Repair... ({repairIssues.length})
-            </button>
-            {#if showRepairMenu}
-                <div class="dropdown-list" style="right:0; left:auto; width: 250px;">
-                    {#each repairIssues as issue}
-                         <!-- svelte-ignore a11y-click-events-have-key-events -->
-                         <!-- svelte-ignore a11y-no-static-element-interactions -->
-                        <div class="dd-item" onclick={() => { onAddRepairInstruction(issue); showRepairMenu = false; }}>
-                            {issue}
-                        </div>
-                    {/each}
-                </div>
-            {/if}
-        </div>
     </div>
 
     <div class="structure-box bevel-down">
