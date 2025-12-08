@@ -283,6 +283,7 @@ export class CloudGenService {
     }
 
     // --- GRADING (Unified System) ---
+    // [UPDATED] Iterative Tribunal with Veto Protocol
     gradeContent = async (text: string, context?: { inspiration: string; target: number }, nlpStats?: NlpMetrics, wizardState?: NigsWizardState): Promise<NigsResponse> => {
         // 1. CHECK SETTINGS: Fallback to Legacy if Tribunal is disabled
         if (!this.settings.enableTribunal) {
@@ -290,10 +291,6 @@ export class CloudGenService {
         }
 
         setStatus("CONVENING THE TRIBUNAL...");
-        
-        // INJECT THINKING LEVEL into prompt if high
-        const deepThought = this.settings.aiThinkingLevel >= 4 ? 
-            "\n[THOUGHT PROCESS]: Use logic chains to verify every claim. Ignore bias." : "";
 
         const sourceMaterial = context?.inspiration ? `\n[SOURCE MATERIAL]: "${context.inspiration}"\n` : "";
         let statsBlock = "";
@@ -308,7 +305,7 @@ export class CloudGenService {
 `;
         }
 
-        const inputPayload = `
+        const baseInputPayload = `
 === NARRATIVE ARTIFACT ===
 ${text}
 === END ARTIFACT ===
@@ -316,67 +313,135 @@ ${statsBlock}
 ${sourceMaterial}
 `;
 
-        // 2. SPAWN 4 PARALLEL AGENTS (Market, Logic, Lit, + Legacy Forensic)
-        setStatus("DEPLOYING AGENTS (MARKET, LOGIC, LIT, FORENSIC)...");
+        // --- ITERATIVE TRIBUNAL LOOP ---
+        // Cycle 1: Normal Temp (Baseline)
+        // Cycle 2: High Temp (Creative/Critical Spikes)
+        // Cycle 3: Low Temp (Consensus/Fact Check)
 
-        // Enforce STRICT temperature for Logic and Forensic
-        const strictTemp = this.getTemp(0.1, true);
+        let previousConsensus = "";
+        let finalTribunalResults = { market: "", logic: "", lit: "", forensic: "" };
 
-        // We use individual catches to ensure the system is robust against single-agent failure
-        const [marketRaw, logicRaw, litRaw, forensicRaw] = await Promise.all([
-            this.callAI(inputPayload + deepThought, NIGS_TRIBUNAL.MARKET, true, false, 0.7)
-                .catch(e => `{"error": "Market Agent Failed: ${e.message}"}`),
-            this.callAI(inputPayload + deepThought, NIGS_TRIBUNAL.LOGIC, true, false, strictTemp) // Logic is Strict
-                .catch(e => `{"error": "Logic Agent Failed: ${e.message}"}`),
-            this.callAI(inputPayload + deepThought, NIGS_TRIBUNAL.LITERARY, true, false, 0.9)
-                .catch(e => `{"error": "Lit Agent Failed: ${e.message}"}`),
-            // Legacy Pass as "Forensic Agent"
-            this.callAI(inputPayload + deepThought, NIGS_SYSTEM_PROMPT, true, false, strictTemp) 
-                .catch(e => `{"error": "Forensic Agent Failed: ${e.message}"}`)
-        ]);
+        // Define cycles: [Temperature Multiplier, Description]
+        const cycles = [
+            { mult: 1.0, label: "BASELINE" },
+            { mult: 1.5, label: "STRESS TEST (HIGH TEMP)" },
+            { mult: 0.5, label: "FACT CHECK (LOW TEMP)" }
+        ];
 
-        // 3. SYNTHESIZE VERDICT
-        setStatus("SYNTHESIZING VERDICT...");
+        for (const cycle of cycles) {
+            setStatus(`TRIBUNAL CYCLE: ${cycle.label}...`);
 
-        const synthesisPayload = `
-[TRIBUNAL REPORTS]:
+            // Inject previous consensus into prompt if available
+            const consensusBlock = previousConsensus ? `
+[PREVIOUS TRIBUNAL CONSENSUS]:
+The agents have previously debated and found:
+${previousConsensus}
+
+[INSTRUCTION]: Review the consensus above. If you agree, deepen the analysis. If you disagree, provide evidence.
+` : "";
+
+            const fullPrompt = `${baseInputPayload}\n${consensusBlock}`;
+
+            // Calculate Temps for this cycle
+            // Market/Lit get more flexibility. Logic always stays relatively strict but scales.
+            const baseTemp = 0.7;
+            const cycleTemp = Math.min(2.0, Math.max(0.1, baseTemp * cycle.mult));
+            const logicTemp = Math.min(0.5, Math.max(0.0, 0.1 * cycle.mult)); // Logic must stay colder
+
+            // Run Agents in Parallel
+            const [marketRaw, logicRaw, litRaw, forensicRaw] = await Promise.all([
+                this.callAI(fullPrompt, NIGS_TRIBUNAL.MARKET, true, false, cycleTemp)
+                    .catch(e => `{"error": "Market Agent Failed: ${e.message}"}`),
+                this.callAI(fullPrompt, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp)
+                    .catch(e => `{"error": "Logic Agent Failed: ${e.message}"}`),
+                this.callAI(fullPrompt, NIGS_TRIBUNAL.LITERARY, true, false, cycleTemp)
+                    .catch(e => `{"error": "Lit Agent Failed: ${e.message}"}`),
+                this.callAI(fullPrompt, NIGS_SYSTEM_PROMPT, true, false, logicTemp)
+                    .catch(e => `{"error": "Forensic Agent Failed: ${e.message}"}`)
+            ]);
+
+            // Save raw results for the final synthesis
+            finalTribunalResults = { market: marketRaw, logic: logicRaw, lit: litRaw, forensic: forensicRaw };
+
+            // Synthesize Interim Consensus (for the next loop, unless it's the last one)
+            if (cycle.label !== "FACT CHECK (LOW TEMP)") {
+                 setStatus(`SYNTHESIZING CONSENSUS (${cycle.label})...`);
+                 const synthesisPrompt = `
+[INTERIM DEBATE]:
+1. MARKET: ${marketRaw}
+2. LOGIC: ${logicRaw}
+3. LIT: ${litRaw}
+
+[TASK]: Summarize the key points of agreement and disagreement. Output a brief textual summary.
+`;
+                 previousConsensus = await this.callAI(synthesisPrompt, "You are the Tribunal Clerk. Summarize findings.", false, false, 0.5);
+            }
+        }
+
+        // --- FINAL VERDICT ---
+        setStatus("ISSUING FINAL JUDGMENT...");
+
+        const finalSynthesisPayload = `
+[FINAL TRIBUNAL REPORTS]:
 1. MARKET ANALYST:
-${marketRaw}
+${finalTribunalResults.market}
 2. LOGIC ENGINE:
-${logicRaw}
+${finalTribunalResults.logic}
 3. LITERARY CRITIC:
-${litRaw}
-4. FORENSIC SCAN (Legacy):
-${forensicRaw}
+${finalTribunalResults.lit}
+4. FORENSIC SCAN:
+${finalTribunalResults.forensic}
 
 [TASK]: Synthesize a FINAL NigsResponse JSON.
-- **ZERO-BASED SCORING:** Start at 0. Add for strengths, subtract for weaknesses.
+- **ZERO-BASED SCORING:** Start at 0.
 - **LOGIC VETO:** If Logic/Forensic found a Plot Hole, the final score MUST be negative.
 - **MARKET REALITY:** If Market says boring, the final score cannot be positive.
 `;
 
-        // Strict temp for the Judge
-        const finalResStr = await this.callAI(synthesisPayload, NIGS_SYNTHESIS_PROMPT, true, false, strictTemp);
+        const strictTemp = this.getTemp(0.1, true);
+        const finalResStr = await this.callAI(finalSynthesisPayload, NIGS_SYNTHESIS_PROMPT, true, false, strictTemp);
         const finalRes = this.parseJson<NigsResponse>(finalResStr);
 
-        // 4. ATTACH BREAKDOWN FOR UI
+        // --- POST-PROCESSING & VETO PROTOCOL ---
+
+        // Attach Breakdown
         try {
             finalRes.tribunal_breakdown = {
-                market: JSON.parse(marketRaw),
-                logic: JSON.parse(logicRaw),
-                lit: JSON.parse(litRaw)
+                market: JSON.parse(finalTribunalResults.market),
+                logic: JSON.parse(finalTribunalResults.logic),
+                lit: JSON.parse(finalTribunalResults.lit)
             };
         } catch(e) { console.warn("Agent raw data parse error", e); }
 
-        // [VETO PROTOCOL] - Enforce Capping if Tribunal Fails
-        if (finalRes.tribunal_breakdown) {
-            // Logic Veto: If Logic score is too low, cap market score
-            if (finalRes.tribunal_breakdown.logic.cohesion_score <= -10) {
-                if (finalRes.commercial_score > 50) {
-                    finalRes.commercial_score = 50;
-                    finalRes.commercial_reason += " [CAPPED BY LOGIC VETO]";
-                }
-            }
+        // [LOGIC VETO PROTOCOL]
+        // "If a story has a high market score, and a high lit score, but the logic score is abysmal, it should sixth the final score"
+        // Rule: If Logic Score <= 0, Final Score = Final Score / 6.
+        if (finalRes.tribunal_breakdown && finalRes.tribunal_breakdown.logic.cohesion_score <= 0) {
+            // Apply Veto to the Average Score calculation logic
+            // Note: The AI returns "commercial_score", "niche_score", "cohesion_score" etc.
+            // The "Average Score" is usually calculated in the UI or by the AI.
+            // But we should enforce the individual scores or the resulting average.
+
+            // To enforce this effectively, we modify the scores themselves or add a "Veto Flag".
+            // However, the prompt says "final score". In the UI, Average = (Comm + Niche + Cohesion) / 3.
+            // We can't easily change the UI formula from here without changing the structure.
+            // So we will CRUSH the Cohesion score to drag the average down, OR we simply scale all scores?
+            // The user said "sixth the final score".
+            // Let's scale ALL components down to ensure the average reflects this.
+
+            const vetoFactor = 1 / 6;
+
+            finalRes.commercial_score = Math.round(finalRes.commercial_score * vetoFactor);
+            finalRes.niche_score = Math.round(finalRes.niche_score * vetoFactor);
+            // Logic is already <= 0, but we can scale it too or leave it low.
+            // If it's -10, scaling to -1 is technically "better", so we should probably leave negative scores alone or make them WORSE.
+            // But if we want the FINAL (Average) to be 1/6th...
+            // It's safer to just slash the positive scores.
+
+            finalRes.commercial_reason += " [LOGIC VETO APPLIED: Score Slashed]";
+            finalRes.niche_reason += " [LOGIC VETO APPLIED: Score Slashed]";
+
+            console.log("LOGIC VETO APPLIED: Scores slashed by factor of 6.");
         }
 
         return finalRes;
@@ -454,6 +519,12 @@ Only score positive if it is innovative.
         
         base.tension_arc = Array.from({ length: maxLen }, (_, idx) => 
             Math.round(results.reduce((sum, r) => sum + (r.tension_arc?.[idx] || 0), 0) / count)
+        );
+
+        // [UPDATED] Average Beat Quality Arc if present
+        const maxQualLen = results.reduce((max, r) => Math.max(max, r.quality_arc?.length || 0), 0) || 6;
+        base.quality_arc = Array.from({ length: maxQualLen }, (_, idx) =>
+             Math.round(results.reduce((sum, r) => sum + (r.quality_arc?.[idx] || 0), 0) / count)
         );
 
         const longest = (fn: (r: NigsResponse) => string) => results.reduce((a, b) => fn(a).length > fn(b).length ? a : b);

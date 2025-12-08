@@ -20,21 +20,43 @@
     let selectedAgent = $state<string | null>(null);
     let openDropdown = $state<string | null>(null);
 
+    // [UPDATED] Graph Toggle
+    let graphMode = $state<'tension' | 'quality'>('tension');
+    let selectedArc = $state("truby");
+
+    // [UPDATED] Dynamic Repair Issues
+    let showRepairMenu = $state(false);
+    let repairIssues = $derived.by(() => {
+        const issues: string[] = [];
+        if (data.content_warning && data.content_warning !== 'None') issues.push(`Fix Critical Warning: ${data.content_warning}`);
+        if (data.tribunal_breakdown) {
+            if (data.tribunal_breakdown.logic.content_warning) issues.push(`Logic Fix: ${data.tribunal_breakdown.logic.content_warning}`);
+            if (data.tribunal_breakdown.market.commercial_reason) issues.push(`Market Fix: ${data.tribunal_breakdown.market.commercial_reason}`);
+            if (data.tribunal_breakdown.lit.niche_reason) issues.push(`Thematic Fix: ${data.tribunal_breakdown.lit.niche_reason}`);
+        }
+        if (data.detailed_metrics) {
+            Object.entries(data.detailed_metrics).forEach(([k, v]: any) => {
+                if (v.score < 0) issues.push(`Improve ${k.toUpperCase()} (Score: ${v.score})`);
+            });
+        }
+        return issues;
+    });
+
     // --- UTILS ---
     
     // Zero-Based Color Map
     function getBarColor(val: number): string {
-        if (val >= 30) return settings.gradingColors.masterpiece; // White/Rainbow
-        if (val >= 10) return settings.gradingColors.excellent;   // Gold/Blue
-        if (val > 0) return settings.gradingColors.good;          // Green
-        if (val === 0) return settings.gradingColors.average;     // Gray
-        if (val >= -10) return settings.gradingColors.poor;       // Orange/Rust
-        return settings.gradingColors.critical;                   // Red/Black
+        if (val >= 45) return settings.gradingColors.masterpiece; // [UPDATED] Threshold 45
+        if (val >= 30) return settings.gradingColors.excellent;
+        if (val >= 10) return settings.gradingColors.good;
+        if (val === 0) return settings.gradingColors.average;
+        if (val >= -10) return settings.gradingColors.poor;
+        return settings.gradingColors.critical;
     }
 
-    // [UPDATED] Universal Masterpiece Check: Matches the Masterpiece Color
+    // [UPDATED] Universal Masterpiece Check: Threshold 45
     function isMasterpieceEffect(val: number): boolean { 
-        return getBarColor(val) === settings.gradingColors.masterpiece;
+        return val >= 45;
     }
 
     // New Logic: Critical Failure is significantly negative
@@ -58,6 +80,11 @@
         const width = Math.abs(clamped) / cap * 50; // Max width is 50% (half the bar)
         const isNegative = val < 0;
         return { width, isNegative };
+    }
+
+    // Quality Bar Logic (0-100)
+    function getQualityMetrics(val: number) {
+        return Math.max(0, Math.min(100, val));
     }
 
     // Slider Bar Logic (0-100)
@@ -106,57 +133,74 @@
     });
 
     // Ideal Arc Logic
-    let selectedArc = $state("truby");
-
     let chartData = $derived.by(() => {
-        if (!isUniversalOutline) {
-            // [UPDATED] Use full dynamic length of tension_arc if available
-            const legacyArc = data.tension_arc || [0, 10, 5, 20, 15, 30]; 
-            return legacyArc.map((val, i) => ({
-                tension: val,
-                widthPerc: 100 / legacyArc.length,
-                title: `Beat ${i + 1}`,
-                desc: "Legacy Data"
-            }));
+        // [UPDATED] Handle both Tension and Quality modes
+
+        let sourceArray: number[] = [];
+        let labels: string[] = [];
+        let descs: string[] = [];
+
+        // Prefer Quality Arc if mode is Quality and data exists
+        if (graphMode === 'quality' && data.quality_arc && data.quality_arc.length > 0) {
+            sourceArray = data.quality_arc;
+        } else if (graphMode === 'tension') {
+             // Use Universal Outline tension if available, else tension_arc
+             if (isUniversalOutline) {
+                 sourceArray = (structure as UniversalOutlineNode[]).map(n => n.tension);
+             } else {
+                 sourceArray = data.tension_arc || [0, 10, 5, 20, 15, 30];
+             }
+        } else {
+             // Fallback for quality if missing
+             sourceArray = (data.tension_arc || []).map(() => 50); // Default flat 50
         }
 
-        const nodes = structure as UniversalOutlineNode[];
-        const totalChars = nodes.reduce((acc, node) => acc + (node.description?.length || 50), 0);
+        // Generate Labels/Descs
+        if (isUniversalOutline) {
+            const nodes = structure as UniversalOutlineNode[];
+            labels = nodes.map(n => n.title);
+            descs = nodes.map(n => n.description || "");
+        } else {
+             labels = sourceArray.map((_, i) => `Beat ${i+1}`);
+             descs = sourceArray.map(() => "Legacy Data");
+        }
         
-        return nodes.map(node => {
-            const len = node.description?.length || 50;
-            let rawPerc = (len / totalChars) * 100;
-            return {
-                tension: node.tension,
-                widthPerc: rawPerc, 
-                title: node.title,
-                desc: node.description
+        // Normalize lengths if arrays differ (shouldn't happen often)
+        const finalData = sourceArray.map((val, i) => {
+            // Width calc for visual spacing
+            const len = descs[i]?.length || 50;
+            // Total length for percentage...
+            // Let's just do equal width for now or text-based. Text-based is better for outline.
+             return {
+                val: val,
+                title: labels[i] || `Beat ${i+1}`,
+                desc: descs[i] || "",
+                textLen: len
             };
         });
+
+        const totalChars = finalData.reduce((acc, d) => acc + d.textLen, 0);
+
+        return finalData.map(d => ({
+            ...d,
+            widthPerc: (d.textLen / totalChars) * 100
+        }));
     });
 
-    // Interpolate Ideal Path
+    // Interpolate Ideal Path (Only for Tension Mode)
     let idealPathD = $derived.by(() => {
+        if (graphMode !== 'tension') return ""; // No ideal path for Quality
         if (!chartData || chartData.length === 0) return "";
         
         const idealPoints = IDEAL_ARCS[selectedArc].points;
         const numBeats = chartData.length;
-        
-        // Map points: X is percent (0-100), Y is tension (-50 to +100 approx) mapped to chart height
-        // Chart height: let's assume 100 units. Center (0 tension) is at Y=50.
-        // Positive tension goes UP (lower Y). Negative goes DOWN (higher Y).
         
         let path = "";
         let currentX = 0;
 
         chartData.forEach((beat, i) => {
             const centerX = currentX + (beat.widthPerc / 2);
-            
-            // Linear Interpolation of Ideal Curve
-            // Progress from 0 to 1
             const progress = i / (numBeats - 1 || 1); 
-            
-            // Find index in idealPoints array
             const idealIndex = progress * (idealPoints.length - 1);
             const lowerIdx = Math.floor(idealIndex);
             const upperIdx = Math.ceil(idealIndex);
@@ -166,16 +210,7 @@
             const val2 = idealPoints[upperIdx];
             const idealVal = val1 + (val2 - val1) * weight;
             
-            // Map Ideal Value (0 to 100 usually) to Visual Y
-            // Visual Scale: 0 tension = 50% height. +100 tension = 0% height. -100 tension = 100% height.
-            // Factor: 1 unit tension = 0.5% height?
-            // Let's match the bar scaling.
-            // Bar: height = width% (e.g. 50 tension = 50% height).
-            
-            // Actually, let's normalize simply:
-            // Center is 50.
-            // +100 => 0.
-            // -100 => 100.
+            // Map Ideal Value to Y (Center 50)
             const yPos = 50 - (idealVal / 2); 
 
             if (i === 0) path += `M ${centerX} ${yPos}`;
@@ -296,11 +331,6 @@
                 <span class="mod-label">{m.label}</span>
                 <!-- Diverging Bar Container (Universal Bar Style) -->
                 <div class="win95-progress-container" style="flex: 1;">
-                    <!-- We simulate divergence by positioning the rainbow bar -->
-                    <!-- Standard Win95 bars don't diverge, they fill. But user wants universal bar.
-                         If we stick to "fill" concept, we might just show percentage.
-                         However, data can be negative.
-                         Let's keep the diverging logic but use the Universal Bar styling. -->
                     <div class="center-line" style="position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed #555; z-index:2;"></div>
                     <div class="win95-progress-fill"
                          style="
@@ -459,61 +489,80 @@
     {/if}
 
 <div class="section-header">
-    <span>NARRATIVE TENSION ARC</span>
+    <span>STORY GRAPH</span>
+    <!-- [WIN95 UPDATE] Graph Mode Toggle -->
+    <select class="retro-select" bind:value={graphMode} style="margin-left: auto; margin-right: 10px;">
+        <option value="tension">Narrative Tension</option>
+        <option value="quality">Beat Quality</option>
+    </select>
+
+    {#if graphMode === 'tension'}
     <select class="retro-select" bind:value={selectedArc}>
         {#each Object.entries(IDEAL_ARCS) as [key, arc]}
             <option value={key}>{arc.label}</option>
         {/each}
     </select>
+    {/if}
 </div>
+
     <div class="chart-box bevel-down">
-        <!-- [WIN95 FIX] Added explicit flex sizing to ensure scaling works -->
         <div class="chart-area zero-center" style="display: flex; width: 100%;">
+            {#if graphMode === 'tension'}
             <div class="chart-center-line"></div>
-            
-            <!-- SVG OVERLAY FOR IDEAL PATH -->
+            <!-- SVG OVERLAY FOR IDEAL PATH (Only for Tension) -->
             <svg class="chart-overlay" preserveAspectRatio="none" viewBox="0 0 100 100">
                 <path d={idealPathD} fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6" />
             </svg>
+            {/if}
 
             {#each chartData as beat, i}
-                {@const bar = getBarMetrics(beat.tension)}
-                <!-- [WIN95 FIX] Use percentage width directly instead of flex-grow if flex-grow is unreliable,
-                     but flex-grow is standard. However, mixing flex-grow with explicit widthPerc is better.
-                     Let's use 'width: X%' if calculated, else flex-grow.
-                     Our calc provides 'widthPerc' (0-100). -->
+                {@const bar = graphMode === 'tension' ? getBarMetrics(beat.val) : null}
+                {@const qualityH = graphMode === 'quality' ? getQualityMetrics(beat.val) : 0}
+
                 <div class="bar-col tooltip-container" style="width: {beat.widthPerc}%; flex-grow: 0; flex-shrink: 0;">
-                    <!-- Column Flex Logic for Diverging Vertical Bars -->
+
                     <div class="win95-progress-container"
                          style="
                             width: 100%; height: 100%;
-                            background: transparent; box-shadow: none; border: none; /* Reset standard container for vertical usage */
+                            background: transparent; box-shadow: none; border: none;
                             position: relative;
                          ">
-                        <!-- We need a vertical bar. The universal bar is horizontal.
-                             So we simulate it with a block. -->
-                        <div class="win95-progress-fill"
-                             style="
-                                width: auto;
-                                left: 1px; right: 1px;
-                                top: {bar.isNegative ? '50%' : 'auto'};
-                                bottom: {bar.isNegative ? 'auto' : '50%'};
-                                height: {bar.width}%;
-                                position: absolute;
-                                background: {getBarColor(beat.tension)}; /* Use score color, not rainbow, for chart readability?
-                                                                            Or rainbow if masterpiece?
-                                                                            User said 'score bars...'. Chart is a chart.
-                                                                            Let's keep color coding but maybe add rainbow if masterpiece. */
-                                background: {isMasterpieceEffect(beat.tension) ? 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' : getBarColor(beat.tension)};
-                                background-size: 200% auto;
-                                animation: {isMasterpieceEffect(beat.tension) ? 'rainbow-bar-scroll 3s linear infinite' : 'none'};
-                                border: 1px solid rgba(0,0,0,0.3);
-                             ">
-                        </div>
+                        {#if graphMode === 'tension' && bar}
+                            <!-- Tension Bar (Diverging) -->
+                            <div class="win95-progress-fill"
+                                 style="
+                                    width: auto;
+                                    left: 1px; right: 1px;
+                                    top: {bar.isNegative ? '50%' : 'auto'};
+                                    bottom: {bar.isNegative ? 'auto' : '50%'};
+                                    height: {bar.width}%;
+                                    position: absolute;
+                                    background: {isMasterpieceEffect(beat.val) ? 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' : getBarColor(beat.val)};
+                                    background-size: 200% auto;
+                                    animation: {isMasterpieceEffect(beat.val) ? 'rainbow-bar-scroll 3s linear infinite' : 'none'};
+                                    border: 1px solid rgba(0,0,0,0.3);
+                                 ">
+                            </div>
+                        {:else}
+                            <!-- Quality Bar (0-100 from bottom) -->
+                            <div class="win95-progress-fill"
+                                 style="
+                                    width: auto;
+                                    left: 1px; right: 1px;
+                                    bottom: 0;
+                                    height: {qualityH}%;
+                                    position: absolute;
+                                    /* Gradient for quality? Or just Green/Gold? */
+                                    background: linear-gradient(to top, #800000, #ffff00, #00ff00);
+                                    border: 1px solid rgba(0,0,0,0.3);
+                                 ">
+                            </div>
+                        {/if}
                     </div>
+
                     <div class="tooltip chart-tooltip">
                         <strong>{i+1}. {beat.title}</strong><br/>
-                        Tension: {formatScoreDisplay(beat.tension)}<br/>
+                        {graphMode === 'tension' ? 'Tension' : 'Quality'}: {formatScoreDisplay(beat.val)}<br/>
                         <span style="font-size:0.8em; opacity:0.8">Duration: {Math.round(beat.widthPerc)}%</span>
                     </div>
                 </div>
@@ -521,15 +570,41 @@
         </div>
         <div class="chart-axis">
             <span>START</span>
+            {#if graphMode === 'tension'}
             <div style="display:flex; align-items:center; gap:5px;">
                 <span class="legend-box" style="border:1px dashed #000080;"></span>
                 <span style="font-size:9px; color:#000080;">IDEAL ({IDEAL_ARCS[selectedArc].label})</span>
             </div>
+            {/if}
             <span>END</span>
         </div>
     </div>
 
-    <div class="section-header">UNIVERSAL OUTLINE</div>
+    <!-- [WIN95 UPDATE] Smart Repair Dropdown -->
+    <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+        <div class="section-header" style="margin:0;">UNIVERSAL OUTLINE</div>
+
+        <!-- Repair Dropdown -->
+        <div class="dropdown-wrapper" style="position:relative;">
+             <!-- svelte-ignore a11y-click-events-have-key-events -->
+             <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <button class="retro-btn" onclick={() => showRepairMenu = !showRepairMenu} disabled={repairIssues.length === 0}>
+                🔧 Smart Repair... ({repairIssues.length})
+            </button>
+            {#if showRepairMenu}
+                <div class="dropdown-list" style="right:0; left:auto; width: 250px;">
+                    {#each repairIssues as issue}
+                         <!-- svelte-ignore a11y-click-events-have-key-events -->
+                         <!-- svelte-ignore a11y-no-static-element-interactions -->
+                        <div class="dd-item" onclick={() => { onAddRepairInstruction(issue); showRepairMenu = false; }}>
+                            {issue}
+                        </div>
+                    {/each}
+                </div>
+            {/if}
+        </div>
+    </div>
+
     <div class="structure-box bevel-down">
         {#if isUniversalOutline}
             {#each structure as node}
@@ -700,6 +775,34 @@
         background: #000080;
         color: #fff;
     }
+
+    /* BUTTONS */
+    .retro-btn {
+        background: #c0c0c0;
+        border-top: 1px solid #fff;
+        border-left: 1px solid #fff;
+        border-right: 1px solid #000;
+        border-bottom: 1px solid #000;
+        box-shadow: 1px 1px 0 #000;
+        color: #000;
+        font-family: inherit;
+        font-size: 11px;
+        padding: 4px 8px;
+        cursor: pointer;
+    }
+    .retro-btn:active {
+        border-top: 1px solid #000;
+        border-left: 1px solid #000;
+        border-right: 1px solid #fff;
+        border-bottom: 1px solid #fff;
+        box-shadow: none;
+        transform: translate(1px, 1px);
+    }
+    .retro-btn:disabled {
+        color: #888;
+        cursor: not-allowed;
+    }
+
 
     /* SANDERSON METRICS (Updated for Diverging Bars) */
     .modules-grid { padding: 10px; z-index: 1; position: relative; }

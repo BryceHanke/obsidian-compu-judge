@@ -158,7 +158,8 @@ export interface NigsResponse {
     content_warning: string;  
     log_line: string;         
     structure_map: UniversalOutlineNode[]; 
-    tension_arc: number[];    
+    tension_arc: number[];
+    quality_arc?: number[]; // [UPDATED] Beat Quality 0-100
     third_act_score: number;
     novelty_score: number;
     sanderson_metrics: SandersonMetrics;
