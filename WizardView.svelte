@@ -41,17 +41,18 @@
     }: Props = $props();
 
     let mode: 'simple' | 'detailed' = $state('simple');
+
+    function handleSwitchMode(newMode: 'simple' | 'detailed') {
+        mode = newMode;
+    }
 </script>
 
 <div class="wizard-view-container">
-    <div class="mode-selector bevel-down">
-        <button class="mode-btn {mode === 'simple' ? 'active' : ''}" onclick={() => mode = 'simple'}>
-            <span class="icon">⚗️</span> SIMPLE MODE (SYNTHESIS)
+    {#if mode === 'detailed'}
+        <button class="mode-btn back-to-home" onclick={() => mode = 'simple'}>
+            <span class="icon">⬅</span> BACK TO WIZARD HOME
         </button>
-        <button class="mode-btn {mode === 'detailed' ? 'active' : ''}" onclick={() => mode = 'detailed'}>
-            <span class="icon">🧙‍♂️</span> DETAILED MODE (ARCHITECT)
-        </button>
-    </div>
+    {/if}
 
     <div class="mode-content">
         {#if mode === 'simple'}
@@ -67,6 +68,7 @@
                     onUpdateSettings={onUpdateSettings}
                     onRunSynthesis={onRunSynthesis}
                     onGetActiveContent={onGetActiveContent}
+                    onSwitchMode={handleSwitchMode}
                 />
             </div>
         {:else}
@@ -106,15 +108,7 @@
         height: 100%;
     }
 
-    .mode-selector {
-        display: flex;
-        background: #000;
-        padding: 2px;
-        gap: 2px;
-    }
-
     .mode-btn {
-        flex: 1;
         background: #c0c0c0;
         border: 2px outset #fff;
         padding: 8px;
@@ -126,18 +120,16 @@
         align-items: center;
         justify-content: center;
         gap: 5px;
-        color: #808080;
-    }
-
-    .mode-btn.active {
-        background: #000080;
-        color: #fff;
-        border-style: inset;
-        font-weight: 900;
+        color: #000;
+        margin-bottom: 5px;
     }
 
     .mode-btn:active {
         border-style: inset;
+    }
+
+    .back-to-home {
+        width: 100%;
     }
 
     .mode-content {

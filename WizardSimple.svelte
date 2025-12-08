@@ -13,9 +13,10 @@
         onUpdateSettings: (s: Partial<NigsSettings>) => void;
         onRunSynthesis: (title?: string, quality?: number) => void;
         onGetActiveContent: () => Promise<string>;
+        onSwitchMode: (mode: 'simple' | 'detailed') => void;
     }
 
-    let { app, settings, drives, onUpdateDrives, onUpdateSettings, onRunSynthesis, onGetActiveContent }: Props = $props();
+    let { app, settings, drives, onUpdateDrives, onUpdateSettings, onRunSynthesis, onGetActiveContent, onSwitchMode }: Props = $props();
 
     // Wizard State
     let currentStep = $state(0);
@@ -210,10 +211,27 @@
             {#if currentStep === 0}
                 <div class="step-content" transition:slide>
                     <h3>Welcome to the Narrative Synthesis Wizard</h3>
-                    <p>This wizard will guide you through the process of fusing multiple Narrative Drives into a cohesive Masterpiece Story.</p>
-                    <p>It is recommended that you have your source materials (Drives) ready before proceeding.</p>
-                    <br>
-                    <p>To continue, click Next.</p>
+                    <p>Select your operational mode:</p>
+
+                    <div class="mode-selection">
+                         <button class="mode-card active" onclick={() => nextStep()}>
+                             <span class="mode-icon">⚗️</span>
+                             <div class="mode-info">
+                                 <span class="mode-title">Narrative Synthesis (Alchemy)</span>
+                                 <span class="mode-desc">Fuse multiple "Drives" (ideas, snippets, characters) into a new cohesive story.</span>
+                             </div>
+                         </button>
+
+                         <button class="mode-card" onclick={() => onSwitchMode('detailed')}>
+                            <span class="mode-icon">🧙‍♂️</span>
+                            <div class="mode-info">
+                                <span class="mode-title">Narrative Architect (Story Bible)</span>
+                                <span class="mode-desc">Build a complete Story Bible (Characters, Structure, Theme) from a single concept.</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <p>It is recommended that you have your source materials (Drives) ready before proceeding with Synthesis.</p>
                 </div>
 
             {:else if currentStep === 1}
@@ -475,4 +493,49 @@
     .lib-item { display: flex; justify-content: space-between; padding: 2px; border-bottom: 1px dotted #ccc; }
     
     .control-panel { margin-top: 10px; }
+
+    .mode-selection {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .mode-card {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: #fff;
+        border: 2px outset #fff;
+        padding: 10px;
+        text-align: left;
+        cursor: pointer;
+        color: #000;
+        transition: all 0.1s;
+    }
+
+    .mode-card:active {
+        border-style: inset;
+        background: #eee;
+    }
+
+    .mode-icon {
+        font-size: 24px;
+    }
+
+    .mode-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .mode-title {
+        font-weight: bold;
+        font-size: 13px;
+        color: #000080;
+    }
+
+    .mode-desc {
+        font-size: 11px;
+        color: #555;
+    }
 </style>
