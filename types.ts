@@ -101,7 +101,7 @@ export interface NigsSettings {
 export const DEFAULT_SETTINGS: NigsSettings = {
     apiKey: '',
     modelId: 'gemini-2.0-flash',
-    searchModelId: 'gemini-2.0-flash',
+    searchModelId: '',
     aiProvider: 'gemini',
     openaiKey: '',
     openaiModel: 'gpt-4o',

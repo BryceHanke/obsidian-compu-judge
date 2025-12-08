@@ -166,6 +166,9 @@ class NigsSettingTab extends PluginSettingTab {
             this.addTextInput(containerEl, 'Model ID', 'gemini-2.0-flash', this.plugin.settings.modelId, async (val) => {
                  this.plugin.settings.modelId = val; await this.plugin.saveSettings();
             });
+            this.addTextInput(containerEl, 'Search Model ID (Optional)', 'Leave empty to use Model ID', this.plugin.settings.searchModelId, async (val) => {
+                 this.plugin.settings.searchModelId = val; await this.plugin.saveSettings();
+            });
         }
 
         if (this.plugin.settings.aiProvider === 'openai') {
