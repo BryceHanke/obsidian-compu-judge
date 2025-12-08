@@ -11,6 +11,7 @@
         activeFileStatus: boolean; // isProcessing
         processOrigin: string | null;
         estimatedDuration: number;
+        processId?: string;
 
         // Detailed Mode (Old Wizard) Props
         wizardState: NigsWizardState;
@@ -34,7 +35,7 @@
     }
 
     let {
-        app, settings, activeFileStatus, processOrigin, estimatedDuration,
+        app, settings, activeFileStatus, processOrigin, estimatedDuration, processId,
         wizardState, onSave, onAssist, onUploadContext, onScrubContext, onClear, onAutoFill, isContextSynced, loadingField, onGradeCharacter, onGradeStructure, onRunGhostwriter,
         onUpdateDrives, onUpdateSettings, onRunSynthesis, onGetActiveContent
     }: Props = $props();
@@ -42,13 +43,9 @@
 </script>
 
 <div class="wizard-view-container">
-    {#if activeFileStatus}
+    {#if activeFileStatus && processId}
         <div class="progress-overlay">
-            {#if processOrigin === 'synth'}
-                <Win95ProgressBar label="SYNTHESIZING..." estimatedDuration={10000} />
-            {:else if processOrigin === 'wizard'}
-                <Win95ProgressBar label="ARCHITECTING..." estimatedDuration={estimatedDuration} />
-            {/if}
+            <Win95ProgressBar processId={processId} />
         </div>
     {/if}
 
