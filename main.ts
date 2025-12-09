@@ -192,6 +192,20 @@ class NigsSettingTab extends PluginSettingTab {
         // --- TRIBUNAL CONFIG ---
         this.addSectionHeader(containerEl, 'TRIBUNAL CONFIGURATION');
 
+        const optimizationSetting = new Setting(containerEl)
+            .setName('Optimization Mode')
+            .setDesc('Choose between Quality (Slower, More Accurate) or Speed (Faster, Less Detailed).')
+            .addDropdown(drop => drop
+                .addOption('Speed', 'Speed (Sacrifice Accuracy)')
+                .addOption('Balanced', 'Balanced (Default)')
+                .addOption('Quality', 'Quality (Maximum Reasoning)')
+                .setValue(this.plugin.settings.optimizationMode)
+                .onChange(async (val) => {
+                    this.plugin.settings.optimizationMode = val as 'Speed' | 'Balanced' | 'Quality';
+                    await this.plugin.saveSettings();
+                }));
+        this.styleDropdown(optimizationSetting);
+
         const tribunalConfig = new Setting(containerEl)
             .setName('Execution Mode')
             .setDesc('Parallel (Faster) or Iterative (Sequential Chain).')
@@ -204,6 +218,16 @@ class NigsSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
         this.styleDropdown(tribunalConfig);
+
+        new Setting(containerEl)
+            .setName('Enable Logging')
+            .setDesc('Save all inputs/outputs to a hidden file for tuning.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableLogging)
+                .onChange(async (val) => {
+                    this.plugin.settings.enableLogging = val;
+                    await this.plugin.saveSettings();
+                }));
 
         new Setting(containerEl)
             .setName('Enable Tribunal')

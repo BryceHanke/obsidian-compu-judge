@@ -1,6 +1,7 @@
 import { requestUrl, App } from 'obsidian';
 import type { NigsSettings, NigsResponse, NigsWizardState, NigsLightGrade, NigsActionPlan, NigsMetaResponse, NlpMetrics, CharacterBlock, StoryBlock, DriveBlock } from './types';
 import type { NigsVibeCheck, NigsFactReport, NigsArbitrationLog } from './types';
+import { LogService } from './LogService';
 import { 
     NIGS_SYSTEM_PROMPT, NIGS_TRIBUNAL, NIGS_SYNTHESIS_PROMPT, 
     NIGS_WIZARD_COMPOSITION_PROMPT, 
@@ -296,7 +297,25 @@ export class CloudGenService {
 
     public async callAI(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate): Promise<string> {
         const adapter = this.getAdapter();
-        return await adapter.generate(text, sys, json, useSearch, tempOverride, signal, images, onStatus);
+
+        // [LOGGING INBOUND]
+        await LogService.log(this.app, this.settings.enableLogging, 'AI_REQUEST', {
+             model: this.settings.modelId,
+             prompt: text,
+             system: sys,
+             temp: tempOverride
+        });
+
+        const start = Date.now();
+        const response = await adapter.generate(text, sys, json, useSearch, tempOverride, signal, images, onStatus);
+
+        // [LOGGING OUTBOUND]
+        await LogService.log(this.app, this.settings.enableLogging, 'AI_RESPONSE', {
+            durationMs: Date.now() - start,
+            response: response.substring(0, 5000) // Truncate slightly to save space
+        });
+
+        return response;
     }
 
     private updateStatus(msg: string, onStatus?: StatusUpdate) {
@@ -460,7 +479,10 @@ ${sourceMaterial}
 
         // --- GRADE ANALYST LOOP ---
         let attempts = 0;
-        const maxAttempts = this.settings.tribunalMaxRetries || 2;
+        // [OPTIMIZATION]: If Speed mode, force maxAttempts to 1 (No Retries)
+        const isSpeedMode = this.settings.optimizationMode === 'Speed';
+        const maxAttempts = isSpeedMode ? 1 : (this.settings.tribunalMaxRetries || 2);
+
         let finalResponse: NigsResponse | null = null;
         let isApproved = false;
         let previousConsensus = "";
@@ -599,23 +621,29 @@ ${sourceMaterial}
             }
 
             // --- GRADE ANALYST CHECK ---
-            this.updateStatus("GRADE ANALYST: VERIFYING OUTPUT...", onStatus);
-            const analystPrompt = `
+            // [OPTIMIZATION]: Skip Analyst loop in Speed mode to save time/tokens
+            if (isSpeedMode) {
+                isApproved = true;
+                this.updateStatus("GRADE ANALYST: SKIPPED (SPEED MODE).", onStatus);
+            } else {
+                this.updateStatus("GRADE ANALYST: VERIFYING OUTPUT...", onStatus);
+                const analystPrompt = `
 [INPUT REPORT]:
 ${JSON.stringify(finalResponse)}
 
 [TASK]: Verify this report matches the Zero-Based Scoring Protocol and is complete.
 `;
-            const analystResStr = await this.callAI(analystPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal, undefined, onStatus);
-            const analystRes = this.parseJson<{ verdict: string, reason: string }>(analystResStr);
+                const analystResStr = await this.callAI(analystPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal, undefined, onStatus);
+                const analystRes = this.parseJson<{ verdict: string, reason: string }>(analystResStr);
 
-            if (analystRes.verdict === "PASS") {
-                isApproved = true;
-                this.updateStatus("GRADE ANALYST: APPROVED.", onStatus);
-            } else {
-                console.warn(`GRADE ANALYST REJECTED (Attempt ${attempts}): ${analystRes.reason}`);
-                this.updateStatus(`ANALYST REJECTED: ${analystRes.reason}. RETRYING...`, onStatus);
-                previousConsensus += `\n[ANALYST REJECTION]: The previous draft was rejected because: ${analystRes.reason}. FIX THIS.`;
+                if (analystRes.verdict === "PASS") {
+                    isApproved = true;
+                    this.updateStatus("GRADE ANALYST: APPROVED.", onStatus);
+                } else {
+                    console.warn(`GRADE ANALYST REJECTED (Attempt ${attempts}): ${analystRes.reason}`);
+                    this.updateStatus(`ANALYST REJECTED: ${analystRes.reason}. RETRYING...`, onStatus);
+                    previousConsensus += `\n[ANALYST REJECTION]: The previous draft was rejected because: ${analystRes.reason}. FIX THIS.`;
+                }
             }
 
         } while (!isApproved && attempts < maxAttempts);

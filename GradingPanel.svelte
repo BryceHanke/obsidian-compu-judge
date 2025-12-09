@@ -12,6 +12,7 @@
     import WizardView from './WizardView.svelte';
     import CriticDisplay from './CriticDisplay.svelte';
     import Win95ProgressBar from './Win95ProgressBar.svelte';
+    import TuneView from './TuneView.svelte';
     import { processRegistry, processOrigin, startProcess, updateProcessStatus, activeProcesses, finishProcess, cancelProcess } from './store';
 
     interface Props {
@@ -899,9 +900,15 @@
         <button class:active={currentTab === 'critic'} onclick={() => currentTab = 'critic'}>CRITIC</button>
         <button class:active={currentTab === 'wizard'} onclick={() => currentTab = 'wizard'}>WIZARD</button>
         <button class:active={currentTab === 'forge'} onclick={() => currentTab = 'forge'}>FORGE</button>
+        <button class:active={currentTab === 'tune'} onclick={() => currentTab = 'tune'}>TUNE</button>
     </div>
 
     <div class="window-body">
+
+        <!-- TUNE TAB -->
+        {#if currentTab === 'tune'}
+            <TuneView {app} {cloud} />
+        {/if}
 
         <!-- WIZARD TAB (GLOBAL) -->
         {#if currentTab === 'wizard'}
