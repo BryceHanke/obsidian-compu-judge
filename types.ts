@@ -8,12 +8,12 @@ export interface ImageInput {
 }
 
 export interface GradingColors {
-    critical: string;    // 0-20
-    poor: string;        // 20-40
-    average: string;     // 40-60
-    good: string;        // 60-80
-    excellent: string;   // 80-90
-    masterpiece: string; // 90+
+    critical: string;    // <= -60
+    poor: string;        // <= -40
+    average: string;     // > -25
+    good: string;        // >= 25
+    excellent: string;   // >= 40 (Classic)
+    masterpiece: string; // > 50
 }
 
 export interface GradientMap {
@@ -113,7 +113,7 @@ export const DEFAULT_SETTINGS: NigsSettings = {
     anthropicModel: 'claude-3-7-sonnet-20250219',
     
     aiThinkingLevel: 3,
-    defaultTargetQuality: 90,
+    defaultTargetQuality: 50, // Updated to match Masterpiece threshold
     tempMultiplier: 1.0,
     tempCritic: 0.1,    
     tempWizard: 0.85,   
@@ -370,7 +370,7 @@ export interface NigsWizardState {
 
 export const DEFAULT_WIZARD_STATE: NigsWizardState = {
     concept: "",
-    targetScore: 90,
+    targetScore: 50, // Default to Masterpiece threshold
     inspirationContext: "",
     threePs: { promise: "", progress: "", payoff: "" },
     sandersonLaws: { magicSystem: "", limitations: "", costs: "", expansion: "" },

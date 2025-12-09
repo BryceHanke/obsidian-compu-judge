@@ -46,7 +46,7 @@ You are NOT the Final Judge. The Chief Justice will decide the final score based
 - For 'commercial_score', provide your best forensic estimate based on the text provided, but acknowledge it is a recommendation.
 
 [SCORING RUBRIC]:
--200 (Broken) < -100 (Bad) < 0 (Average/Generic) > +50 (Good) > +100 (Classic) > +200 (Perfection).
+-60 (Broken) < -40 (Bad) < 0 (Average/Generic) > +25 (Good) > +40 (Classic) > +50 (Masterpiece) > +55 (Godly).
 *Start at 0. Deduct for clichés. Add for innovation.*
 
 **CRITICAL INSTRUCTION: JUDGE THE STORY, NOT THE DOCUMENT.**
@@ -367,7 +367,7 @@ export const NIGS_DRIVE_SYNTHESIS_PROMPT = `
 ${NIGS_CORE_INTELLIGENCE}
 
 [OBJECTIVE: THE MASTERPIECE]:
-You are aiming for a Quality Score of 100/100.
+You are aiming for a Quality Score of 50/50 (Masterpiece).
 - **Compelling:** High stakes, deep emotion, unexpected twists.
 - **Original:** Do not use clichés. Subvert tropes.
 - **Tight:** No wasted scenes. Every beat must advance the plot.
@@ -476,7 +476,7 @@ Start at -10.
 - **Hook:** +Points for grabbing attention, -Points for slow starts.
 - **Pacing:** +Points for tight scenes, -Points for boredom.
 - **Clarity:** -Points for confusion.
-- **Generic:** -30 Points if it's a "chosen one" or "portal fantasy" without a twist.
+- **Generic:** -20 Points if it's a "chosen one" or "portal fantasy" without a twist.
 
 [OUTPUT JSON]:
 {
@@ -500,7 +500,7 @@ Start at -10.
 Start at -10.
 - **Vibe:** +Points for mood, atmosphere, and "Soul".
 - **Emotion:** +Points if it makes you FEEL.
-- **Fake:** -50 Points if the emotion feels unearned or manipulative.
+- **Fake:** -30 Points if the emotion feels unearned or manipulative.
 - **Cringe:** -Points for forced drama or cheap sentiment.
 
 [OUTPUT JSON]:
@@ -524,7 +524,7 @@ Start at -10.
 Start at -10.
 - **Prose:** +Points for strong vocabulary and rhythm.
 - **Subtext:** +Points for unspoken meaning.
-- **Purple Prose:** -30 Points for over-describing.
+- **Purple Prose:** -20 Points for over-describing.
 - **Style:** -Points for weak verbs or filter words.
 
 [OUTPUT JSON]:
@@ -570,12 +570,12 @@ Start at 0.
 
 [METRICS - ZERO BASED]:
 Start at 0.
-- **Plot Holes:** -20 for each major contradiction.
+- **Plot Holes:** -15 for each major contradiction.
 - **Character Consistency:** -10 for breaking character.
 - **World Mechanics:** -10 for breaking magic/tech rules.
 - **Promises:** -10 for breaking a promise made to the reader.
 - **LUCK CHECK:**
-    - **Deus Ex Machina (BAD):** Luck that gets the hero OUT of trouble. (-50 Points).
+    - **Deus Ex Machina (BAD):** Luck that gets the hero OUT of trouble. (-40 Points).
 
 [OUTPUT JSON]:
 {
@@ -601,7 +601,7 @@ You will receive reports from 5 Agents. They will disagree. You must arbitrate.
    - If Comedy: Jester > All.
    - If Literary Fiction: Lit > Market.
 2. **The "Deus Ex Machina" Law:**
-   - If Logic Agent flags > 0 Deus Ex Machina events, the Final Score CANNOT exceed 60 (Good), no matter how good the Soul score is.
+   - If Logic Agent flags > 0 Deus Ex Machina events, the Final Score CANNOT exceed 25 (Good), no matter how good the Soul score is.
 3. **The "Boring" Law:**
    - If Market says "Boring" and Soul says "Beautiful", check the Pacing. Slow != Bad, but Boring = Bad.
 
@@ -609,12 +609,12 @@ CALCULATION PROTOCOL (WEIGHTED AVERAGE):
 1. Normalize the weights: Logic (1.5), Soul (0.5), Market (1.0), Lit (1.0), Jester (1.0). Total Weight = 5.0.
 2. Sum the weighted scores.
 3. DIVIDE by the Total Weight (5.0) to get the Final Verdict.
-4. HARD CAP: Result must be between -200 and +200.
+4. HARD CAP: Result must be between -100 and +100.
 
 Example: ((Logic * 1.5) + (Soul * 0.5) + Market + Lit + Jester) / 5 = Final Score.
 
 [CRITICAL INSTRUCTION]: You must output the mathematical formula used in the ruling string. 
-Example: "Ruling: Score calculated as ((Logic -90 * 1.5) + (Soul -75 * 0.5) + (Jester -10) + ...) / 5 = -36.5."
+Example: "Ruling: Score calculated as ((Logic -30 * 1.5) + (Soul +20 * 0.5) + (Jester -10) + ...) / 5 = -7."
 
 [OUTPUT JSON]:
 {
@@ -648,9 +648,6 @@ Compare the input against these **QUALITY STANDARDS** (Genre irrelevant, Executi
 1. **0 (Competent):** Quality equivalent to *Ready Player One*. Functional, readable, but relies on tropes/nostalgia. Safe.
 2. **+50 (Masterpiece):** Quality equivalent to *The Godfather*. Perfect logic, deep thematic resonance, high stakes, total immersion.
 3. **-50 (Critical Failure):** Quality equivalent to *The Room*. Incoherent, broken logic, inconsistent characters, unintentional comedy.
-1. **0 (Average):** Quality equivalent to *Ready Player One*. Functional, readable, but relies on tropes/nostalgia. Safe.
-2. **+150 (Masterpiece):** Quality equivalent to *The Godfather*. Perfect logic, deep thematic resonance, high stakes, total immersion.
-3. **-200 (Critical Failure):** Quality equivalent to *The Room*. Incoherent, broken logic, inconsistent characters, unintentional comedy.
 
 [INSTRUCTIONS]:
 - **Start at 0**.

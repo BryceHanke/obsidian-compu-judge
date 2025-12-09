@@ -31,25 +31,25 @@
     function getBarColor(val: number): string {
         // Legacy override for Masterpiece special effect handling is done in template class logic
         // But base color is now calculated from gradient map
-        // Min: -50, Max: 100 (approximate range for display logic)
-        return getGradientColor(val, -50, 100, settings.gradientMap);
+        // Min: -60, Max: 60 (Adjusted for new scale)
+        return getGradientColor(val, -60, 60, settings.gradientMap);
     }
 
-    // [UPDATED] Universal Masterpiece Check: Threshold 45
+    // [UPDATED] Universal Masterpiece Check: Threshold > 50
     function isMasterpieceEffect(val: number): boolean { 
-        return val >= 45 && !settings.disableRainbows;
+        return val > 50 && !settings.disableRainbows;
     }
 
-    // New Logic: Critical Failure is significantly negative
+    // New Logic: Critical Failure is significantly negative (<= -60)
     function isCritical(val: number): boolean {
-        return val <= -20; // Threshold for Cracked Effect
+        return val <= -60; // Threshold for Cracked Effect
     }
     
     // Diverging Bar Logic (0 Center)
     // Returns a width percentage (0-50%) and a direction ('left' or 'right')
     function getBarMetrics(val: number) {
-        // Cap visual representation at +/- 50 for readability, though score is uncapped
-        const cap = 50; 
+        // Cap visual representation at +/- 60 for readability, though score is uncapped
+        const cap = 60;
         const clamped = Math.max(-cap, Math.min(cap, val));
         const width = Math.abs(clamped) / cap * 50; // Max width is 50% (half the bar)
         const isNegative = val < 0;
@@ -79,15 +79,15 @@
     }
 
     function getVerdict(val: number): string {
-        if (val >= 200) return "GODLY";
-        if (val >= 150) return "MASTERPIECE";
-        if (val >= 100) return "CLASSIC";
-        if (val >= 50) return "GOOD";
-        if (val > -50) return "AVERAGE"; // -49 to 49
-        if (val > -100) return "FLAWED"; // -50 to -99
-        if (val > -150) return "BAD"; // -100 to -149
-        if (val > -200) return "FAILURE"; // -150 to -199
-        return "CRITICAL FAILURE"; // <= -200
+        if (val >= 55) return "GODLY";
+        if (val > 50) return "MASTERPIECE";
+        if (val >= 40) return "CLASSIC";
+        if (val >= 25) return "GOOD";
+        if (val > -25) return "AVERAGE";
+        if (val > -40) return "FLAWED";
+        if (val > -50) return "BAD";
+        if (val > -60) return "FAILURE";
+        return "CRITICAL FAILURE"; // <= -60
     }
 
     // --- DATA PROCESSING ---
