@@ -559,10 +559,10 @@
                                 <div class="status-details">SIZE: {contextLength} CHARS</div>
                             </div>
                             <div class="context-controls">
-                                <button class="upload-btn {isContextSynced ? 'synced' : ''}" onclick={isContextSynced ? null : onUploadContext} disabled={isContextSynced}>
+                                <button class="win95-btn {isContextSynced ? 'synced' : ''}" style="flex:1;" onclick={isContextSynced ? null : onUploadContext} disabled={isContextSynced}>
                                     {isContextSynced ? '✅ SYNCED' : '📥 IMPORT ACTIVE NOTE'}
                                 </button>
-                                <button class="scrub-btn" onclick={onScrubContext} disabled={!hasContext}>🗑️ PURGE</button>
+                                <button class="win95-btn" onclick={onScrubContext} disabled={!hasContext}>🗑️ PURGE</button>
                             </div>
                         </fieldset>
 
@@ -583,7 +583,7 @@
                                     bind:value={wizardState.targetScore} onchange={handleInput} />
                             </div>
 
-                            <button class="autofill-btn" onclick={onAutoFill} disabled={!!loadingField}>
+                            <button class="win95-btn full-width" onclick={onAutoFill} disabled={!!loadingField}>
                                 ✨ AUTO-GENERATE STORY BIBLE
                             </button>
 
@@ -692,7 +692,7 @@
                                     </div>
                                 {/each}
                             {/if}
-                            <button class="add-char-btn" onclick={addTryFailCycle}>+ ADD TRY-FAIL CYCLE</button>
+                            <button class="win95-btn dashed-btn" onclick={addTryFailCycle}>+ ADD TRY-FAIL CYCLE</button>
                         </fieldset>
                     </div>
 
@@ -758,7 +758,7 @@
                                     </div>
                                 {/each}
                             </div>
-                            <button class="add-char-btn" onclick={addCharacter}>+ ADD CHARACTER</button>
+                            <button class="win95-btn dashed-btn" onclick={addCharacter}>+ ADD CHARACTER</button>
                         </fieldset>
                     </div>
 
@@ -803,11 +803,11 @@
                                     </div>
                                 {/each}
                             </div>
-                            <button class="add-char-btn" onclick={addStoryBlock}>+ ADD STORY BEAT</button>
+                            <button class="win95-btn dashed-btn" onclick={addStoryBlock}>+ ADD STORY BEAT</button>
                         </fieldset>
 
                         <div class="footer-controls">
-                            <button class="reset-form-btn" onclick={onClear}>RESET FIELDS</button>
+                            <button class="win95-btn" onclick={onClear}>RESET FIELDS</button>
                         </div>
                     </div>
                 {/if}

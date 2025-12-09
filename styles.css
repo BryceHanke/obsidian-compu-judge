@@ -258,6 +258,8 @@
     line-height: 1.4;
     -webkit-appearance: none;
     appearance: none;
+    caret-color: #000; /* Ensure cursor is visible */
+    cursor: text;
 }
 
 /* WIN95 SLIDER (Range Input) */
