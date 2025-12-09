@@ -345,16 +345,16 @@
 
     function getScoreColor(val: number): string {
         const c = settings.gradingColors;
-        if (val >= 90) return c.masterpiece;
-        if (val >= 80) return c.excellent;
-        if (val >= 60) return c.good;
-        if (val >= 40) return c.average;
-        if (val >= 20) return c.poor;
+        if (val > 50) return c.masterpiece;
+        if (val >= 40) return c.excellent;
+        if (val >= 25) return c.good;
+        if (val > -25) return c.average;
+        if (val > -40) return c.poor;
         return c.critical;
     }
 
     function isCritical(val: number): boolean {
-        return val <= 20;
+        return val <= -60;
     }
 </script>
 
@@ -529,7 +529,7 @@
 
                             <div class="input-row">
                                 <label for="synth-quality">TARGET QUALITY: {targetQuality}</label>
-                                <input type="range" id="synth-quality" class="retro-range" min="-200" max="200" step="10" style="flex:1"
+                                <input type="range" id="synth-quality" class="retro-range" min="-100" max="100" step="5" style="flex:1"
                                     bind:value={targetQuality} />
                             </div>
 
@@ -579,7 +579,7 @@
 
                             <label for="w_target">TARGET QUALITY SCORE: {wizardState.targetScore || settings.defaultTargetQuality}</label>
                             <div class="input-wrap">
-                                <input type="range" id="w_target" class="retro-range" min="-200" max="200" step="10"
+                                <input type="range" id="w_target" class="retro-range" min="-100" max="100" step="5"
                                     bind:value={wizardState.targetScore} onchange={handleInput} />
                             </div>
 
