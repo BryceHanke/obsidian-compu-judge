@@ -4,6 +4,7 @@ export interface ActiveProcess {
     id: string;
     label: string;
     status: string;
+    progress: number; // 0-100
     startTime: number;
     estimatedDuration: number;
     abortController: AbortController;
@@ -26,6 +27,7 @@ export function startProcess(id: string, label: string, duration: number): Abort
             id,
             label,
             status: label,
+            progress: 0,
             startTime: Date.now(),
             estimatedDuration: duration,
             abortController: controller
@@ -39,12 +41,16 @@ export function startProcess(id: string, label: string, duration: number): Abort
     return controller;
 }
 
-export function updateProcessStatus(id: string, status: string) {
+export function updateProcessStatus(id: string, status: string, progress?: number) {
     activeProcesses.update(procs => {
         if (procs[id]) {
             return {
                 ...procs,
-                [id]: { ...procs[id], status }
+                [id]: {
+                    ...procs[id],
+                    status,
+                    progress: progress !== undefined ? progress : procs[id].progress
+                }
             };
         }
         return procs;
