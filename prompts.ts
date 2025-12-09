@@ -431,11 +431,11 @@ For each major plot turn, you must determine:
 
 export const NIGS_RENAME_PROMPT = `
 [ROLE]: Master Etymologist.
-[TASK]: RENAME the entire cast using "Deep Nomenclature".
+[TASK]: RENAME all entities (Characters, Locations, Items, Concepts) in the text using "Deep Nomenclature".
 
 [THE CHAIN OF LOGIC]:
-For each character in the input list, you must perform this thought process:
-1.  **Identify Core Trait:** What word best describes their soul/function?
+For each entity found in the text, you must perform this thought process:
+1.  **Identify Core Trait:** What word best describes its soul/function?
 2.  **Abstraction:** Translate that word into a root language (Latin, Greek, Old English, Sanskrit).
 3.  **Mutation:** Corrupt it phonetically to sound like a name.
 4.  **Context Check:** Does this name fit the genre/tone of the source material?
@@ -447,7 +447,7 @@ For each character in the input list, you must perform this thought process:
 }
 
 [INPUT]:
-List of characters provided by user.
+Full text provided by user.
 `;
 
 // ============================================================================
@@ -473,7 +473,7 @@ Start at -10.
 [OUTPUT JSON]:
 {
   "commercial_score": 0,
-  "commercial_reason": "Specific market analysis (+/- reasons).",
+  "commercial_reason": "Specific market analysis (+/- reasons). Max 15 words. Concise.",
   "log_line": "The sales pitch."
 }
 `,
@@ -496,7 +496,7 @@ Start at -10.
 {
     "score": 0,
     "mood": "e.g. Melancholic, Cyberpunk, Hopeful",
-    "critique": "Analysis of the 'Vibe' and Enjoyment factor."
+    "critique": "Analysis of the 'Vibe' and Enjoyment factor. Max 15 words. Concise."
 }
 `,
     LIT: `
@@ -517,7 +517,7 @@ Start at -10.
 [OUTPUT JSON]:
 {
     "score": 0,
-    "niche_reason": "Critique of the writing quality and depth."
+    "niche_reason": "Critique of the writing quality and depth. Max 15 words. Concise."
 }
 `,
     JESTER: `
@@ -537,7 +537,7 @@ Start at 0.
 
 [OUTPUT JSON]:
 {
-    "roast": "A 1-sentence savage takedown or compliment.",
+    "roast": "A 1-sentence savage takedown or compliment. Max 15 words.",
     "score_modifier": 0 // Suggest a deduction or bonus
 }
 `,

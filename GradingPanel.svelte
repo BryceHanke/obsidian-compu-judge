@@ -692,48 +692,71 @@
 
     // --- DEEP RENAME (NEW) ---
     async function runDeepRename() {
-        if (!wizardData) return;
-        const chars = wizardData.characters;
-        if (!chars || chars.length === 0) {
-            new Notice("No characters found in Wizard.");
-            return;
-        }
-        if (!confirm("RENAME CAST WARNING:\nThis will permanently update character names in your Wizard based on Deep Nomenclature logic. Undo is not supported.\n\nProceed?")) return;
+        if (!activeFile) return new Notice("Please open a file to rename.");
+
+        if (!confirm("RENAME CAST WARNING:\nThis will analyze the ACTIVE DOCUMENT and rename characters, places, and items based on Deep Nomenclature logic. It will REPLACE text in your file. Undo is not supported via this tool (use Ctrl+Z).\n\nProceed?")) return;
         
         const contextKey = "WIZARD_GLOBAL";
-        const { pid, controller } = startLoading(contextKey, 6000, "ETYMOLOGIST: RENAMING...");
+        const { pid, controller } = startLoading(contextKey, 8000, "ETYMOLOGIST: RENAMING...");
         
         try {
-            const context = wizardData.inspirationContext || "";
+            const content = await app.vault.read(activeFile);
+            const context = (wizardData?.inspirationContext) || "";
+
             const nameMap = await cloud.generateDeepNames(
-                chars,
+                content,
                 context,
                 controller.signal,
                 (msg) => updateProcessStatus(pid, msg)
             );
             
-            // Apply updates
+            // Apply updates to File Content
+            let newContent = content;
             let updateCount = 0;
-            const newChars = chars.map(c => {
-                if (nameMap[c.name]) {
-                    updateCount++;
-                    return { ...c, name: nameMap[c.name] };
-                }
-                return c;
-            });
-            
-            wizardData.characters = newChars;
+            const updates = Object.entries(nameMap);
 
-            // [PHASE 2 - UPDATE 4]: Add note to archivistContext
-            if (updateCount > 0 && forgeData) {
-                 const renameLog = `\n[SYSTEM NOTE - RENAMED CHARACTERS]:\n` +
-                    Object.entries(nameMap).map(([oldN, newN]) => `- ${oldN} is now ${newN}`).join('\n');
-                 forgeData.archivistContext = (forgeData.archivistContext || "") + renameLog;
+            if (updates.length === 0) {
+                 new Notice("No rename suggestions found.");
+                 return;
             }
 
-            await saveAll(false);
+            updates.forEach(([oldName, newName]) => {
+                // Simple global replace, ensuring word boundaries if possible or just string replacement
+                // Using regex with word boundary to avoid partial matches (e.g. 'Rob' inside 'Robert')
+                // Escaping oldName for regex
+                if (oldName && newName && oldName !== newName) {
+                    const escaped = oldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`\\b${escaped}\\b`, 'g');
+                    if (regex.test(newContent)) {
+                        newContent = newContent.replace(regex, newName);
+                        updateCount++;
+                    }
+                }
+            });
             
-            new Notice(`Renaming Complete. ${updateCount} characters updated.`);
+            if (updateCount > 0) {
+                await app.vault.modify(activeFile, newContent);
+                new Notice(`Renaming Complete. ${updateCount} entities updated in file.`);
+
+                // Also update Wizard Data if matches found
+                if (wizardData && wizardData.characters) {
+                     wizardData.characters = wizardData.characters.map(c => {
+                         if (nameMap[c.name]) return { ...c, name: nameMap[c.name] };
+                         return c;
+                     });
+                     await saveAll(false);
+                }
+
+                // Log to Archivist
+                if (forgeData) {
+                     const renameLog = `\n[SYSTEM NOTE - RENAMED ENTITIES]:\n` +
+                        updates.map(([oldN, newN]) => `- ${oldN} is now ${newN}`).join('\n');
+                     forgeData.archivistContext = (forgeData.archivistContext || "") + renameLog;
+                     await saveAll(false);
+                }
+            } else {
+                new Notice("No matching entities found in text to replace.");
+            }
             
         } catch (e: any) { handleError("Deep Rename", e, pid); }
         finally { stopLoading(contextKey); }
@@ -905,28 +928,28 @@
                         ></textarea>
                     </div>
 
-                    <fieldset class="outline-fieldset win95-popup-window">
+                    <div class="win95-popup-window" style="margin-bottom: 20px;">
                          <div class="win95-titlebar">
                             <div class="win95-titlebar-text">
                                 <span>🔧</span> <span>Prose Tools (Active File)</span>
                             </div>
                         </div>
-                        <div class="win95-content-inset" style="border:none; box-shadow:none; padding:10px;">
+                        <div class="win95-content-inset">
                              <div class="button-grid">
                                 <button class="action-btn secondary" onclick={runFixDialogue} disabled={!activeFile}>FIX DIALOGUE PUNCTUATION</button>
                                 <button class="action-btn secondary" onclick={() => runAdverbKiller('highlight')} disabled={!activeFile}>HIGHLIGHT ADVERBS (RED)</button>
                                 <button class="action-btn secondary" onclick={runFilterHighlight} disabled={!activeFile}>HIGHLIGHT FILTER WORDS (YELLOW)</button>
                             </div>
                         </div>
-                    </fieldset>
+                    </div>
 
-                    <fieldset class="outline-fieldset win95-popup-window">
+                    <div class="win95-popup-window" style="margin-bottom: 20px;">
                          <div class="win95-titlebar">
                             <div class="win95-titlebar-text">
                                 <span>📚</span> <span>Structural Archivist (Global)</span>
                             </div>
                         </div>
-                        <div class="win95-content-inset" style="border:none; box-shadow:none; padding:10px;">
+                        <div class="win95-content-inset">
                             <div class="memory-core bevel-down">
                                 <div class="memory-status">
                                     <div class="status-indicator">
@@ -976,7 +999,7 @@
                                 </button>
                             </div>
                         </div>
-                    </fieldset>
+                    </div>
 
                     {#if forgeData.lastActionPlan}
                         <div class="forge-report win95-popup-window">
