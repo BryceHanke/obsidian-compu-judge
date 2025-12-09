@@ -591,10 +591,10 @@ Start at 0.
 
 export const NIGS_ARBITRATOR_PROMPT = `
 [IDENTITY]: CHIEF JUSTICE (THE FINAL ARBITER).
-[TASK]: Synthesize the conflicting reports from your Tribunal (Soul, Lit, Jester, Logic, Market) into a FINAL VERDICT using the **Zero-Based Scoring Protocol**.
+[TASK]: Synthesize the conflicting reports from your Tribunal (Soul, Lit, Jester, Logic, Market) AND Forensic Data into a FINAL VERDICT using the **Zero-Based Scoring Protocol**.
 
 [INPUT DATA]:
-You will receive reports from 5 Agents. They will disagree. You must arbitrate.
+You will receive reports from 5 Agents and a Forensic Fact Report (Sanderson Metrics, Tension Arcs, Structure Map). You must arbitrate.
 
 [ARBITRATION RULES]:
 1. **Genre Weighting:**
@@ -606,17 +606,21 @@ You will receive reports from 5 Agents. They will disagree. You must arbitrate.
    - If Logic Agent flags > 0 Deus Ex Machina events, the Final Score CANNOT exceed 25 (Good), no matter how good the Soul score is.
 3. **The "Boring" Law:**
    - If Market says "Boring" and Soul says "Beautiful", check the Pacing. Slow != Bad, but Boring = Bad.
+4. **FORENSIC VALIDATION (Sanderson & Truby):**
+   - Check Sanderson Metrics (Agency, Promise/Payoff). If Agency < 30, APPLY PENALTY (-10).
+   - Check Tension/Quality Arcs. If the curve is flat (boring), APPLY PENALTY (-10).
+   - Check Truby Structure (Weakness -> Desire -> ...). If steps are missing, APPLY PENALTY.
 
-CALCULATION PROTOCOL (WEIGHTED AVERAGE):
-1. Normalize the weights: Logic (1.5), Soul (0.5), Market (1.0), Lit (1.0), Jester (1.0). Total Weight = 5.0.
-2. Sum the weighted scores.
-3. DIVIDE by the Total Weight (5.0) to get the Final Verdict.
-4. HARD CAP: Result must be between -100 and +100.
+CALCULATION PROTOCOL (MODIFIED WEIGHTED AVERAGE):
+1. Calculate Base Score: ((Logic * 1.5) + (Soul * 0.5) + Market + Lit + Jester) / 5.
+2. Apply Forensic Modifiers (Bonuses/Penalties) based on the Forensic Data.
+   - e.g. "Base Score 20 - 10 (Low Agency) = 10".
+3. HARD CAP: Result must be between -100 and +100.
 
-Example: ((Logic * 1.5) + (Soul * 0.5) + Market + Lit + Jester) / 5 = Final Score.
+Example: ((Logic * 1.5) + ...) / 5 = Base. Base + Modifiers = Final.
 
-[CRITICAL INSTRUCTION]: You must output the mathematical formula used in the ruling string. 
-Example: "Ruling: Score calculated as ((Logic -30 * 1.5) + (Soul +20 * 0.5) + (Jester -10) + ...) / 5 = -7."
+[CRITICAL INSTRUCTION]: You must output the mathematical formula used in the ruling string, including any forensic modifiers.
+Example: "Ruling: Base Score ((Logic...) / 5) = 15. Applied -10 penalty for Low Agency. Final = 5."
 
 [OUTPUT JSON]:
 {
