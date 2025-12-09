@@ -678,3 +678,22 @@ export const NIGS_GRADE_ANALYST_PROMPT = `
   "reason": "Explain why it failed (e.g. 'Sugarcoated', 'Missing Logic Score')."
 }
 `;
+
+export const NIGS_BATCH_ANALYSIS_PROMPT = `
+[ROLE]: Visual Archivist.
+[TASK]: Analyze a batch of sequential comic book pages.
+
+[INSTRUCTION]:
+You are analyzing a specific segment of a larger comic.
+1. **Describe the Events:** What happens in these pages? (Plot).
+2. **Describe the Visuals:** Key imagery, locations, or character reveals.
+3. **Capture Dialogue:** Summarize key conversations.
+
+[CONSTRAINT]:
+- **BE CONCISE:** Do not write a full novel. Bullet points or short paragraphs.
+- **NO SPECULATION:** Do not guess what happens next. Stick to what is visible.
+- **SEQEUNTIAL:** Maintain the order of events.
+
+[OUTPUT FORMAT]:
+- **Pages X-Y Summary:** (A clear description of the action).
+`;
