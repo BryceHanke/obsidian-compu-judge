@@ -169,9 +169,11 @@
                 {#if drives}
                     {#each drives as drive, i (drive.id)}
                         <div class="drive-block bevel-up">
-                            <div class="drive-header" onclick={() => toggleExpandDrive(i)}>
+                            <div class="drive-header"
+                                class:instruction-drive={drive.name.toLowerCase().includes('story instruction')}
+                                onclick={() => toggleExpandDrive(i)}>
                                 <div class="drive-title-row">
-                                    <span class="drive-icon">💾</span>
+                                    <span class="drive-icon">{drive.name.toLowerCase().includes('story instruction') ? '⚠️' : '💾'}</span>
                                     <span class="drive-id-badge">DRIVE {i+1}:</span>
                                     <input type="text" class="drive-name-input"
                                         bind:value={drive.name}
@@ -310,8 +312,10 @@
     .drive-scroll-area { height: 250px; overflow-y: auto; padding: 5px; }
     .drive-list { display: flex; flex-direction: column; gap: 5px; }
     .drive-header { display: flex; justify-content: space-between; align-items: center; background: #000080; color: #fff; padding: 2px 4px; cursor: pointer; }
+    .drive-header.instruction-drive { background: #FFD700; color: #000; }
     .drive-title-row { display: flex; align-items: center; gap: 5px; flex: 1; }
     .drive-name-input { background: transparent; border: none; color: #fff; width: 100%; font-weight: bold; }
+    .instruction-drive .drive-name-input { color: #000; }
     .drive-body { padding: 5px; }
 
     /* MEMORY INDICATORS */

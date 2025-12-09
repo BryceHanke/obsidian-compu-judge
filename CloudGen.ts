@@ -143,12 +143,31 @@ export class CloudGenService {
         // [SAFETY]: Explicitly concat full content without trimming
         let driveContext = "";
         let totalChars = 0;
+        let baseInstruction = "";
 
-        cleanDrives.forEach((d, i) => {
-            const safeContent = d.content || "";
-            driveContext += `\n=== DRIVE ${i+1}: ${d.name} ===\n${safeContent}\n`;
-            totalChars += safeContent.length;
-        });
+        // Check for Base Drive (Story Instructions)
+        const baseDriveIndex = cleanDrives.findIndex(d => d.name.toLowerCase().includes("story instructions") || d.name.toLowerCase().includes("story instruction"));
+
+        if (baseDriveIndex !== -1) {
+             const baseDrive = cleanDrives[baseDriveIndex];
+             driveContext += `\n=== PRIMARY BASE INSTRUCTIONS (DRIVE: ${baseDrive.name}) ===\n${baseDrive.content}\n\n=== ADDITIONAL CONTEXT DRIVES ===\n`;
+             totalChars += (baseDrive.content || "").length;
+
+             baseInstruction = `\n[MANDATORY BASE]: You MUST use the content from the "PRIMARY BASE INSTRUCTIONS" drive as the skeleton/foundation. Fuse the other drives INTO this base structure.`;
+
+             cleanDrives.forEach((d, i) => {
+                 if (i === baseDriveIndex) return;
+                 const safeContent = d.content || "";
+                 driveContext += `\n=== DRIVE ${i+1}: ${d.name} ===\n${safeContent}\n`;
+                 totalChars += safeContent.length;
+             });
+        } else {
+             cleanDrives.forEach((d, i) => {
+                 const safeContent = d.content || "";
+                 driveContext += `\n=== DRIVE ${i+1}: ${d.name} ===\n${safeContent}\n`;
+                 totalChars += safeContent.length;
+             });
+        }
 
         console.log(`[Compu-Judge] Synthesizing ${drives.length} drives. Total Context Payload: ${totalChars} chars.`);
         
@@ -164,7 +183,7 @@ export class CloudGenService {
         const negativeConstraints = this.settings.wizardNegativeConstraints ?
             `\n[NEGATIVE CONSTRAINTS (DO NOT USE)]: ${this.settings.wizardNegativeConstraints}\n` : "";
 
-        const finalPrompt = `${driveContext}\n${nameRules}${titleInstruction}${qualityInstruction}${negativeConstraints}`;
+        const finalPrompt = `${driveContext}\n${nameRules}${titleInstruction}${qualityInstruction}${baseInstruction}${negativeConstraints}`;
 
         // Use dedicated SYNTH temperature (High Creativity for Alchemy)
         const temp = this.getTemp(this.settings.tempSynth ?? 1.0);
