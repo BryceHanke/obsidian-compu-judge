@@ -53,6 +53,7 @@ export interface NigsSettings {
     
     // --- SAFETY & CONSTRAINTS ---
     wizardNegativeConstraints: string; 
+    forgeImageBatchLength: number; // [NEW] Batch size for image processing
     namePool: string;           // [NEW] Preferred Names
     negativeNamePool: string;   // [NEW] Banned Names
 
@@ -122,6 +123,7 @@ export const DEFAULT_SETTINGS: NigsSettings = {
     tempSynth: 1.0,     
     
     wizardNegativeConstraints: "Avoid: Deus Ex Machina, Talking Animals, Dream Sequences, Modern Slang.",
+    forgeImageBatchLength: 10,
     namePool: "",           // Default Empty
     negativeNamePool: "",   // Default Empty
 
