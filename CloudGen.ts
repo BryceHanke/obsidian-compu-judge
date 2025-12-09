@@ -50,6 +50,7 @@ export class CloudGenService {
         const tokenCount = Math.ceil(text.length / 4);
         let baseTime = 3000;
         let mult = taskType === 'architect' ? 4.0 : 1.2;
+        if (taskType === 'repair') mult = 5.0; // Higher estimate for iterative repair
         return Math.min(60000, baseTime + (tokenCount * 20 * mult));
     }
 
@@ -755,32 +756,87 @@ ${fullContext}
         return parseJson<NigsActionPlan>(res);
     }
 
-    autoRepair = async (text: string, plan: NigsActionPlan, signal?: AbortSignal, onStatus?: StatusUpdate) => {
-        this.updateStatus("INITIATING REPAIR...", onStatus, 10);
-        const prompt = this.settings.customRepairPrompt ? this.settings.customRepairPrompt : NIGS_AUTO_REPAIR_PROMPT;
+    autoRepair = async (text: string, initialPlan: NigsActionPlan, signal?: AbortSignal, onStatus?: StatusUpdate) => {
+        let currentText = text;
+        let currentPlan = initialPlan;
 
-        // [INTELLIGENCE UPGRADE]: Inject Tribunal Complaints directly into Repair Context
-        let deepScanContext = "";
-        // If the plan has thought process or specific instructions, emphasize them
-        if (plan.weakest_link) {
-            deepScanContext += `\n[DIAGNOSED WEAKNESS]: ${plan.weakest_link}\n`;
-        }
+        // [ITERATIVE REPAIR LOOP]
+        const maxRetries = 5;
+        let attempt = 0;
+        let isFlawless = false;
 
-        const fullInput = `
+        do {
+            attempt++;
+            this.updateStatus(`INITIATING REPAIR SEQUENCE (CYCLE ${attempt}/${maxRetries})...`, onStatus, 10 + (attempt * 15));
+
+            const prompt = this.settings.customRepairPrompt ? this.settings.customRepairPrompt : NIGS_AUTO_REPAIR_PROMPT;
+
+            // [INTELLIGENCE UPGRADE]: Inject Tribunal Complaints directly into Repair Context
+            let deepScanContext = "";
+            if (currentPlan.weakest_link) {
+                deepScanContext += `\n[DIAGNOSED WEAKNESS]: ${currentPlan.weakest_link}\n`;
+            }
+
+            const fullInput = `
 [REPAIR PLAN]:
-${JSON.stringify(plan)}
+${JSON.stringify(currentPlan)}
 
 ${deepScanContext}
 
 [TEXT TO REPAIR]:
-${text}
+${currentText}
 `;
 
-        // Enforce STRICT temperature for Repair
-        const temp = this.getTemp(this.settings.tempRepair, true);
-        const res = await this.callAI(fullInput, prompt, false, false, temp, signal, undefined, onStatus);
+            // Enforce STRICT temperature for Repair
+            const temp = this.getTemp(this.settings.tempRepair, true);
+            currentText = await this.callAI(fullInput, prompt, false, false, temp, signal, undefined, onStatus);
+
+            // [VERIFICATION STEP]: Grade the repaired text
+            this.updateStatus(`VERIFYING REPAIRS (CYCLE ${attempt})...`, onStatus, 20 + (attempt * 15));
+
+            try {
+                // Perform a quick Logic/Cohesion check using the full grading engine but focused
+                // We reuse gradeContent but need to handle it carefully to avoid infinite loops if it calls other things
+                // Using a simpler "Light Grade" or just checking Logic might be better, but "no perceived flaws" implies full Tribunal.
+                // To save tokens/time, we might use a specialized verification prompt, but utilizing the existing `gradeContent` ensures consistency.
+
+                // However, `gradeContent` is expensive. Let's use `gradeContent` but maybe we can optimize it?
+                // No, sticking to the user's "won't stop until no perceived flaws" implies high rigor.
+
+                const grade = await this.gradeContent(currentText, undefined, undefined, undefined, signal, undefined);
+
+                // [FLAW DETECTION LOGIC]
+                // 1. Logic Score must be non-negative (Cohesion)
+                // 2. No major inconsistencies in Logic Report
+                const logicClean = grade.cohesion_score >= 0;
+                const plotHoles = grade.tribunal_breakdown?.logic?.inconsistencies?.length || 0;
+                const commercialViable = grade.commercial_score >= 0; // "loose (-50 to +50)" -> 0 is decent/average.
+
+                if (logicClean && plotHoles === 0 && commercialViable) {
+                    isFlawless = true;
+                    this.updateStatus("REPAIR COMPLETE: PERCEIVED FLAWS ELIMINATED.", onStatus, 100);
+                } else {
+                    // [RECURSIVE PLANNING]: If still flawed, generate a new plan based on the NEW faults
+                    if (attempt < maxRetries) {
+                        this.updateStatus(`FLAWS DETECTED (${plotHoles} Holes, Score ${grade.commercial_score}). RE-PLANNING...`, onStatus, 25 + (attempt * 15));
+
+                        // Generate new plan based on the verification grade
+                        currentPlan = await this.getActionPlan(currentText, "Fix remaining logic gaps and inconsistencies.", grade, undefined, signal, onStatus);
+                    } else {
+                        this.updateStatus("MAX REPAIR CYCLES REACHED. STOPPING.", onStatus, 100);
+                    }
+                }
+
+            } catch (e) {
+                console.warn("Verification failed during auto-repair loop", e);
+                // If verification fails, we abort the loop to be safe, or just return what we have
+                break;
+            }
+
+        } while (!isFlawless && attempt < maxRetries);
+
         this.updateStatus("DONE", onStatus, 100);
-        return res;
+        return currentText;
     }
     
     getMetaAnalysis = async (text: string, signal?: AbortSignal, onStatus?: StatusUpdate) => {

@@ -197,7 +197,7 @@
 
             <label for="w_target">TARGET QUALITY SCORE: {wizardState.targetScore || settings.defaultTargetQuality}</label>
             <div class="input-wrap">
-                <input type="range" id="w_target" class="retro-range" min="-100" max="100" step="5"
+                <input type="range" id="w_target" class="retro-range" min="-50" max="50" step="5"
                     bind:value={wizardState.targetScore} onchange={handleInput} />
             </div>
 
