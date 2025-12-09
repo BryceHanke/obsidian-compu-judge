@@ -131,7 +131,9 @@
         total += sLit * (w.lit ?? 1);
         total += sJester * (w.jester ?? 1);
 
-        return total;
+        // [FIX]: Divide by Total Weight to get average (User reported inflated scores)
+        let totalWeight = (w.market ?? 1) + (w.logic ?? 1) + (w.soul ?? 1) + (w.lit ?? 1) + (w.jester ?? 1);
+        return totalWeight > 0 ? Math.round(total / totalWeight) : 0;
     });
 
     // Ideal Arc Logic
