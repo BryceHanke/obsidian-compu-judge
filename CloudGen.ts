@@ -758,9 +758,27 @@ ${fullContext}
     autoRepair = async (text: string, plan: NigsActionPlan, signal?: AbortSignal, onStatus?: StatusUpdate) => {
         this.updateStatus("INITIATING REPAIR...", onStatus, 10);
         const prompt = this.settings.customRepairPrompt ? this.settings.customRepairPrompt : NIGS_AUTO_REPAIR_PROMPT;
+
+        // [INTELLIGENCE UPGRADE]: Inject Tribunal Complaints directly into Repair Context
+        let deepScanContext = "";
+        // If the plan has thought process or specific instructions, emphasize them
+        if (plan.weakest_link) {
+            deepScanContext += `\n[DIAGNOSED WEAKNESS]: ${plan.weakest_link}\n`;
+        }
+
+        const fullInput = `
+[REPAIR PLAN]:
+${JSON.stringify(plan)}
+
+${deepScanContext}
+
+[TEXT TO REPAIR]:
+${text}
+`;
+
         // Enforce STRICT temperature for Repair
         const temp = this.getTemp(this.settings.tempRepair, true);
-        const res = await this.callAI(JSON.stringify(plan) + "\n\n" + text, prompt, false, false, temp, signal, undefined, onStatus);
+        const res = await this.callAI(fullInput, prompt, false, false, temp, signal, undefined, onStatus);
         this.updateStatus("DONE", onStatus, 100);
         return res;
     }
