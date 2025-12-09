@@ -318,6 +318,61 @@
                             Jester Repair (General)
                         </div>
                     {/if}
+
+                    <div style="border-top:1px dashed #000; margin:2px 0;"></div>
+
+                    <!-- SANDERSON METRICS -->
+                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Fix Promise/Payoff: Address Broken Promises (Sanderson Law)`); openDropdown = null; }}>
+                        Sanderson Repair: Promise/Payoff
+                    </div>
+                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Fix Magic System: Clarify Rules & Limitations`); openDropdown = null; }}>
+                        Sanderson Repair: Magic & Rules
+                    </div>
+                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Fix Character Agency: Force Proactivity`); openDropdown = null; }}>
+                        Sanderson Repair: Agency Check
+                    </div>
+
+                    <div style="border-top:1px dashed #000; margin:2px 0;"></div>
+
+                    <!-- DETAILED METRICS (Dynamic) -->
+                    {#if hasDetails}
+                         {#if details.premise && details.premise.score < 50}
+                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Fix Premise: Sharpen the Hook & Irony`); openDropdown = null; }}>
+                                Premise Repair
+                            </div>
+                         {/if}
+                         {#if details.structure && details.structure.score < 50}
+                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Fix Structure: Address Pacing & Turns`); openDropdown = null; }}>
+                                Structure Repair
+                            </div>
+                         {/if}
+                         {#if details.character && details.character.score < 50}
+                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Fix Character: Deepen Arc & Voice`); openDropdown = null; }}>
+                                Character Repair
+                            </div>
+                         {/if}
+                         {#if details.theme && details.theme.score < 50}
+                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Fix Theme: Clarify the Argument`); openDropdown = null; }}>
+                                Theme Repair
+                            </div>
+                         {/if}
+                         {#if details.world && details.world.score < 50}
+                            <div class="dd-item" onclick={() => { onAddRepairInstruction(`Fix Worldbuilding: Consistency Check`); openDropdown = null; }}>
+                                World Repair
+                            </div>
+                         {/if}
+                    {/if}
+
+                    <!-- GENERAL FALLBACKS -->
+                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Fix Pacing: Cut Fluff & Accelerate`); openDropdown = null; }}>
+                        General: Fix Pacing
+                    </div>
+                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Fix Dialogue: Sharpen Subtext & Voice`); openDropdown = null; }}>
+                        General: Fix Dialogue
+                    </div>
+                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Enhance Description: Show Don't Tell`); openDropdown = null; }}>
+                        General: Fix Description
+                    </div>
                 </div>
             {/if}
         </div>
