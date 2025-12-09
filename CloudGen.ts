@@ -756,7 +756,7 @@ ${fullContext}
     }
 
     autoRepair = async (text: string, plan: NigsActionPlan, signal?: AbortSignal, onStatus?: StatusUpdate) => {
-        this.updateStatus("INITIATING REPAIR...", onStatus, 10);
+        this.updateStatus("INITIATING SMART REPAIR SEQUENCE...", onStatus, 5);
         const prompt = this.settings.customRepairPrompt ? this.settings.customRepairPrompt : NIGS_AUTO_REPAIR_PROMPT;
 
         // [INTELLIGENCE UPGRADE]: Inject Tribunal Complaints directly into Repair Context
@@ -766,7 +766,7 @@ ${fullContext}
             deepScanContext += `\n[DIAGNOSED WEAKNESS]: ${plan.weakest_link}\n`;
         }
 
-        const fullInput = `
+        const baseInput = `
 [REPAIR PLAN]:
 ${JSON.stringify(plan)}
 
@@ -778,9 +778,75 @@ ${text}
 
         // Enforce STRICT temperature for Repair
         const temp = this.getTemp(this.settings.tempRepair, true);
-        const res = await this.callAI(fullInput, prompt, false, false, temp, signal, undefined, onStatus);
+
+        // --- SMART REPAIR LOOP ---
+        // "Make it so the auto repair won't stop until there are no perceived flaws in the story"
+        // We set a safe limit (e.g. 5) to prevent infinite loops, but we use the Analyst to verify.
+        let attempts = 0;
+        const maxAttempts = 5;
+        let isApproved = false;
+        let currentResult = "";
+        let previousCritique = "";
+
+        do {
+            attempts++;
+            const progressBase = 10;
+            const progressStep = Math.floor(80 / maxAttempts);
+            const currentProgress = progressBase + ((attempts - 1) * progressStep);
+
+            if (attempts > 1) {
+                this.updateStatus(`REPAIR AGENT: REFINING (ATTEMPT ${attempts}/${maxAttempts})...`, onStatus, currentProgress);
+            } else {
+                this.updateStatus("REPAIR AGENT: EXECUTING FIX...", onStatus, currentProgress);
+            }
+
+            // Construct Prompt with Critique if retrying
+            let currentInput = baseInput;
+            if (previousCritique) {
+                currentInput += `\n\n[PREVIOUS ATTEMPT FAILED]:\nThe previous repair was rejected because: ${previousCritique}\n\n[INSTRUCTION]: FIX the issues identified above while executing the original plan.`;
+            }
+
+            // 1. Generate Repair
+            currentResult = await this.callAI(currentInput, prompt, false, false, temp, signal, undefined, onStatus);
+
+            // 2. Verify Repair (The "Perceived Flaws" Check)
+            this.updateStatus("QUALITY CONTROL: VERIFYING INTEGRITY...", onStatus, currentProgress + 10);
+
+            const verifyPrompt = `
+[TASK]: Verify this repaired text.
+[CRITERIA]:
+1. Does it follow the Repair Plan?
+2. Are there NEW plot holes or contradictions introduced?
+3. Are character voices consistent?
+4. Is the logic sound?
+
+[REPAIR PLAN]:
+${JSON.stringify(plan)}
+
+[REPAIRED TEXT (Snippet)]:
+${currentResult.substring(0, 8000)}...
+
+Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
+`;
+            // Use Analyst Prompt for verification
+            const reviewRaw = await this.callAI(verifyPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal, undefined, onStatus);
+            const review = parseJson<{ verdict: string, reason: string }>(reviewRaw);
+
+            if (review.verdict === "PASS") {
+                isApproved = true;
+                this.updateStatus("QUALITY CONTROL: APPROVED.", onStatus, currentProgress + 15);
+            } else {
+                console.warn(`REPAIR REJECTED (Attempt ${attempts}): ${review.reason}`);
+                previousCritique = review.reason;
+                if (attempts >= maxAttempts) {
+                    this.updateStatus("MAX RETRIES REACHED. RETURNING BEST EFFORT.", onStatus, 95);
+                }
+            }
+
+        } while (!isApproved && attempts < maxAttempts);
+
         this.updateStatus("DONE", onStatus, 100);
-        return res;
+        return currentResult;
     }
     
     getMetaAnalysis = async (text: string, signal?: AbortSignal, onStatus?: StatusUpdate) => {
