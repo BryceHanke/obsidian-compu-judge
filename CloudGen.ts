@@ -3,7 +3,7 @@ import type { NigsSettings, NigsResponse, NigsWizardState, NigsLightGrade, NigsA
 import type { NigsVibeCheck, NigsFactReport, NigsArbitrationLog } from './types';
 import { LogService } from './LogService';
 import { 
-    NIGS_SYSTEM_PROMPT, NIGS_TRIBUNAL, NIGS_SYNTHESIS_PROMPT, 
+    NIGS_SYSTEM_PROMPT, NIGS_TRIBUNAL,
     NIGS_WIZARD_COMPOSITION_PROMPT, 
     NIGS_FORGE_PROMPT, 
     NIGS_META_PROMPT, 
@@ -18,254 +18,9 @@ import {
     NIGS_ARBITRATOR_PROMPT
 } from './prompts'; 
 import { setStatus } from './store';
-
-// [UPDATED] GRANDMASTER CALIBRATION (v20.0)
-const FORENSIC_CALIBRATION = `
-[SYSTEM OVERRIDE: NARRATIVE GRANDMASTER]
-[PROTOCOL: THE ZERO-BASED SCORING SYSTEM]
-
-1. **START AT ZERO:** 0 is the baseline for a "technically competent but boring/generic" story.
-2. **NO CAP:** Scores can be positive (e.g. +50) or negative (e.g. -50).
-3. **ADD POINTS:** Only for specific strengths (Innovation, Voice, Theme).
-4. **SUBTRACT POINTS:** For ANY weakness (Plot Holes, Clichés, Confusion).
-5. **IGNORE INTENT:** Judge only what is on the page.
-`;
-
 import type { ImageInput } from './types';
-
-// Callback for status updates
-type StatusUpdate = (msg: string, progress?: number) => void;
-
-interface AIAdapter {
-    generate(text: string, systemPrompt?: string, jsonMode?: boolean, useSearch?: boolean, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate, modelOverride?: string): Promise<string>;
-}
-
-// --- GEMINI ADAPTER ---
-class GeminiAdapter implements AIAdapter {
-    constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
-
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate, modelOverride?: string): Promise<string> {
-        if (!this.apiKey) throw new Error("MISSING GEMINI API KEY");
-        
-        let targetModel = modelOverride || (useSearch ? (this.settings.searchModelId || this.model) : this.model);
-
-        // [FIX]: Sanitize Model ID (remove 'models/' prefix if user added it)
-        if (targetModel.startsWith("models/")) {
-            targetModel = targetModel.replace("models/", "");
-        }
-
-        const temp = tempOverride !== undefined ? tempOverride : 0.7; 
-
-        const parts: any[] = [{ text }];
-
-        if (images && images.length > 0) {
-            images.forEach(img => {
-                parts.push({
-                    inlineData: {
-                        mimeType: img.mimeType,
-                        data: img.data
-                    }
-                });
-            });
-        }
-
-        const body: any = {
-            contents: [{ role: "user", parts: parts }],
-            generationConfig: { 
-                temperature: temp,
-                maxOutputTokens: this.settings.maxOutputTokens
-            }
-        };
-        
-        const baseSys = sys || "";
-        const userSys = this.settings.customSystemPrompt ? `[USER OVERRIDE]: ${this.settings.customSystemPrompt}` : FORENSIC_CALIBRATION;
-        const thinkingLevel = this.settings.aiThinkingLevel || 3;
-        
-        // Inject Thinking Instructions for Gemini if level is high and supported
-        let finalSys = `${baseSys}\n${userSys}`;
-        
-        // Note: Gemini 2.0 Flash Thinking model handles this natively, but we can nudge standard models
-        if (thinkingLevel >= 4) {
-             finalSys += "\n[THOUGHT PROCESS]: Think deeply and step-by-step before answering. Consider multiple angles.";
-        }
-
-        if (finalSys) body.systemInstruction = { parts: [{ text: finalSys }] };
-
-        if (json && !useSearch) {
-            body.generationConfig.responseMimeType = "application/json";
-        }
-        
-        // Native Thinking Config for compatible models
-        const supportsThinking = (targetModel.includes("2.0-flash-thinking") || targetModel.includes("thinking"));
-        if (this.settings.showThinking || (thinkingLevel >= 4 && supportsThinking)) {
-             body.generationConfig.thinking_config = { include_thoughts: true };
-        } else if (useSearch) {
-            body.tools = [{ googleSearch: {} }];
-        }
-
-        const statusMsg = `QUERYING ${targetModel}...`;
-        if (onStatus) onStatus(statusMsg);
-        else setStatus(statusMsg); // Fallback to global if no callback
-
-        // Check cancellation before request
-        if (signal?.aborted) throw new Error("Cancelled by user.");
-
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${this.apiKey}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-            signal
-        });
-
-        if (!res.ok) {
-            let errorBody = "";
-            try { errorBody = await res.text(); } catch (e) { /* ignore */ }
-
-            if (res.status === 404) {
-                 throw new Error(`GEMINI ERROR 404: Model '${targetModel}' not found. Check Settings > AI Identity > Model ID. Ensure you are using a valid model ID (e.g., 'gemini-2.0-flash').`);
-            }
-            throw new Error(`GEMINI ERROR ${res.status}: ${res.statusText} \nDetails: ${errorBody.substring(0, 200)}...`);
-        }
-
-        const data = await res.json();
-        const candidate = data.candidates?.[0];
-        if (!candidate?.content?.parts) throw new Error("Empty Response");
-
-        let finalOutput = "";
-        let thoughtContent = "";
-        for (const part of candidate.content.parts) {
-            if (part.text) finalOutput += part.text;
-            if (part.thought) thoughtContent += part.text + "\n"; 
-        }
-
-        if (json && thoughtContent && finalOutput.trim().endsWith('}')) {
-             const trimmed = finalOutput.trim().replace(/^```json\s*/, "").replace(/```$/, "").replace(/```json/g, "").replace(/```/g, "");
-             const lastBrace = trimmed.lastIndexOf('}');
-             if (lastBrace > 0) {
-                 const base = trimmed.substring(0, lastBrace);
-                 return `${base}, "thought_process": ${JSON.stringify(thoughtContent)}}`;
-             }
-        }
-
-        if (json && !finalOutput.trim()) {
-            // Handle case where 'thought' consumes all output but no JSON
-            throw new Error("Empty JSON Response from Gemini (Thought-only?)");
-        }
-
-        return finalOutput;
-    }
-}
-
-// --- OPENAI ADAPTER ---
-class OpenAIAdapter implements AIAdapter {
-    constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
-
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate, modelOverride?: string): Promise<string> {
-        if (!this.apiKey) throw new Error("MISSING OPENAI API KEY");
-        
-        const targetModel = modelOverride || this.model;
-        const statusMsg = `CONNECTING TO OPENAI (${targetModel})...`;
-        if (onStatus) onStatus(statusMsg);
-        else setStatus(statusMsg);
-
-        const baseSys = sys || "";
-        const userSys = this.settings.customSystemPrompt ? `[USER OVERRIDE]: ${this.settings.customSystemPrompt}` : FORENSIC_CALIBRATION;
-        
-        const content: any[] = [{ type: "text", text: text }];
-
-        if (images && images.length > 0) {
-             images.forEach(img => {
-                 content.push({
-                     type: "image_url",
-                     image_url: {
-                         url: `data:${img.mimeType};base64,${img.data}`
-                     }
-                 });
-             });
-        }
-
-        const body: any = {
-            model: targetModel,
-            messages: [{ role: "system", content: `${baseSys}\n${userSys}` }, { role: "user", content: content }],
-            temperature: tempOverride !== undefined ? tempOverride : 0.7,
-            max_tokens: this.settings.maxOutputTokens,
-            response_format: json ? { type: "json_object" } : undefined
-        };
-
-        if (signal?.aborted) throw new Error("Cancelled by user.");
-
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-            signal
-        });
-
-        if (!res.ok) throw new Error(`OPENAI ERROR ${res.status}`);
-        const data = await res.json();
-        return data.choices[0].message.content;
-    }
-}
-
-// --- ANTHROPIC ADAPTER ---
-class AnthropicAdapter implements AIAdapter {
-    constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
-
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate, modelOverride?: string): Promise<string> {
-        if (!this.apiKey) throw new Error("MISSING ANTHROPIC API KEY");
-
-        const targetModel = modelOverride || this.model;
-        const statusMsg = `CONNECTING TO CLAUDE (${targetModel})...`;
-        if (onStatus) onStatus(statusMsg);
-        else setStatus(statusMsg);
-
-        const baseSys = sys || "";
-        const userSys = this.settings.customSystemPrompt ? `[USER OVERRIDE]: ${this.settings.customSystemPrompt}` : FORENSIC_CALIBRATION;
-
-        const content: any[] = [{ type: "text", text: text }];
-
-        if (images && images.length > 0) {
-            images.forEach(img => {
-                content.push({
-                    type: "image",
-                    source: {
-                        type: "base64",
-                        media_type: img.mimeType,
-                        data: img.data
-                    }
-                });
-            });
-        }
-
-        const body: any = {
-            model: targetModel,
-            max_tokens: this.settings.maxOutputTokens, 
-            system: `${baseSys}\n${userSys}`,
-            messages: [{ role: "user", content: content }],
-            temperature: tempOverride !== undefined ? tempOverride : 0.7
-        };
-        
-        if (json) body.messages.push({ role: "assistant", content: "{" });
-
-        if (signal?.aborted) throw new Error("Cancelled by user.");
-
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: { 'x-api-key': this.apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-            signal
-        });
-
-        if (!res.ok) throw new Error(`ANTHROPIC ERROR ${res.status}`);
-        
-        const data = await res.json();
-        let textOutput = "";
-        for (const block of data.content) {
-            if (block.type === 'text') textOutput += block.text;
-        }
-        return json && !textOutput.trim().startsWith("{") ? "{" + textOutput : textOutput;
-    }
-}
+import { parseJson } from './utils/Parser';
+import { type AIAdapter, GeminiAdapter, OpenAIAdapter, AnthropicAdapter, type StatusUpdate } from './ai/AIAdapters';
 
 // --- MAIN SERVICE ---
 export class CloudGenService {
@@ -361,7 +116,7 @@ export class CloudGenService {
         const res = await this.callAI(prompt, NIGS_AUTOFILL_PROMPT, true, false, temp, signal, undefined, onStatus);
 
         this.updateStatus("PARSING RESULT...", onStatus, 90);
-        const result = this.parseJson<Partial<NigsWizardState>>(res);
+        const result = parseJson<Partial<NigsWizardState>>(res);
         this.updateStatus("DONE", onStatus, 100);
         return result;
     }
@@ -441,7 +196,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 `;
             // Simple check using basic temp
             const reviewRaw = await this.callAI(reviewPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal, undefined, onStatus);
-            const review = this.parseJson<{ verdict: string, reason: string }>(reviewRaw);
+            const review = parseJson<{ verdict: string, reason: string }>(reviewRaw);
 
             if (review.verdict === "PASS") {
                 isApproved = true;
@@ -538,23 +293,23 @@ ${sourceMaterial}
                 // SEQUENTIAL CHAIN
                 this.updateStatus("AGENT 1/5: LOGIC ENGINE...", onStatus, currentBase + 10);
                 const logicRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp, signal, undefined, onStatus);
-                logicReport = this.parseJson<NigsFactReport>(logicRaw);
+                logicReport = parseJson<NigsFactReport>(logicRaw);
 
                 this.updateStatus("AGENT 2/5: MARKET ANALYST...", onStatus, currentBase + 15);
                 const marketRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp, signal, undefined, onStatus);
-                marketReport = this.parseJson<any>(marketRaw);
+                marketReport = parseJson<any>(marketRaw);
 
                 this.updateStatus("AGENT 3/5: THE SOUL...", onStatus, currentBase + 20);
                 const soulRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp, signal, undefined, onStatus);
-                soulReport = this.parseJson<NigsVibeCheck>(soulRaw);
+                soulReport = parseJson<NigsVibeCheck>(soulRaw);
 
                 this.updateStatus("AGENT 4/5: LITERARY CRITIC...", onStatus, currentBase + 25);
                 const litRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.LIT, true, false, litTemp, signal, undefined, onStatus);
-                litReport = this.parseJson<any>(litRaw);
+                litReport = parseJson<any>(litRaw);
 
                 this.updateStatus("AGENT 5/5: THE JESTER...", onStatus, currentBase + 30);
                 const jesterRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp, signal, undefined, onStatus);
-                jesterReport = this.parseJson<any>(jesterRaw);
+                jesterReport = parseJson<any>(jesterRaw);
 
                 this.updateStatus("FORENSIC SYSTEM SCAN...", onStatus, currentBase + 35);
                 forensicRaw = await this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal, undefined, onStatus);
@@ -570,11 +325,11 @@ ${sourceMaterial}
                     this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal, undefined, onStatus).catch(e => `{"error": "Forensic Failed"}`)
                 ]);
 
-                soulReport = this.parseJson<NigsVibeCheck>(soulRaw);
-                jesterReport = this.parseJson<any>(jesterRaw);
-                logicReport = this.parseJson<NigsFactReport>(logicRaw);
-                marketReport = this.parseJson<any>(marketRaw);
-                litReport = this.parseJson<any>(litRaw);
+                soulReport = parseJson<NigsVibeCheck>(soulRaw);
+                jesterReport = parseJson<any>(jesterRaw);
+                logicReport = parseJson<NigsFactReport>(logicRaw);
+                marketReport = parseJson<any>(marketRaw);
+                litReport = parseJson<any>(litRaw);
                 forensicRaw = fRaw;
             }
 
@@ -611,10 +366,10 @@ ${sourceMaterial}
             if (this.settings.aiProvider === 'openai') arbitratorModelOverride = 'gpt-4o-mini';
 
             const arbitrationRaw = await this.callAI(arbitrationPayload, NIGS_ARBITRATOR_PROMPT, true, false, 0.2, signal, undefined, onStatus, arbitratorModelOverride);
-            const arbitrationLog = this.parseJson<NigsArbitrationLog>(arbitrationRaw);
+            const arbitrationLog = parseJson<NigsArbitrationLog>(arbitrationRaw);
 
             // --- SYNTHESIS (Generating Final NigsResponse) ---
-            finalResponse = this.parseJson<NigsResponse>(forensicRaw);
+            finalResponse = parseJson<NigsResponse>(forensicRaw);
 
             // Apply Arbitration Overrides
             // [UPDATED] Sum of Agent Scores
@@ -678,7 +433,7 @@ ${sourceMaterial}
 Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 `;
                 const analystResStr = await this.callAI(analystPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal, undefined, onStatus);
-                const analystRes = this.parseJson<{ verdict: string, reason: string }>(analystResStr);
+                const analystRes = parseJson<{ verdict: string, reason: string }>(analystResStr);
 
                 if (analystRes.verdict === "PASS") {
                     isApproved = true;
@@ -732,7 +487,7 @@ Only score positive if it is innovative.
 
         const promises = Array.from({ length: passes }, (_, i) => {
             return this.callAI(wrapped, NIGS_SYSTEM_PROMPT, true, false, temp, signal, undefined, onStatus)
-                .then(resStr => this.parseJson<NigsResponse>(resStr))
+                .then(resStr => parseJson<NigsResponse>(resStr))
                 .catch(e => { console.error(`Core ${i+1} Failed:`, e); return null; });
         });
 
@@ -812,79 +567,6 @@ Only score positive if it is innovative.
             }
         }
         return base;
-    }
-    
-    private parseJson<T>(text: string): T {
-        // Helper to clean and parse a substring
-        const tryParse = (startIdx: number, endIdx: number): any => {
-            if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) return undefined;
-            const clean = text.substring(startIdx, endIdx + 1);
-            const refined = clean
-                .replace(/^```json\s*/, "")
-                .replace(/```$/, "")
-                .replace(/```json/g, "")
-                .replace(/```/g, "")
-                .replace(/[\u0000-\u001F]+/g, c => ["\r", "\n", "\t"].includes(c) ? c : "");
-            try {
-                return JSON.parse(refined);
-            } catch {
-                return undefined;
-            }
-        };
-
-        const openBrace = text.indexOf('{');
-        const openBracket = text.indexOf('[');
-
-        // Improved logic: Backtrack closing braces to handle trailing garbage
-        const attemptParse = (start: number, searchChar: string): any => {
-            let currentEnd = text.lastIndexOf(searchChar);
-            while (currentEnd > start) {
-                const parsed = tryParse(start, currentEnd);
-                if (parsed !== undefined) {
-                    return parsed;
-                }
-                // Move back to the previous occurrence
-                currentEnd = text.lastIndexOf(searchChar, currentEnd - 1);
-            }
-            return undefined;
-        };
-
-        let parsed: any;
-
-        // Strategy: Try the earliest valid marker first. If it fails, try the other.
-        // This handles cases like "[System Note] ... { Actual JSON }" where '[' is first but invalid as JSON start.
-
-        if (openBrace !== -1 && (openBracket === -1 || openBrace < openBracket)) {
-            // Object appears first
-            parsed = attemptParse(openBrace, '}');
-            if (parsed === undefined && openBracket !== -1) {
-                // Fallback to array if object failed
-                parsed = attemptParse(openBracket, ']');
-            }
-        } else if (openBracket !== -1) {
-            // Array appears first
-            parsed = attemptParse(openBracket, ']');
-            if (parsed === undefined && openBrace !== -1) {
-                 // Fallback to object
-                 parsed = attemptParse(openBrace, '}');
-            }
-        }
-
-        if (parsed === undefined) {
-             console.error("JSON PARSE FAILURE", text);
-             throw new Error("AI returned invalid JSON. Check console.");
-        }
-
-        // Heuristic: If we got an array but likely wanted an object (single result), return the first item.
-        // Most interfaces in this app are objects (NigsResponse, NigsVibeCheck, etc).
-        if (Array.isArray(parsed) && parsed.length > 0 && !Array.isArray(parsed[0])) {
-             // Check if it's an array of objects which is a common failure mode when requesting a single object
-             if (typeof parsed[0] === 'object') {
-                 return parsed[0] as T;
-             }
-        }
-
-        return parsed as T;
     }
 
     // --- PASSTHROUGHS ---
@@ -987,7 +669,7 @@ Only score positive if it is innovative.
         const res = await this.callAI(inputBlock, NIGS_FORGE_PROMPT, true, false, temp, signal, undefined, onStatus);
 
         this.updateStatus("DONE", onStatus, 100);
-        return this.parseJson<NigsActionPlan>(res);
+        return parseJson<NigsActionPlan>(res);
     }
 
     autoRepair = async (text: string, plan: NigsActionPlan, signal?: AbortSignal, onStatus?: StatusUpdate) => {
@@ -1005,7 +687,7 @@ Only score positive if it is innovative.
         const temp = this.getTemp(this.settings.tempCritic, true);
         const res = await this.callAI(text, NIGS_META_PROMPT, true, false, temp, signal, undefined, onStatus);
         this.updateStatus("DONE", onStatus, 100);
-        return this.parseJson<NigsMetaResponse>(res);
+        return parseJson<NigsMetaResponse>(res);
     }
     
     getLightGrade = async (text: string, signal?: AbortSignal, onStatus?: StatusUpdate) => {
@@ -1013,7 +695,7 @@ Only score positive if it is innovative.
         const temp = this.getTemp(this.settings.tempCritic, true);
         const res = await this.callAI(text, NIGS_QUICK_SCAN_PROMPT, true, false, temp, signal, undefined, onStatus);
         this.updateStatus("DONE", onStatus, 100);
-        return this.parseJson<NigsLightGrade>(res);
+        return parseJson<NigsLightGrade>(res);
     }
     
     // --- CHARACTER AUTO-GRADER ---
@@ -1032,7 +714,7 @@ Only score positive if it is innovative.
         
         const temp = this.getTemp(this.settings.tempCritic, true);
         const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp, signal, undefined, onStatus);
-        const data = this.parseJson<any>(res);
+        const data = parseJson<any>(res);
         
         this.updateStatus("DONE", onStatus, 100);
         return {
@@ -1061,7 +743,7 @@ Only score positive if it is innovative.
         
         const temp = this.getTemp(this.settings.tempCritic, true);
         const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp, signal, undefined, onStatus);
-        const data = this.parseJson<{ tension: number, type: any }>(res);
+        const data = parseJson<{ tension: number, type: any }>(res);
         
         this.updateStatus("DONE", onStatus, 100);
         return {
@@ -1196,7 +878,7 @@ Only score positive if it is innovative.
             const currentPrompt = previousCritique ? `${prompt}\n\n[PREVIOUS CRITIQUE]: The previous suggestion was rejected because: ${previousCritique}. TRY AGAIN.` : prompt;
 
             const res = await this.callAI(currentPrompt, NIGS_WIZARD_ASSIST_PROMPT, true, true, temp, signal, undefined, onStatus);
-            const data = this.parseJson<{ suggestion: string }>(res);
+            const data = parseJson<{ suggestion: string }>(res);
             suggestion = data.suggestion;
 
             // If Agent disabled, accept first draft
@@ -1219,7 +901,7 @@ Only score positive if it is innovative.
 Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 `;
             const reviewRaw = await this.callAI(reviewPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal, undefined, onStatus);
-            const review = this.parseJson<{ verdict: string, reason: string }>(reviewRaw);
+            const review = parseJson<{ verdict: string, reason: string }>(reviewRaw);
 
             if (review.verdict === "PASS") {
                 isApproved = true;
@@ -1283,6 +965,6 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
         const res = await this.callAI(input, NIGS_RENAME_PROMPT, true, false, temp, signal, undefined, onStatus);
 
         this.updateStatus("DONE", onStatus, 100);
-        return this.parseJson<Record<string, string>>(res);
+        return parseJson<Record<string, string>>(res);
     }
 }
