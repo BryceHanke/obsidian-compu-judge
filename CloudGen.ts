@@ -591,7 +591,7 @@ ${sourceMaterial}
 
             // [OPTIMIZATION]: Use Faster Model for Arbitration if possible
             let arbitratorModelOverride: string | undefined;
-            if (this.settings.aiProvider === 'gemini') arbitratorModelOverride = 'gemini-1.5-flash'; // Fast Arbitrator
+            if (this.settings.aiProvider === 'gemini') arbitratorModelOverride = 'gemini-2.5-pro'// Fast Arbitrator;
             if (this.settings.aiProvider === 'openai') arbitratorModelOverride = 'gpt-4o-mini';
 
             const arbitrationRaw = await this.callAI(arbitrationPayload, NIGS_ARBITRATOR_PROMPT, true, false, 0.2, signal, undefined, onStatus, arbitratorModelOverride);
