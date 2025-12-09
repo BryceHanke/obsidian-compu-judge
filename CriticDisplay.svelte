@@ -98,6 +98,14 @@
     let hasDetails = $derived(Object.keys(details).length > 0);
     let sanderson = $derived(data.sanderson_metrics || { promise_payoff: 0, laws_of_magic: 0, character_agency: 0 });
 
+    let breakdown = $derived(data.tribunal_breakdown || {
+        market: { commercial_score: 0, commercial_reason: "N/A" },
+        logic: { score: 0, inconsistencies: [] },
+        soul: { score: 0, critique: "N/A" },
+        lit: { score: 0, niche_reason: "N/A" },
+        jester: { score_modifier: 0, roast: "N/A" }
+    });
+
     let averageScore = $derived.by(() => {
         // [WIN95 UPDATE]: Calculate weighted score from breakdown
         if (!data.tribunal_breakdown) return data.commercial_score || 0;
@@ -215,13 +223,8 @@
         return path;
     });
 
-    let breakdown = $derived(data.tribunal_breakdown || {
-        market: { commercial_score: 0, commercial_reason: "N/A" },
-        logic: { score: 0, inconsistencies: [] },
-        soul: { score: 0, critique: "N/A" },
-        lit: { score: 0, niche_reason: "N/A" },
-        jester: { score_modifier: 0, roast: "N/A" }
-    });
+    // Helper to get logic inconsistencies safely
+    let logicIssues = $derived(breakdown.logic.inconsistencies || []);
 </script>
 
 <div class="critic-display">
@@ -237,7 +240,7 @@
             </div>
         </div>
         
-        <div class="win95-menubar">
+        <div class="win95-menubar" style="position: relative;">
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <!-- svelte-ignore a11y-no-static-element-interactions -->
             <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); openDropdown = openDropdown === 'smart-repairs' ? null : 'smart-repairs'; }}>
@@ -251,26 +254,62 @@
                             Fix Warning: {warning.substring(0, 20)}...
                         </div>
                     {/if}
-                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`General Fix`); openDropdown = null; }}>Inject General Repair</div>
 
-                    <div style="border-top:1px dashed #000; margin:2px 0;"></div>
+                    <!-- TAILORED REPAIRS (AGENT SPECIFIC) -->
+                    <!-- Logic: Top Issue -->
+                    {#if logicIssues.length > 0}
+                        <div class="dd-item" onclick={() => { onAddRepairInstruction(`Fix Logic: ${logicIssues[0]}`); openDropdown = null; }}>
+                            Logic Fix: {logicIssues[0].substring(0, 30)}...
+                        </div>
+                    {:else}
+                        <div class="dd-item" onclick={() => { onAddRepairInstruction(`Logic Fix: Address Plot Holes & Inconsistencies`); openDropdown = null; }}>
+                            Logic Repair (General)
+                        </div>
+                    {/if}
 
-                    <!-- Comprehensive 5-Agent Repairs -->
-                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Logic Fix: Address Plot Holes & Inconsistencies`); openDropdown = null; }}>
-                        Logic Repair...
-                    </div>
-                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Market Fix: Improve Hooks & Commercial Appeal`); openDropdown = null; }}>
-                        Market Repair...
-                    </div>
-                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Soul Fix: Deepen Emotion & Theme`); openDropdown = null; }}>
-                        Soul Repair...
-                    </div>
-                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Lit Fix: Elevate Prose & Style`); openDropdown = null; }}>
-                        Lit Repair...
-                    </div>
-                    <div class="dd-item" onclick={() => { onAddRepairInstruction(`Jester Fix: Sharpen Wit & Irony`); openDropdown = null; }}>
-                        Jester Repair...
-                    </div>
+                    <!-- Market: Reason -->
+                    {#if breakdown.market.commercial_reason && breakdown.market.commercial_reason !== 'N/A'}
+                        <div class="dd-item" onclick={() => { onAddRepairInstruction(`Market Fix: ${breakdown.market.commercial_reason}`); openDropdown = null; }}>
+                            Market Fix: {breakdown.market.commercial_reason.substring(0, 30)}...
+                        </div>
+                    {:else}
+                        <div class="dd-item" onclick={() => { onAddRepairInstruction(`Market Fix: Improve Hooks & Commercial Appeal`); openDropdown = null; }}>
+                            Market Repair (General)
+                        </div>
+                    {/if}
+
+                    <!-- Soul: Critique -->
+                    {#if breakdown.soul.critique && breakdown.soul.critique !== 'N/A'}
+                        <div class="dd-item" onclick={() => { onAddRepairInstruction(`Soul Fix: ${breakdown.soul.critique}`); openDropdown = null; }}>
+                            Soul Fix: {breakdown.soul.critique.substring(0, 30)}...
+                        </div>
+                    {:else}
+                        <div class="dd-item" onclick={() => { onAddRepairInstruction(`Soul Fix: Deepen Emotion & Theme`); openDropdown = null; }}>
+                            Soul Repair (General)
+                        </div>
+                    {/if}
+
+                    <!-- Lit: Reason -->
+                    {#if breakdown.lit?.niche_reason && breakdown.lit.niche_reason !== 'N/A'}
+                        <div class="dd-item" onclick={() => { onAddRepairInstruction(`Lit Fix: ${breakdown.lit.niche_reason}`); openDropdown = null; }}>
+                            Lit Fix: {breakdown.lit.niche_reason.substring(0, 30)}...
+                        </div>
+                    {:else}
+                        <div class="dd-item" onclick={() => { onAddRepairInstruction(`Lit Fix: Elevate Prose & Style`); openDropdown = null; }}>
+                            Lit Repair (General)
+                        </div>
+                    {/if}
+
+                    <!-- Jester: Roast -->
+                    {#if breakdown.jester?.roast && breakdown.jester.roast !== 'N/A'}
+                        <div class="dd-item" onclick={() => { onAddRepairInstruction(`Jester Fix: Address '${breakdown.jester.roast}'`); openDropdown = null; }}>
+                            Jester Fix: Address Critique
+                        </div>
+                    {:else}
+                        <div class="dd-item" onclick={() => { onAddRepairInstruction(`Jester Fix: Sharpen Wit & Irony`); openDropdown = null; }}>
+                            Jester Repair (General)
+                        </div>
+                    {/if}
                 </div>
             {/if}
         </div>
