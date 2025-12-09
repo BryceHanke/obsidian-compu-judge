@@ -326,7 +326,7 @@
                     <div class="char-block bevel-down" animate:flip={{duration: 300}}>
                         <div class="char-header" onclick={() => toggleExpandChar(i)} title="Toggle Expand">
                             <div class="char-title">
-                                <span class="role-badge {char.role.toLowerCase()}">{char.role}</span>
+                                <span class="role-badge {(char.role || 'Support').toString().toLowerCase()}">{char.role || 'Support'}</span>
                                 <input type="text" class="char-name-input" bind:value={char.name} oninput={handleInput} onclick={(e) => e.stopPropagation()} placeholder="Name" />
                             </div>
                             <div class="char-controls">
@@ -392,7 +392,7 @@
                     <div class="char-block bevel-down" animate:flip={{duration: 300}}>
                         <div class="char-header" onclick={() => toggleExpandStory(i)}>
                             <div class="char-title">
-                                <span class="role-badge {block.type.toLowerCase().replace(/\s/g, '-')}" style="width: 80px; text-align:center;">{block.type}</span>
+                                <span class="role-badge {(block.type || 'Beat').toString().toLowerCase().replace(/\s/g, '-')}" style="width: 80px; text-align:center;">{block.type || 'Beat'}</span>
                                 <input type="text" class="char-name-input" bind:value={block.title} oninput={handleInput} onclick={(e) => e.stopPropagation()} placeholder="Beat Title" />
                             </div>
                             <div class="char-controls">

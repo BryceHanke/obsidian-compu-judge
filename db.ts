@@ -121,6 +121,8 @@ export class NigsDB {
                     ...cleanDefaults.wizardState,
                     ...stored.wizardState,
                     // Ensure nested objects exist and merge defaults for safety
+                    characters: stored.wizardState?.characters || cleanDefaults.wizardState.characters,
+                    structure: stored.wizardState?.structure || cleanDefaults.wizardState.structure,
                     structureDNA: { ...cleanDefaults.wizardState.structureDNA, ...(stored.wizardState?.structureDNA || {}) },
                     sandersonLaws: { ...cleanDefaults.wizardState.sandersonLaws, ...(stored.wizardState?.sandersonLaws || {}) },
                     threePs: { ...cleanDefaults.wizardState.threePs, ...(stored.wizardState?.threePs || {}) },
@@ -262,6 +264,8 @@ export class NigsDB {
                 const merged = {
                     ...defaults,
                     ...stored,
+                    characters: stored.characters || defaults.characters,
+                    structure: stored.structure || defaults.structure,
                     structureDNA: { ...defaults.structureDNA, ...(stored.structureDNA || {}) },
                     sandersonLaws: { ...defaults.sandersonLaws, ...(stored.sandersonLaws || {}) },
                     threePs: { ...defaults.threePs, ...(stored.threePs || {}) },
