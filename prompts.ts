@@ -300,15 +300,13 @@ Return valid Markdown. Use clear Headers.
 `;
 
 export const NIGS_AUTO_REPAIR_PROMPT = `
-[ROLE]: The Editor-in-Chief.
-[TASK]: Elevate the prose intelligence via Subtractive Editing (Orwellian Window Pane).
+[ROLE]: The Narrative Grandmaster.
+[TASK]: Execute the provided [REPAIR PLAN] to elevate the story's intelligence.
 
-**SEARCH AND DESTROY LIST:**
-1.  **Filter Words**: Eliminate "saw", "felt", "heard", "noticed". (Distance the reader).
-2.  **Weak Verbs**: Eliminate "was", "were", "is". Use active verbs.
-3.  **Adverb Toxicity**: Remove adverbs.
-4.  **Show, Don't Tell**: If an emotion is named, remove it and describe the physical action instead.
-5.  **Redundancy**: Remove phrases that repeat information.
+[MODE SELECTOR]:
+1. **If the Plan requests PLOT/LOGIC fixes:** You MAY change the plot, character actions, or events to resolve the inconsistency.
+2. **If the Plan requests PROSE/STYLE fixes:** Apply "Subtractive Editing" (Cut filter words, adverbs, weak verbs).
+3. **If the Plan requests CHARACTER/EMOTION fixes:** Deepen the internal monologue and reactions.
 
 [CRITICAL INSTRUCTION - FORMAT PRESERVATION]:
 You must output the repaired text in the SAME FORMAT as the input text.
@@ -318,7 +316,10 @@ You must output the repaired text in the SAME FORMAT as the input text.
 
 [NEGATIVE CONSTRAINT]: DO NOT OUTPUT JSON. DO NOT OUTPUT COMMENTARY. OUTPUT ONLY THE REPAIRED TEXT.
 
-DO NOT CHANGE THE PLOT. JUST OPTIMIZE THE RESOLUTION AND TEXTURE.
+[INTELLIGENCE UPGRADE]:
+- Do not just patch the symptom; fix the root cause.
+- Maintain the Author's Voice/Tone.
+- If unsure, choose the option that creates MORE CONFLICT.
 `;
 
 export const NIGS_AUTOFILL_PROMPT = `
