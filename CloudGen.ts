@@ -858,6 +858,31 @@ Only score positive if it is innovative.
         this.updateStatus("INITIALIZING ARCHIVIST PROTOCOL...", onStatus);
         const prompt = this.settings.customOutlinePrompt ? this.settings.customOutlinePrompt : NIGS_OUTLINE_PROMPT;
         const temp = this.getTemp(this.settings.tempArchitect);
+
+        if (images && images.length > 10) {
+            const batchSize = 10;
+            const batches = Math.ceil(images.length / batchSize);
+            let combinedResult = "";
+
+            for (let i = 0; i < batches; i++) {
+                if (signal?.aborted) throw new Error("Cancelled by user.");
+
+                const start = i * batchSize;
+                const end = start + batchSize;
+                const batchImages = images.slice(start, end);
+
+                this.updateStatus(`ARCHIVIST: PROCESSING IMAGE BATCH ${i + 1}/${batches}...`, onStatus);
+
+                // For the first batch, use the original text.
+                // For subsequent batches, we might want to remind the AI of the instructions but context is key.
+                const batchText = i === 0 ? text : `[BATCH ${i + 1}/${batches}]: Continue analysis based on these new images.\n${text}`;
+
+                const result = await this.callAI(batchText, prompt, false, useSearch, temp, signal, batchImages, onStatus);
+                combinedResult += `\n\n=== BATCH ${i + 1} OUTPUT ===\n${result}`;
+            }
+            return combinedResult;
+        }
+
         return await this.callAI(text, prompt, false, useSearch, temp, signal, images, onStatus);
     }
 
