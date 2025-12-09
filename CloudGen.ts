@@ -15,7 +15,8 @@ import {
     NIGS_DRIVE_SYNTHESIS_PROMPT,
     NIGS_RENAME_PROMPT,
     NIGS_GRADE_ANALYST_PROMPT,
-    NIGS_ARBITRATOR_PROMPT
+    NIGS_ARBITRATOR_PROMPT,
+    NIGS_BATCH_ANALYSIS_PROMPT
 } from './prompts'; 
 import { setStatus } from './store';
 import type { ImageInput } from './types';
@@ -633,27 +634,48 @@ Only score positive if it is innovative.
 
         if (images && images.length > batchSize) {
             const batches = Math.ceil(images.length / batchSize);
-            let combinedResult = "";
+            const batchSummaries: string[] = new Array(batches).fill("");
 
-            for (let i = 0; i < batches; i++) {
+            // [OPTIMIZATION]: Parallel Map-Reduce for Faster Processing
+            const CONCURRENCY = 5; // Safe default for most APIs
+
+            for (let i = 0; i < batches; i += CONCURRENCY) {
                 if (signal?.aborted) throw new Error("Cancelled by user.");
 
-                const start = i * batchSize;
-                const end = start + batchSize;
-                const batchImages = images.slice(start, end);
+                const chunk = Array.from({ length: Math.min(CONCURRENCY, batches - i) }, (_, k) => i + k);
 
-                const progress = 5 + Math.round((i / batches) * 90);
-                this.updateStatus(`ARCHIVIST: PROCESSING IMAGE BATCH ${i + 1}/${batches}...`, onStatus, progress);
+                this.updateStatus(`ARCHIVIST: PROCESSING BATCHES ${i + 1}-${i + chunk.length}/${batches}...`, onStatus, Math.round((i / batches) * 80));
 
-                // For the first batch, use the original text.
-                // For subsequent batches, we might want to remind the AI of the instructions but context is key.
-                const batchText = i === 0 ? text : `[BATCH ${i + 1}/${batches}]: Continue analysis based on these new images.\n${text}`;
+                await Promise.all(chunk.map(async (batchIdx) => {
+                    const start = batchIdx * batchSize;
+                    const end = start + batchSize;
+                    const batchImages = images.slice(start, end);
 
-                const result = await this.callAI(batchText, prompt, false, useSearch, temp, signal, batchImages, onStatus);
-                combinedResult += `\n\n=== BATCH ${i + 1} OUTPUT ===\n${result}`;
+                    const batchPrompt = `[BATCH ${batchIdx + 1}/${batches}]: Analyze these pages.`;
+
+                    // MAP PHASE: Use Batch Analysis Prompt (Concise extraction)
+                    const result = await this.callAI(batchPrompt, NIGS_BATCH_ANALYSIS_PROMPT, false, false, temp, signal, batchImages, undefined);
+                    batchSummaries[batchIdx] = `=== BATCH ${batchIdx + 1} SUMMARY ===\n${result}`;
+                }));
             }
+
+            this.updateStatus("ARCHIVIST: SYNTHESIZING FULL REPORT...", onStatus, 90);
+
+            // REDUCE PHASE: Synthesize all summaries into final output
+            const fullContext = batchSummaries.join("\n\n");
+            const synthesisPrompt = `
+[TASK]: Synthesize the following sequential comic book batch summaries into a SINGLE cohesive Narrative Report.
+
+[USER INSTRUCTION]:
+${text}
+
+[BATCH SUMMARIES]:
+${fullContext}
+`;
+            const finalRes = await this.callAI(synthesisPrompt, prompt, false, useSearch, temp, signal, undefined, onStatus);
+
             this.updateStatus("DONE", onStatus, 100);
-            return combinedResult;
+            return finalRes;
         }
 
         const res = await this.callAI(text, prompt, false, useSearch, temp, signal, images, onStatus);
