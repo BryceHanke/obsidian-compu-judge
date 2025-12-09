@@ -241,7 +241,7 @@
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <!-- svelte-ignore a11y-no-static-element-interactions -->
             <span class="win95-menu-item" onclick={(e) => { e.stopPropagation(); openDropdown = openDropdown === 'smart-repairs' ? null : 'smart-repairs'; }}>
-                Smart Repairs...
+                Smart Repair...
             </span>
 
             {#if openDropdown === 'smart-repairs'}
@@ -276,7 +276,7 @@
         </div>
 
         <div class="main-score-row" style="padding: 20px; background: #c0c0c0;">
-            <div class="score-block main">
+            <div class="score-block main tooltip-container">
                 <div class="score-title" style="color: #000080;">OVERALL RATING</div>
                 <!-- Main score display: FIXED Masterpiece Shadow Logic -->
                 <!-- Inline style for shadow only applies if NOT masterpiece, otherwise CSS class handles it -->
@@ -290,6 +290,9 @@
                 <div class="score-verdict {isMasterpieceEffect(averageScore) ? 'masterpiece-text' : ''}"
                      style="color: {isMasterpieceEffect(averageScore) ? '#000' : '#000'};">
                     {getVerdict(averageScore)}
+                </div>
+                <div class="tooltip bottom" style="width: 200px;">
+                    {data.commercial_reason || "No summary available."}
                 </div>
             </div>
         </div>
@@ -316,7 +319,17 @@
                      style="color: {isMasterpieceEffect(breakdown.logic.score || 0) ? '#000' : getBarColor(breakdown.logic.score || 0)}">
                     {formatScoreDisplay(breakdown.logic.score || 0)}
                 </div>
-                <div class="tooltip bottom">Plot Holes: {breakdown.logic.inconsistencies?.length || 0}</div>
+                <div class="tooltip bottom" style="width: 180px; text-align: left;">
+                    {#if breakdown.logic.inconsistencies && breakdown.logic.inconsistencies.length > 0}
+                        <ul style="padding-left: 10px; margin: 0;">
+                            {#each breakdown.logic.inconsistencies as item}
+                                <li>{item}</li>
+                            {/each}
+                        </ul>
+                    {:else}
+                         No inconsistencies found.
+                    {/if}
+                </div>
             </div>
             <div class="sub-divider"></div>
 

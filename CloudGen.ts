@@ -1104,6 +1104,9 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
         const negativeConstraints = this.settings.wizardNegativeConstraints ?
             `\n[NEGATIVE CONSTRAINTS (DO NOT USE)]: ${this.settings.wizardNegativeConstraints}\n` : "";
 
+        // [UPDATED] Inject Name Protocol
+        const nameRules = this.getNameProtocol();
+
         const promptContext = `
         [SOURCE DATA]:
         ${JSON.stringify(state, null, 2)}
@@ -1111,6 +1114,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
         [TARGET QUALITY]: ${targetQ}/100.
 
         ${negativeConstraints}
+        ${nameRules}
 
         [INSTRUCTION]: 
         Using the source data above, write a formatted Markdown document. Do not output JSON.
@@ -1121,18 +1125,15 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
     }
 
     // --- DEEP RENAME (NEW) ---
-    generateDeepNames = async (characters: CharacterBlock[], context: string, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<Record<string, string>> => {
+    generateDeepNames = async (text: string, context: string, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<Record<string, string>> => {
         this.updateStatus("ETYMOLOGIST ACTIVE: DEEP RENAMING...", onStatus);
-        
-        // Prepare simplified character list for the prompt
-        const charInput = characters.map(c => `- Name: ${c.name} (Role: ${c.role}) | Bio: ${c.description}`).join('\n');
         
         const input = `
         [SOURCE MATERIAL CONTEXT]:
         ${context.substring(0, 1000)}...
 
-        [CHARACTERS TO RENAME]:
-        ${charInput}
+        [TEXT TO PROCESS]:
+        ${text.substring(0, 50000)}... (Truncated for token limit)
         `;
 
         // Use Wizard Temp for creativity
