@@ -139,8 +139,79 @@ export class NigsDB {
 
             } catch (e) {
                 console.error(`[Compu-Judge] Corrupt data for ${filePath}`, e);
-                return cleanDefaults;
+                // Don't return yet, fall through to attempt frontmatter recovery
             }
+        }
+
+        // 4. [FALLBACK]: Attempt to Restore from FrontMatter (Cross-Device Loading)
+        // If we are here, either the local JSON is missing (new device) or corrupt.
+        // We check the Markdown file itself for "critic_" fields to reconstruct the state.
+        try {
+            const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+            if (file instanceof TFile) {
+                const cache = this.plugin.app.metadataCache.getFileCache(file);
+                const fm = cache?.frontmatter;
+
+                if (fm && fm['critic_score']) {
+                    console.log(`[Compu-Judge] Restoring State from FrontMatter for ${filePath}`);
+
+                    // Reconstruct Light Grade (Quick Scan)
+                    let restoredLight = null;
+                    if (fm['critic_summary'] || fm['critic_key_improvement']) {
+                        restoredLight = {
+                            score: String(fm['critic_score']),
+                            letter_grade: fm['critic_grade'] || 'C',
+                            summary_line: fm['critic_summary'] || '',
+                            synopsis: fm['critic_synopsis'] || '',
+                            key_improvement: fm['critic_key_improvement'] || '',
+                            outline_summary: fm['critic_outline_summary'] || []
+                        };
+                    }
+
+                    // Reconstruct Deep Scan (NigsResponse)
+                    let restoredDeep = null;
+                    // We assume it's a deep scan if complex metrics exist or commercial score is present
+                    if (fm['critic_commercial_reason'] || fm['critic_tribunal_breakdown']) {
+                        restoredDeep = {
+                            commercial_score: Number(fm['critic_score']) || 0,
+                            commercial_reason: fm['critic_commercial_reason'] || '',
+                            niche_score: fm['critic_niche_score'] || 0,
+                            niche_reason: fm['critic_niche_reason'] || '',
+                            cohesion_score: fm['critic_cohesion_score'] || 0,
+                            cohesion_reason: fm['critic_cohesion_reason'] || '',
+
+                            content_warning: fm['critic_content_warning'] || 'None',
+                            log_line: fm['critic_logline'] || '',
+                            structure_map: fm['critic_structure_map'] || [],
+                            tension_arc: fm['critic_tension_arc'] || [],
+                            quality_arc: fm['critic_quality_arc'] || [],
+                            third_act_score: fm['critic_third_act_score'] || 0,
+                            novelty_score: fm['critic_novelty_score'] || 0,
+
+                            sanderson_metrics: fm['critic_sanderson_metrics'] || { promise_payoff: 0, laws_of_magic: 0, character_agency: 0 },
+                            detailed_metrics: fm['critic_detailed_metrics'] || { premise: { score: 0, items: []}, structure: { score: 0, items: []}, character: { score: 0, items: []}, theme: { score: 0, items: []}, world: { score: 0, items: []} },
+
+                            tribunal_breakdown: fm['critic_tribunal_breakdown'],
+                            arbitration_log: fm['critic_arbitration_log']
+                        };
+                    }
+
+                    const restoredData: ProjectData = {
+                        ...cleanDefaults,
+                        lastLightResult: restoredLight,
+                        lastAiResult: restoredDeep,
+                        lastAnalysisMtime: file.stat.mtime
+                    };
+
+                    this.memoryCache.set(filePath, restoredData);
+                    // Optionally save to local JSON to "hydrate" the cache permanently on this device
+                    await this.saveProjectData(restoredData);
+
+                    return restoredData;
+                }
+            }
+        } catch (e) {
+            console.error(`[Compu-Judge] FrontMatter Restore Failed for ${filePath}`, e);
         }
 
         return cleanDefaults;
