@@ -410,6 +410,18 @@ class NigsSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
+            .setName('Forge Image Batch Size')
+            .setDesc('Number of images to process per batch (default 10).')
+            .addSlider(slider => slider
+                .setLimits(1, 50, 1)
+                .setValue(this.plugin.settings.forgeImageBatchLength)
+                .setDynamicTooltip()
+                .onChange(async (val) => {
+                    this.plugin.settings.forgeImageBatchLength = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
             .setName('Preferred Name Pool')
             .setDesc('Comma-separated list of preferred names.')
             .addTextArea(text => text

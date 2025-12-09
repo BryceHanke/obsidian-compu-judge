@@ -108,7 +108,12 @@
     });
 
     let averageScore = $derived.by(() => {
-        // [WIN95 UPDATE]: Calculate weighted score from breakdown
+        // [UPDATED]: Use Chief Justice Ruling (Arbitration Log) if available
+        if (data.arbitration_log && typeof data.arbitration_log.final_verdict === 'number') {
+            return data.arbitration_log.final_verdict;
+        }
+
+        // Fallback: Calculate weighted score from breakdown
         if (!data.tribunal_breakdown) return data.commercial_score || 0;
 
         const w = settings.agentWeights || { logic: 1, soul: 1, market: 1, lit: 1, jester: 1 };

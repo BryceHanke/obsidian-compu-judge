@@ -859,8 +859,10 @@ Only score positive if it is innovative.
         const prompt = this.settings.customOutlinePrompt ? this.settings.customOutlinePrompt : NIGS_OUTLINE_PROMPT;
         const temp = this.getTemp(this.settings.tempArchitect);
 
-        if (images && images.length > 10) {
-            const batchSize = 10;
+        // [BATCH] Use user-defined batch size (Default 10)
+        const batchSize = this.settings.forgeImageBatchLength || 10;
+
+        if (images && images.length > batchSize) {
             const batches = Math.ceil(images.length / batchSize);
             let combinedResult = "";
 
