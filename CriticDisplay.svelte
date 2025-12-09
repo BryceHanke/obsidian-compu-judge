@@ -524,7 +524,10 @@
                                 <div class="tree-content">
                                     <span class="node-icon">{expandedBeats.includes(i) ? '📂' : (node.type === 'beat' ? '📄' : '⭐')}</span>
                                     <span class="node-title">{node.title}</span>
-                                    <span class="node-meta" style="color:#000080;">(Tens: {formatScoreDisplay(node.tension)})</span>
+                                    <span class="node-meta {isMasterpieceEffect(node.tension) ? 'masterpiece-text' : ''}"
+                                          style="color: {isMasterpieceEffect(node.tension) ? '#000' : '#000080'};">
+                                        (Tens: {formatScoreDisplay(node.tension)})
+                                    </span>
                                 </div>
                             </div>
 

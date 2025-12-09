@@ -367,7 +367,10 @@ export class CloudGenService {
         
         const qualityInstruction = `\n[TARGET QUALITY]: Aim for a quality score of ${targetQuality || this.settings.defaultTargetQuality}/100. Make it compelling!`;
 
-        const finalPrompt = `${driveContext}\n${nameRules}${titleInstruction}${qualityInstruction}`;
+        const negativeConstraints = this.settings.wizardNegativeConstraints ?
+            `\n[NEGATIVE CONSTRAINTS (DO NOT USE)]: ${this.settings.wizardNegativeConstraints}\n` : "";
+
+        const finalPrompt = `${driveContext}\n${nameRules}${titleInstruction}${qualityInstruction}${negativeConstraints}`;
 
         // Use dedicated SYNTH temperature (High Creativity for Alchemy)
         const temp = this.getTemp(this.settings.tempSynth ?? 1.0);
@@ -1097,11 +1100,18 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
     wizardCompose = async (state: NigsWizardState, signal?: AbortSignal, onStatus?: StatusUpdate) => {
         this.updateStatus("ARCHITECTING OUTLINE...", onStatus);
         const targetQ = state.targetScore || this.settings.defaultTargetQuality;
+
+        const negativeConstraints = this.settings.wizardNegativeConstraints ?
+            `\n[NEGATIVE CONSTRAINTS (DO NOT USE)]: ${this.settings.wizardNegativeConstraints}\n` : "";
+
         const promptContext = `
         [SOURCE DATA]:
         ${JSON.stringify(state, null, 2)}
         
         [TARGET QUALITY]: ${targetQ}/100.
+
+        ${negativeConstraints}
+
         [INSTRUCTION]: 
         Using the source data above, write a formatted Markdown document. Do not output JSON.
         Ensure every scene and character beat is generated to meet the Target Quality.

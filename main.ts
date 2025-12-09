@@ -415,6 +415,12 @@ class NigsSettingTab extends PluginSettingTab {
                 .onChange(async (val) => {
                     this.plugin.settings.disableRainbows = val;
                     await this.plugin.saveSettings();
+                    // Force refresh view to apply setting immediately
+                    this.plugin.app.workspace.getLeavesOfType(VIEW_TYPE_COMPU_JUDGE).forEach(leaf => {
+                        if (leaf.view instanceof CompuJudgeView) {
+                            leaf.view.settings = this.plugin.settings;
+                        }
+                    });
                 }));
 
         // --- 6. GRADING PALETTE (GRADIENT MAP) ---
