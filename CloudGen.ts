@@ -387,6 +387,8 @@ ${sourceMaterial}
                 forensicRaw = await this.callAI(forensicInput, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal, undefined, onStatus).catch(e => `{"error": "Forensic Failed"}`);
             }
 
+            const forensicReport = parseJson<NigsResponse>(forensicRaw);
+
             // [FIX]: Market Agent Error Handling
             if (marketReport.error || typeof marketReport.commercial_score !== 'number') {
                 marketReport = { 
@@ -407,6 +409,12 @@ ${sourceMaterial}
 4. LIT: ${JSON.stringify(litReport)}
 5. JESTER: ${JSON.stringify(jesterReport)}
 
+[FORENSIC DATA (FACTS)]:
+- Sanderson Metrics: ${JSON.stringify(forensicReport.sanderson_metrics)}
+- Tension Arc: ${JSON.stringify(forensicReport.tension_arc)}
+- Quality Arc: ${JSON.stringify(forensicReport.quality_arc)}
+- Structure Map: ${JSON.stringify(forensicReport.structure_map)}
+
 [GENRE CONTEXT]: ${context?.inspiration || "Unknown"}
 [SETTINGS]:
 - Logic Weight: ${this.settings.agentWeights.logic}
@@ -423,7 +431,7 @@ ${sourceMaterial}
             const arbitrationLog = parseJson<NigsArbitrationLog>(arbitrationRaw);
 
             // --- SYNTHESIS (Generating Final NigsResponse) ---
-            finalResponse = parseJson<NigsResponse>(forensicRaw);
+            finalResponse = forensicReport;
 
             // Apply Arbitration Overrides
             // [UPDATED] Sum of Agent Scores
