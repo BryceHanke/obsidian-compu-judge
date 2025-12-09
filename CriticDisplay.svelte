@@ -79,14 +79,15 @@
     }
 
     function getVerdict(val: number): string {
-        if (val >= 50) return "GOD TIER";
-        if (val >= 30) return "MASTERPIECE";
-        if (val >= 10) return "EXCELLENT";
-        if (val > 0) return "GOOD";
-        if (val === 0) return "COMPETENT";
-        if (val >= -10) return "FLAWED";
-        if (val >= -30) return "BROKEN";
-        return "CRITICAL FAILURE";
+        if (val >= 200) return "GODLY";
+        if (val >= 150) return "MASTERPIECE";
+        if (val >= 100) return "CLASSIC";
+        if (val >= 50) return "GOOD";
+        if (val > -50) return "AVERAGE"; // -49 to 49
+        if (val > -100) return "FLAWED"; // -50 to -99
+        if (val > -150) return "BAD"; // -100 to -149
+        if (val > -200) return "FAILURE"; // -150 to -199
+        return "CRITICAL FAILURE"; // <= -200
     }
 
     // --- DATA PROCESSING ---
