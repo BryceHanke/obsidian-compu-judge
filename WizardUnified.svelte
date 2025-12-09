@@ -529,7 +529,7 @@
 
                             <div class="input-row">
                                 <label for="synth-quality">TARGET QUALITY: {targetQuality}</label>
-                                <input type="range" id="synth-quality" class="retro-range" min="50" max="100" step="5" style="flex:1"
+                                <input type="range" id="synth-quality" class="retro-range" min="-200" max="200" step="10" style="flex:1"
                                     bind:value={targetQuality} />
                             </div>
 
@@ -579,7 +579,7 @@
 
                             <label for="w_target">TARGET QUALITY SCORE: {wizardState.targetScore || settings.defaultTargetQuality}</label>
                             <div class="input-wrap">
-                                <input type="range" id="w_target" class="retro-range" min="50" max="100" step="5"
+                                <input type="range" id="w_target" class="retro-range" min="-200" max="200" step="10"
                                     bind:value={wizardState.targetScore} onchange={handleInput} />
                             </div>
 

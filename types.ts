@@ -43,7 +43,7 @@ export interface NigsSettings {
     
     // --- NEURO-PARAMETERS ---
     aiThinkingLevel: number;    // 1-5 (Thinking / Reasoning Effort)
-    defaultTargetQuality: number; // 0-100 (Target Score)
+    defaultTargetQuality: number; // Target Score
     tempMultiplier: number;     
     tempCritic: number;         
     tempWizard: number;         
@@ -75,6 +75,8 @@ export interface NigsSettings {
     tribunalConfiguration: 'Iterative' | 'Parallel'; // [NEW] Tribunal Run Configuration
     tribunalMaxRetries: number; // [NEW] Number of retries for Tribunal loop
     showThinking: boolean;      
+    optimizationMode: 'Speed' | 'Balanced' | 'Quality'; // [NEW] Optimization Setting
+    enableLogging: boolean;     // [NEW] Log everything to hidden file
     
     // --- AGENTS ---
     wizardAgentEnabled: boolean;
@@ -140,6 +142,8 @@ export const DEFAULT_SETTINGS: NigsSettings = {
     tribunalConfiguration: 'Parallel', // Default to Parallel
     tribunalMaxRetries: 2, // Default 2 retries
     showThinking: false,
+    optimizationMode: 'Balanced',
+    enableLogging: true,
 
     wizardAgentEnabled: true,
     wizardAgentMaxRetries: 1,
