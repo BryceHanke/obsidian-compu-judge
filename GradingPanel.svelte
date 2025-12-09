@@ -1101,18 +1101,59 @@
                                         <div style="border-top:1px dashed #000; margin:2px 0;"></div>
 
                                         <!-- Deep Scan Issues if Available -->
-                                        {#if projectData.lastAiResult}
+                                        {#if projectData.lastAiResult && projectData.lastAiResult.tribunal_breakdown}
                                             {#if projectData.lastAiResult.content_warning && projectData.lastAiResult.content_warning !== 'None'}
                                                 <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Fix Critical: ${projectData?.lastAiResult?.content_warning}`); showQuickScanMenu = false; }}>Fix Warning</div>
                                             {/if}
+
                                             <!-- Comprehensive Fixes (Agent Based) -->
-                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Logic Fix: Plot Holes & Consistency`); showQuickScanMenu = false; }}>Logic Repair</div>
-                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Market Fix: Commercial Viability`); showQuickScanMenu = false; }}>Market Repair</div>
-                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Soul Fix: Emotion & Theme`); showQuickScanMenu = false; }}>Soul Repair</div>
-                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Lit Fix: Prose & Style`); showQuickScanMenu = false; }}>Lit Repair</div>
-                                            <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Jester Fix: Humor & Irony`); showQuickScanMenu = false; }}>Jester Repair</div>
+                                            <!-- LOGIC -->
+                                            {#if projectData.lastAiResult.tribunal_breakdown.logic && projectData.lastAiResult.tribunal_breakdown.logic.inconsistencies && projectData.lastAiResult.tribunal_breakdown.logic.inconsistencies.length > 0}
+                                                <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Logic Fix: ${projectData?.lastAiResult?.tribunal_breakdown?.logic.inconsistencies[0]}`); showQuickScanMenu = false; }}>
+                                                    Logic Repair: {projectData.lastAiResult.tribunal_breakdown.logic.inconsistencies[0].substring(0, 20)}...
+                                                </div>
+                                            {:else}
+                                                <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Logic Fix: Plot Holes & Consistency`); showQuickScanMenu = false; }}>Logic Repair</div>
+                                            {/if}
+
+                                            <!-- MARKET -->
+                                            {#if projectData.lastAiResult.tribunal_breakdown.market && projectData.lastAiResult.tribunal_breakdown.market.commercial_reason}
+                                                <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Market Fix: ${projectData?.lastAiResult?.tribunal_breakdown?.market.commercial_reason}`); showQuickScanMenu = false; }}>
+                                                    Market Repair: {projectData.lastAiResult.tribunal_breakdown.market.commercial_reason.substring(0, 20)}...
+                                                </div>
+                                            {:else}
+                                                <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Market Fix: Commercial Viability`); showQuickScanMenu = false; }}>Market Repair</div>
+                                            {/if}
+
+                                            <!-- SOUL -->
+                                            {#if projectData.lastAiResult.tribunal_breakdown.soul && projectData.lastAiResult.tribunal_breakdown.soul.critique}
+                                                <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Soul Fix: ${projectData?.lastAiResult?.tribunal_breakdown?.soul.critique}`); showQuickScanMenu = false; }}>
+                                                    Soul Repair: {projectData.lastAiResult.tribunal_breakdown.soul.critique.substring(0, 20)}...
+                                                </div>
+                                            {:else}
+                                                <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Soul Fix: Emotion & Theme`); showQuickScanMenu = false; }}>Soul Repair</div>
+                                            {/if}
+
+                                            <!-- LIT -->
+                                            {#if projectData.lastAiResult.tribunal_breakdown.lit && projectData.lastAiResult.tribunal_breakdown.lit.niche_reason}
+                                                <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Lit Fix: ${projectData?.lastAiResult?.tribunal_breakdown?.lit.niche_reason}`); showQuickScanMenu = false; }}>
+                                                    Lit Repair: {projectData.lastAiResult.tribunal_breakdown.lit.niche_reason.substring(0, 20)}...
+                                                </div>
+                                            {:else}
+                                                <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Lit Fix: Prose & Style`); showQuickScanMenu = false; }}>Lit Repair</div>
+                                            {/if}
+
+                                            <!-- JESTER -->
+                                            {#if projectData.lastAiResult.tribunal_breakdown.jester && projectData.lastAiResult.tribunal_breakdown.jester.roast}
+                                                <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Jester Fix: Address ${projectData?.lastAiResult?.tribunal_breakdown?.jester.roast}`); showQuickScanMenu = false; }}>
+                                                    Jester Repair: Fix Roast
+                                                </div>
+                                            {:else}
+                                                <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Jester Fix: Humor & Irony`); showQuickScanMenu = false; }}>Jester Repair</div>
+                                            {/if}
+
                                         {:else}
-                                            <!-- Standard Fixes if no Deep Scan -->
+                                            <!-- Fallback if no tribunal data -->
                                             <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Fix Pacing & Flow`); showQuickScanMenu = false; }}>Fix Pacing</div>
                                             <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Fix Dialogue & Voice`); showQuickScanMenu = false; }}>Fix Dialogue</div>
                                             <div class="dd-item" onclick={() => { handleAddRepairInstruction(`Enhance Description`); showQuickScanMenu = false; }}>Fix Description</div>
