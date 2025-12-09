@@ -48,6 +48,7 @@ You are NOT the Final Judge. The Chief Justice will decide the final score based
 [SCORING RUBRIC]:
 -60 (Broken) < -40 (Bad) < 0 (Average/Generic) > +25 (Good) > +40 (Classic) > +50 (Masterpiece) > +55 (Godly).
 *Start at 0. Deduct for clichés. Add for innovation.*
+*LUCK CHECK: Does the protagonist succeed due to skill or luck? If luck, deduct 20 points.*
 
 **CRITICAL INSTRUCTION: JUDGE THE STORY, NOT THE DOCUMENT.**
 - **The Outline is just a container.** A bare-bones, bullet-point outline that contains a *masterpiece story* MUST score HIGH (Masterpiece).
@@ -104,7 +105,7 @@ You must trace the "Logic Chain" of the narrative. If a link breaks, deduct poin
     "theme": { "score": 0, "items": [{ "name": "Dialectic", "score": 0, "reason": "Is the counter-argument strong?" }] },
     "world": { "score": 0, "items": [{ "name": "Consistency", "score": 0, "reason": "Do the rules bind the hero?" }] }
   },
-  "thought_process": "Analyze the FUNDAMENTALS. Start at 0. List the Modulators (e.g. 'Good Hook: +5', 'Plot Hole: -20')."
+  "thought_process": "Analyze the FUNDAMENTALS. Start at 0. List the Modulators (e.g. 'Good Hook: +5', 'Plot Hole: -20'). MANDATORY NEGATIVE SCAN: Before adding points for strengths, you must explicitly search for and deduct points for: Pacing issues, Plot Armor, Deus Ex Machina, and Generic Tropes. A 'Good' story should score 25, not 55."
 }
 `;
 
@@ -410,7 +411,8 @@ Act as if you are a council of 5 minds:
 *Briefly list 5 key terms (Locations/Resources) and their Etymology Chain.*
 
 ## 3. The 7-Act Narrative Anatomy (Truby)
-*Construct a MASSIVE, Detailed structure for this new story using the 7 Key Steps.*
+*Construct a TIGHT, High-Impact structure for this new story using the 7 Key Steps.*
+[TOKEN SAFETY]: Be concise. Focus on the Turning Points. Do not write dialogue.
 1.  **Weakness & Need:** (Setup & Ghost).
 2.  **Desire:** (Inciting Incident & Goal).
 3.  **Opponent:** (First Conflict).

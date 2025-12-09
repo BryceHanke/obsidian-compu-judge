@@ -123,14 +123,28 @@ export class CloudGenService {
 
     // --- DRIVE SYNTHESIS (Alchemy Mode) ---
     // [UPDATED] Uses full concatenated context & [NEW] Thinking Agent Loop
+
+    private preprocessDrives(drives: DriveBlock[]): DriveBlock[] {
+        return drives.map(d => {
+            let clean = d.content || "";
+            // Remove Works Cited / References / Bibliography and everything after
+            // [SAFETY]: Use strict newline + whitespace check to avoid matching random words in sentences
+            clean = clean.split(/\n\s*(?:Works Cited|References|Bibliography)\s*(?:\n|$)/i)[0];
+            return { ...d, content: clean.trim() };
+        });
+    }
+
     synthesizeDrives = async (drives: DriveBlock[], customTitle?: string, targetQuality?: number, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<string> => {
         this.updateStatus("FUSING NARRATIVE DRIVES...", onStatus, 5);
         
+        // [SAFETY]: Prune content to save tokens
+        const cleanDrives = this.preprocessDrives(drives);
+
         // [SAFETY]: Explicitly concat full content without trimming
         let driveContext = "";
         let totalChars = 0;
 
-        drives.forEach((d, i) => {
+        cleanDrives.forEach((d, i) => {
             const safeContent = d.content || "";
             driveContext += `\n=== DRIVE ${i+1}: ${d.name} ===\n${safeContent}\n`;
             totalChars += safeContent.length;
@@ -172,7 +186,18 @@ export class CloudGenService {
 
             const currentPrompt = previousCritique ? `${finalPrompt}\n\n[PREVIOUS CRITIQUE - FIX THIS]:\n${previousCritique}` : finalPrompt;
 
-            draft = await this.callAI(currentPrompt, NIGS_DRIVE_SYNTHESIS_PROMPT, false, false, temp, signal, undefined, onStatus);
+            // CHAIN OF THOUGHT PAGINATION
+            // Call 1: Acts 1-3
+            const promptStage1 = `${currentPrompt}\n\n[INSTRUCTION]: Generate ONLY the first half of the report (Title, Cast, World, and Acts 1, 2, and 3). STOP after Act 3.`;
+            const draftStage1 = await this.callAI(promptStage1, NIGS_DRIVE_SYNTHESIS_PROMPT, false, false, temp, signal, undefined, onStatus);
+
+            this.updateStatus("SYNTH AGENT: GENERATING ACTS 4-7...", onStatus, currentProgress + 5);
+
+            // Call 2: Acts 4-7
+            const promptStage2 = `${currentPrompt}\n\n[PREVIOUS CONTENT (ACTS 1-3)]: ${draftStage1}\n\n[INSTRUCTION]: CONTINUE the story. Generate Acts 4, 5, 6, 7 and the Thematic Synthesis. Start directly at Act 4. Do not repeat the Title/Cast.`;
+            const draftStage2 = await this.callAI(promptStage2, NIGS_DRIVE_SYNTHESIS_PROMPT, false, false, temp, signal, undefined, onStatus);
+
+            draft = `${draftStage1}\n${draftStage2}`;
 
             // If Agent disabled, accept first draft
             if (!this.settings.synthAgentEnabled) {
@@ -311,18 +336,21 @@ ${sourceMaterial}
                 const jesterRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp, signal, undefined, onStatus);
                 jesterReport = parseJson<any>(jesterRaw);
 
-                this.updateStatus("FORENSIC SYSTEM SCAN...", onStatus, currentBase + 35);
-                forensicRaw = await this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal, undefined, onStatus);
+                this.updateStatus("FORENSIC SYSTEM SCAN (WITH LOGIC INJECTION)...", onStatus, currentBase + 35);
+
+                // [LOGIC INJECTION]: Pass logic findings to Scribe
+                const forensicInput = `${currentInputPayload}\n\n[LOGIC AGENT REPORT]:\nInconsistencies: ${JSON.stringify(logicReport.inconsistencies)}\nLuck Incidents: ${JSON.stringify(logicReport.luck_incidents)}`;
+
+                forensicRaw = await this.callAI(forensicInput, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal, undefined, onStatus);
 
             } else {
                 // PARALLEL (Default)
-                const [soulRaw, jesterRaw, logicRaw, marketRaw, litRaw, fRaw] = await Promise.all([
+                const [soulRaw, jesterRaw, logicRaw, marketRaw, litRaw] = await Promise.all([
                     this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp, signal, undefined, onStatus).catch(e => `{"error": "Soul Failed"}`),
                     this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp, signal, undefined, onStatus).catch(e => `{"error": "Jester Failed"}`),
                     this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp, signal, undefined, onStatus).catch(e => `{"error": "Logic Failed"}`),
                     this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp, signal, undefined, onStatus).catch(e => `{"error": "Market Failed"}`),
-                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.LIT, true, false, litTemp, signal, undefined, onStatus).catch(e => `{"error": "Lit Failed"}`),
-                    this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal, undefined, onStatus).catch(e => `{"error": "Forensic Failed"}`)
+                    this.callAI(currentInputPayload, NIGS_TRIBUNAL.LIT, true, false, litTemp, signal, undefined, onStatus).catch(e => `{"error": "Lit Failed"}`)
                 ]);
 
                 soulReport = parseJson<NigsVibeCheck>(soulRaw);
@@ -330,7 +358,13 @@ ${sourceMaterial}
                 logicReport = parseJson<NigsFactReport>(logicRaw);
                 marketReport = parseJson<any>(marketRaw);
                 litReport = parseJson<any>(litRaw);
-                forensicRaw = fRaw;
+
+                this.updateStatus("FORENSIC SYSTEM SCAN (WITH LOGIC INJECTION)...", onStatus, currentBase + 35);
+
+                // [LOGIC INJECTION]: Pass logic findings to Scribe
+                const forensicInput = `${currentInputPayload}\n\n[LOGIC AGENT REPORT]:\nInconsistencies: ${JSON.stringify(logicReport.inconsistencies)}\nLuck Incidents: ${JSON.stringify(logicReport.luck_incidents)}`;
+
+                forensicRaw = await this.callAI(forensicInput, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal, undefined, onStatus).catch(e => `{"error": "Forensic Failed"}`);
             }
 
             // [FIX]: Market Agent Error Handling
