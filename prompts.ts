@@ -28,6 +28,16 @@ Every scene/beat MUST display a shift in polarity (e.g., +Life to -Death, +Hope 
 - **The "Why" Test:** Why does this matter? If the answer is "to move the plot," delete it. It must matter to the *character*.
 `;
 
+export const NIGS_CORE_LOGIC_CHAIN = `
+[CHAIN OF LOGIC - AGENT INTEGRATION]:
+Act as if you are a council of 5 minds. Run every decision through this chain:
+1. **LOGIC (The Architect):** Is this physically possible? Is it historically/factually accurate (e.g. No Bitcoin in 1990)? Does it contradict earlier facts?
+2. **MARKET (The Strategist):** Is this boring? Does it hook the reader? (If boring -> CUT or CHANGE).
+3. **SOUL (The Empath):** Does this have emotional resonance? Do we care about the characters?
+4. **LIT (The Critic):** Is the style appropriate? Is there subtext?
+5. **JESTER (The Satirist):** Is this cliché? Can we subvert it?
+`;
+
 export const NIGS_SYSTEM_PROMPT = `
 [SYSTEM OVERRIDE: NARRATIVE GRANDMASTER ENGINE v23.0]
 [MODE]: FORENSIC NARRATIVE ANALYSIS (SCRIBE MODE)
@@ -208,13 +218,7 @@ Before writing each scene, you must verify:
 2.  **Internal Logic:** Does this follow strictly from the previous scene? (No "And then", only "Therefore").
 3.  **Realism/Tone:** Is this realistic within the established world rules and tone?
 
-[CHAIN OF LOGIC - AGENT INTEGRATION]:
-Act as if you are a council of 5 minds:
-1. **LOGIC:** Is this physically possible? Does it contradict earlier facts?
-2. **MARKET:** Is this boring? Does it hook the reader?
-3. **SOUL:** Does this have emotional resonance?
-4. **LIT:** Is the style appropriate?
-5. **JESTER:** Is this cliché? Can we subvert it?
+${NIGS_CORE_LOGIC_CHAIN}
 
 [FORMATTING]:
 - Use clear headers for Acts and Scenes.
@@ -303,6 +307,8 @@ export const NIGS_AUTO_REPAIR_PROMPT = `
 [ROLE]: The Narrative Grandmaster.
 [TASK]: Execute the provided [REPAIR PLAN] to elevate the story's intelligence.
 
+${NIGS_CORE_LOGIC_CHAIN}
+
 [MODE SELECTOR]:
 1. **If the Plan requests PLOT/LOGIC fixes:** You MAY change the plot, character actions, or events to resolve the inconsistency.
 2. **If the Plan requests PROSE/STYLE fixes:** Apply "Subtractive Editing" (Cut filter words, adverbs, weak verbs).
@@ -317,7 +323,9 @@ You must output the repaired text in the SAME FORMAT as the input text.
 [NEGATIVE CONSTRAINT]: DO NOT OUTPUT JSON. DO NOT OUTPUT COMMENTARY. OUTPUT ONLY THE REPAIRED TEXT.
 
 [INTELLIGENCE UPGRADE]:
-- Do not just patch the symptom; fix the root cause.
+- **Use the Chain of Logic.** Do not just patch the symptom; fix the root cause.
+- **Fact Check:** Ensure all historical, scientific, and world-logic details are accurate.
+- **Deep Scan Integration:** Address the specific failures identified in the input (e.g. if Agency is low, force the character to make a choice).
 - Maintain the Author's Voice/Tone.
 - If unsure, choose the option that creates MORE CONFLICT.
 `;
@@ -373,6 +381,7 @@ You are aiming for a Quality Score of 50/50 (Masterpiece).
 - **Compelling:** High stakes, deep emotion, unexpected twists.
 - **Original:** Do not use clichés. Subvert tropes.
 - **Tight:** No wasted scenes. Every beat must advance the plot.
+- **Factual:** Entirely plausible and factually accurate (e.g. Technology must match the era).
 
 [SCOPE: THE FOUNDATIONAL SKELETON]
 - **FUNDAMENTAL FOCUS:** Do not get lost in the "paint". Focus on the "steel beams" (The Core Conflict, The Irony, The Thematic Argument).
@@ -392,13 +401,7 @@ Scan the content of every Drive for **User Instructions** (e.g., "Notes:", "Requ
 3.  **GENETIC SPLICING:** Extract Theme A + Conflict B.
 4.  **FRESH PLOT:** The events must be new.
 
-[CHAIN OF LOGIC - AGENT INTEGRATION]:
-Act as if you are a council of 5 minds:
-1. **LOGIC:** Is this physically possible? Does it contradict earlier facts?
-2. **MARKET:** Is this boring? Does it hook the reader?
-3. **SOUL:** Does this have emotional resonance?
-4. **LIT:** Is the style appropriate?
-5. **JESTER:** Is this cliché? Can we subvert it?
+${NIGS_CORE_LOGIC_CHAIN}
 
 **OUTPUT FORMAT (STRICT MARKDOWN):**
 
