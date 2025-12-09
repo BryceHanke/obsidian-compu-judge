@@ -23,6 +23,22 @@
         logs = await LogService.getLogs(app);
     }
 
+    async function savePlanAsDoc() {
+        if (!analysisResult) return;
+
+        const date = new Date();
+        const timestamp = date.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const filename = `Tuning-Plan-${timestamp}.md`;
+
+        try {
+            await app.vault.create(filename, analysisResult);
+            new Notice(`Tuning plan saved as ${filename}`);
+        } catch (e: any) {
+            new Notice(`Failed to save plan: ${e.message}`);
+            console.error(e);
+        }
+    }
+
     async function clearLogs() {
         if (confirm("Clear all tuning logs? This cannot be undone.")) {
             await LogService.clearLogs(app);
@@ -101,6 +117,9 @@
                 {@html analysisResult.replace(/\n/g, '<br>')}
             </div>
         </div>
+        <button class="win95-btn" onclick={savePlanAsDoc} style="margin-bottom: 20px; width: 100%;">
+            💾 SAVE PLAN AS DOCUMENT
+        </button>
     {/if}
 
     <div class="log-preview bevel-down">
