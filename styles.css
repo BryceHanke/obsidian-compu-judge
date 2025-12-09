@@ -367,12 +367,12 @@
     background: repeating-linear-gradient(45deg, #ddd, #ddd 2px, #fff 2px, #fff 4px);
 }
 
-/* CRITICAL FAILURE EFFECT (Hollow Dotted) */
+/* CRITICAL FAILURE EFFECT (Striped Fill Only) */
 .critical-bar,
 .critical-bar .win95-progress-container,
 .critical-bar .score-track {
     background: transparent !important;
-    border: 2px dotted #ff0000 !important; /* Red dotted outline */
+    /* Removed dotted border to strictly use inside fill lines */
     box-shadow: none !important;
     box-sizing: border-box !important; /* Prevent expansion */
 }

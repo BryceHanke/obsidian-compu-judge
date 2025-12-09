@@ -1,1 +1,40 @@
-<!DOCTYPE html><html><head><link rel="stylesheet" href="../styles.css"></head><body><div class="compu-container"><div class="critical-bar" style="width: 200px; height: 20px;"><div class="score-track"><div class="score-fill" style="width: 100%;"></div></div></div></div></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        body { background-color: #eee; padding: 20px; }
+        .critical-bar {
+            width: 200px;
+            height: 20px;
+            /* In the real app, this might be on the same element as win95-progress-container which has height */
+        }
+        .score-track {
+            width: 100%;
+            height: 100%;
+        }
+        .score-fill {
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="compu-container">
+        <h3>Critical Bar Test</h3>
+        <!-- Case 1: critical-bar as parent wrapper (as in test file initially) -->
+        <div class="critical-bar">
+            <div class="score-track">
+                <div class="score-fill" style="width: 100%;"></div>
+            </div>
+        </div>
+
+        <br>
+
+        <!-- Case 2: critical-bar on the container itself (mimicking CriticDisplay.svelte) -->
+         <!-- Note: win95-progress-container has default styles, critical-bar should override -->
+        <div class="win95-progress-container critical-bar" style="width: 200px;">
+            <div class="win95-progress-fill" style="width: 100%;"></div>
+        </div>
+    </div>
+</body>
+</html>
