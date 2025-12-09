@@ -560,6 +560,15 @@ ${sourceMaterial}
                 forensicRaw = fRaw;
             }
 
+            // [FIX]: Market Agent Error Handling
+            if (marketReport.error || typeof marketReport.commercial_score !== 'number') {
+                marketReport = { 
+                    commercial_score: 0, 
+                    commercial_reason: "Market analysis unavailable. Defaulting to neutral.",
+                    log_line: "Analysis failed."
+                };
+            }
+
             // --- CHIEF JUSTICE ARBITRATION ---
             this.updateStatus("CHIEF JUSTICE: DELIBERATING...", onStatus);
 
@@ -592,7 +601,13 @@ ${sourceMaterial}
             const litScore = litReport.score || 0;
             const jesterScore = jesterReport.score_modifier || 0;
 
-            finalResponse.commercial_score = marketScore + logicScore + soulScore + litScore + jesterScore;
+            // [FIX]: Double Jeopardy - Use Chief Justice Verdict directly
+            let finalScore = arbitrationLog.final_verdict;
+            
+            // [FIX]: Clamp Score
+            finalScore = Math.max(-200, Math.min(200, finalScore));
+
+            finalResponse.commercial_score = finalScore;
             finalResponse.commercial_reason = `[CHIEF JUSTICE RULING]: ${arbitrationLog.ruling}`;
 
             // Map specific agent scores
@@ -628,10 +643,15 @@ ${sourceMaterial}
             } else {
                 this.updateStatus("GRADE ANALYST: VERIFYING OUTPUT...", onStatus);
                 const analystPrompt = `
-[INPUT REPORT]:
-${JSON.stringify(finalResponse)}
+[INPUT A - CHIEF JUSTICE VERDICT]: ${arbitrationLog.final_verdict}
+[INPUT B - FINAL REPORT SCORE]: ${finalResponse.commercial_score}
+[INPUT C - REASONING]: ${finalResponse.commercial_reason}
 
-[TASK]: Verify this report matches the Zero-Based Scoring Protocol and is complete.
+[TASK]: Compare Input A and Input B. 
+1. If they do not match, return FAIL.
+2. If the Reason contradicts the Score (e.g. "Loved it" but score is -50), return FAIL.
+
+Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 `;
                 const analystResStr = await this.callAI(analystPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal, undefined, onStatus);
                 const analystRes = this.parseJson<{ verdict: string, reason: string }>(analystResStr);
