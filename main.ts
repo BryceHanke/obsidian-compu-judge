@@ -13,7 +13,10 @@ export default class CompuJudgePlugin extends Plugin {
         // 1. Load Global Settings
         await this.loadSettings();
         
-        // 2. Initialize DB
+        // 2. Apply Visual Settings
+        this.injectStyles();
+
+        // 3. Initialize DB
         db.connect(this);
         await db.init();
 
@@ -53,6 +56,49 @@ export default class CompuJudgePlugin extends Plugin {
                 this.updateViewFile(file);
             })
         );
+    }
+
+    // [NEW] Inject CSS Variables
+    injectStyles() {
+        const root = document.documentElement;
+        const s = this.settings;
+
+        // Visuals
+        root.style.setProperty('--cj-bg', s.colorBg || DEFAULT_SETTINGS.colorBg);
+        root.style.setProperty('--cj-text', s.colorText || DEFAULT_SETTINGS.colorText);
+        root.style.setProperty('--cj-accent', s.colorTitleBarStart || DEFAULT_SETTINGS.colorTitleBarStart);
+        root.style.setProperty('--cj-accent-end', s.colorTitleBarEnd || DEFAULT_SETTINGS.colorTitleBarEnd);
+        root.style.setProperty('--cj-title-text', s.colorTitleText || DEFAULT_SETTINGS.colorTitleText);
+
+        root.style.setProperty('--cj-btn-face', s.colorButtonFace || DEFAULT_SETTINGS.colorButtonFace);
+        root.style.setProperty('--cj-btn-text', s.colorButtonText || DEFAULT_SETTINGS.colorButtonText);
+        root.style.setProperty('--cj-input-bg', s.colorInputBg || DEFAULT_SETTINGS.colorInputBg);
+        root.style.setProperty('--cj-input-text', s.colorInputText || DEFAULT_SETTINGS.colorInputText);
+
+        root.style.setProperty('--cj-font-ui', s.fontFamilyUi || DEFAULT_SETTINGS.fontFamilyUi);
+        root.style.setProperty('--cj-font-content', s.fontFamilyContent || DEFAULT_SETTINGS.fontFamilyContent);
+
+        // Accessibility Classes (Scoped to Plugin Components)
+        // Note: Styles are scoped in CSS using .cj-high-contrast etc.
+        // We apply these classes to the body so they cascade down to plugin elements
+        // but the CSS itself restricts the changes to .compu-container or .nigs-settings-container
+        if (s.highContrast) document.body.addClass('cj-high-contrast');
+        else document.body.removeClass('cj-high-contrast');
+
+        if (s.reducedMotion) document.body.addClass('cj-reduced-motion');
+        else document.body.removeClass('cj-reduced-motion');
+
+        // Font Scaling
+        document.body.removeClass('cj-font-scale-110', 'cj-font-scale-125', 'cj-font-scale-150', 'cj-font-scale-175', 'cj-font-scale-200');
+        if (s.fontScale > 100) {
+            let cls = '';
+            if (s.fontScale >= 200) cls = 'cj-font-scale-200';
+            else if (s.fontScale >= 175) cls = 'cj-font-scale-175';
+            else if (s.fontScale >= 150) cls = 'cj-font-scale-150';
+            else if (s.fontScale >= 125) cls = 'cj-font-scale-125';
+            else if (s.fontScale >= 110) cls = 'cj-font-scale-110';
+            if (cls) document.body.addClass(cls);
+        }
     }
 
     async activateView() {
@@ -110,6 +156,13 @@ export default class CompuJudgePlugin extends Plugin {
         // Ensure new Agent settings exist
         if (this.settings.wizardAgentEnabled === undefined) this.settings.wizardAgentEnabled = true;
         if (this.settings.synthAgentEnabled === undefined) this.settings.synthAgentEnabled = true;
+
+        // Ensure Visual/Access Defaults
+        if (this.settings.fontScale === undefined) this.settings.fontScale = 100;
+        if (this.settings.forgeImageBatchSize === undefined) this.settings.forgeImageBatchSize = 10;
+
+        // Apply on Load
+        this.injectStyles();
     }
 
     async saveSettings() {
@@ -118,6 +171,9 @@ export default class CompuJudgePlugin extends Plugin {
         
         await this.saveData(cleanSettings);
         
+        // Re-inject styles
+        this.injectStyles();
+
         const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_COMPU_JUDGE);
         leaves.forEach(leaf => {
              if (leaf.view instanceof CompuJudgeView) {
@@ -139,6 +195,17 @@ class NigsSettingTab extends PluginSettingTab {
         // WIN95 HEADER
         const header = containerEl.createEl('div', { cls: 'win95-titlebar', style: 'margin-bottom: 20px;' });
         header.createEl('div', { text: 'BIOS SETUP UTILITY', cls: 'win95-titlebar-text' });
+
+        // --- 0. RESET BUTTON ---
+        const resetContainer = containerEl.createDiv({ style: 'margin-bottom: 10px; display: flex; justify-content: flex-end;' });
+        const resetBtn = resetContainer.createEl('button', { text: 'Load Setup Defaults', cls: 'win95-btn' });
+        resetBtn.onclick = async () => {
+            if (confirm("Reset ALL settings to default values?")) {
+                 this.plugin.settings = { ...DEFAULT_SETTINGS };
+                 await this.plugin.saveSettings();
+                 this.display();
+            }
+        };
 
         // --- 1. AI IDENTITY ---
         this.addSectionHeader(containerEl, 'AI IDENTITY');
@@ -188,6 +255,83 @@ class NigsSettingTab extends PluginSettingTab {
                  this.plugin.settings.anthropicModel = val; await this.plugin.saveSettings();
             });
         }
+
+        // --- FUNCTIONAL SETTINGS (New) ---
+        this.addSectionHeader(containerEl, 'SYSTEM PARAMETERS');
+
+        new Setting(containerEl)
+            .setName('Forge Image Batch Size')
+            .setDesc('Images per batch sent to AI (Default: 10).')
+            .addText(text => text
+                .setValue(String(this.plugin.settings.forgeImageBatchSize))
+                .onChange(async (val) => {
+                    const num = parseInt(val);
+                    if (!isNaN(num) && num > 0) {
+                        this.plugin.settings.forgeImageBatchSize = num;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+
+        // --- ACCESSIBILITY ---
+        this.addSectionHeader(containerEl, 'ACCESSIBILITY');
+
+        new Setting(containerEl)
+            .setName('High Contrast Mode')
+            .setDesc('Use black background with neon text (Matrix/Terminal style).')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.highContrast)
+                .onChange(async (val) => {
+                    this.plugin.settings.highContrast = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Reduced Motion')
+            .setDesc('Disable animations and transitions.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.reducedMotion)
+                .onChange(async (val) => {
+                    this.plugin.settings.reducedMotion = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Font Scale (%)')
+            .setDesc('Scale up UI text size (100% - 200%).')
+            .addSlider(slider => slider
+                .setLimits(100, 200, 10)
+                .setValue(this.plugin.settings.fontScale)
+                .setDynamicTooltip()
+                .onChange(async (val) => {
+                    this.plugin.settings.fontScale = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        // --- VISUAL CUSTOMIZATION ---
+        this.addSectionHeader(containerEl, 'VISUAL CUSTOMIZATION');
+
+        containerEl.createEl('div', { text: 'Customize the Win95 Look & Feel. Changes apply immediately.', style: 'color: #808080; margin-bottom: 10px; font-style: italic;' });
+
+        new Setting(containerEl).setName('Background Color').addColorPicker(col => col.setValue(this.plugin.settings.colorBg).onChange(async v => { this.plugin.settings.colorBg = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Text Color').addColorPicker(col => col.setValue(this.plugin.settings.colorText).onChange(async v => { this.plugin.settings.colorText = v; await this.plugin.saveSettings(); }));
+
+        new Setting(containerEl).setName('Title Bar Start').addColorPicker(col => col.setValue(this.plugin.settings.colorTitleBarStart).onChange(async v => { this.plugin.settings.colorTitleBarStart = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Title Bar End').addColorPicker(col => col.setValue(this.plugin.settings.colorTitleBarEnd).onChange(async v => { this.plugin.settings.colorTitleBarEnd = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Title Text').addColorPicker(col => col.setValue(this.plugin.settings.colorTitleText).onChange(async v => { this.plugin.settings.colorTitleText = v; await this.plugin.saveSettings(); }));
+
+        new Setting(containerEl).setName('Button Face').addColorPicker(col => col.setValue(this.plugin.settings.colorButtonFace).onChange(async v => { this.plugin.settings.colorButtonFace = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Button Text').addColorPicker(col => col.setValue(this.plugin.settings.colorButtonText).onChange(async v => { this.plugin.settings.colorButtonText = v; await this.plugin.saveSettings(); }));
+
+        new Setting(containerEl).setName('Input Background').addColorPicker(col => col.setValue(this.plugin.settings.colorInputBg).onChange(async v => { this.plugin.settings.colorInputBg = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Input Text').addColorPicker(col => col.setValue(this.plugin.settings.colorInputText).onChange(async v => { this.plugin.settings.colorInputText = v; await this.plugin.saveSettings(); }));
+
+        this.addTextInput(containerEl, 'UI Font Family', 'Pixelated MS Sans Serif...', this.plugin.settings.fontFamilyUi, async (val) => {
+             this.plugin.settings.fontFamilyUi = val; await this.plugin.saveSettings();
+        });
+        this.addTextInput(containerEl, 'Content Font Family', 'Courier New...', this.plugin.settings.fontFamilyContent, async (val) => {
+             this.plugin.settings.fontFamilyContent = val; await this.plugin.saveSettings();
+        });
+
 
         // --- TRIBUNAL CONFIG ---
         this.addSectionHeader(containerEl, 'TRIBUNAL CONFIGURATION');

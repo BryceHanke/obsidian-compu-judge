@@ -859,30 +859,36 @@ Only score positive if it is innovative.
         const prompt = this.settings.customOutlinePrompt ? this.settings.customOutlinePrompt : NIGS_OUTLINE_PROMPT;
         const temp = this.getTemp(this.settings.tempArchitect);
 
-        if (images && images.length > 10) {
-            const batchSize = 10;
-            const batches = Math.ceil(images.length / batchSize);
-            let combinedResult = "";
+        if (images && images.length > 0) {
+            // [UPDATED] Use Configurable Batch Size (Default 10)
+            const batchSize = this.settings.forgeImageBatchSize || 10;
 
-            for (let i = 0; i < batches; i++) {
-                if (signal?.aborted) throw new Error("Cancelled by user.");
+            // If images exceed batch size, process in chunks
+            if (images.length > batchSize) {
+                const batches = Math.ceil(images.length / batchSize);
+                let combinedResult = "";
 
-                const start = i * batchSize;
-                const end = start + batchSize;
-                const batchImages = images.slice(start, end);
+                for (let i = 0; i < batches; i++) {
+                    if (signal?.aborted) throw new Error("Cancelled by user.");
 
-                this.updateStatus(`ARCHIVIST: PROCESSING IMAGE BATCH ${i + 1}/${batches}...`, onStatus);
+                    const start = i * batchSize;
+                    const end = start + batchSize;
+                    const batchImages = images.slice(start, end);
 
-                // For the first batch, use the original text.
-                // For subsequent batches, we might want to remind the AI of the instructions but context is key.
-                const batchText = i === 0 ? text : `[BATCH ${i + 1}/${batches}]: Continue analysis based on these new images.\n${text}`;
+                    this.updateStatus(`ARCHIVIST: PROCESSING IMAGE BATCH ${i + 1}/${batches}...`, onStatus);
 
-                const result = await this.callAI(batchText, prompt, false, useSearch, temp, signal, batchImages, onStatus);
-                combinedResult += `\n\n=== BATCH ${i + 1} OUTPUT ===\n${result}`;
+                    // For the first batch, use the original text.
+                    // For subsequent batches, we might want to remind the AI of the instructions but context is key.
+                    const batchText = i === 0 ? text : `[BATCH ${i + 1}/${batches}]: Continue analysis based on these new images.\n${text}`;
+
+                    const result = await this.callAI(batchText, prompt, false, useSearch, temp, signal, batchImages, onStatus);
+                    combinedResult += `\n\n=== BATCH ${i + 1} OUTPUT ===\n${result}`;
+                }
+                return combinedResult;
             }
-            return combinedResult;
         }
 
+        // Single batch or no images
         return await this.callAI(text, prompt, false, useSearch, temp, signal, images, onStatus);
     }
 
