@@ -212,6 +212,12 @@ You must organize the story using the **7-Act Truby Structure** (compatible with
 6.  **Self-Revelation:** (The hero abandons the Lie).
 7.  **New Equilibrium:** (The world transformed / Resolution).
 
+[LOGIC GATES - MANDATORY CHAIN OF THOUGHT]:
+Before writing each scene, you must verify:
+1.  **Target Score Match:** Does this beat justify a high quality score? (Is it surprising/deep?)
+2.  **Internal Logic:** Does this follow strictly from the previous scene? (No "And then", only "Therefore").
+3.  **Realism/Tone:** Is this realistic within the established world rules and tone?
+
 [FORMATTING]:
 - Use clear headers for Acts and Scenes.
 - For each scene, explicitly state the **"Value Shift"** (e.g. +Hope to -Despair).
@@ -409,6 +415,12 @@ Scan the content of every Drive for **User Instructions** (e.g., "Notes:", "Requ
 7.  **New Equilibrium:** (The New World).
 
 *For every step, include multiple detailed beats (Action, Value Shift, Polarity). EXPAND ON THE LOGIC.*
+
+### LOGIC CHAIN VERIFICATION (Internal Monologue):
+For each major plot turn, you must determine:
+1. **Target Score:** Does this twist meet the Target Quality?
+2. **Internal Consistency:** Does this contradict any previous drive data?
+3. **Realism:** Is this reaction realistic for these characters?
 
 ## 4. Thematic Synthesis
 * **Core Truth:** What is this new story arguing?
