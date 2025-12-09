@@ -302,6 +302,30 @@ class NigsSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
+        new Setting(containerEl)
+            .setName('Lit Weight')
+            .setDesc('Importance of Literary Agent.')
+            .addSlider(slider => slider
+                .setLimits(0, 2, 0.1)
+                .setValue(this.plugin.settings.agentWeights.lit)
+                .setDynamicTooltip()
+                .onChange(async (val) => {
+                    this.plugin.settings.agentWeights.lit = val;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Jester Weight')
+            .setDesc('Importance of Jester (Roast) Agent.')
+            .addSlider(slider => slider
+                .setLimits(0, 2, 0.1)
+                .setValue(this.plugin.settings.agentWeights.jester)
+                .setDynamicTooltip()
+                .onChange(async (val) => {
+                    this.plugin.settings.agentWeights.jester = val;
+                    await this.plugin.saveSettings();
+                }));
+
         // --- 2. NEURO-PARAMETERS ---
         this.addSectionHeader(containerEl, 'NEURO-PARAMETERS');
 

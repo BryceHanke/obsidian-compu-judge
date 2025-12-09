@@ -771,7 +771,8 @@
         if (current.includes(entry)) return; // Prevent dupes
 
         forgeData.repairFocus = current.length > 0 ? `${current}\n${entry}` : entry;
-        new Notice("Instruction added to Forge.");
+        new Notice("Instruction injected into Forge Repair Plan.");
+        currentTab = 'forge'; // Auto-switch to Forge so user sees the change
         debouncedSave();
     }
 

@@ -99,8 +99,30 @@
     let sanderson = $derived(data.sanderson_metrics || { promise_payoff: 0, laws_of_magic: 0, character_agency: 0 });
 
     let averageScore = $derived.by(() => {
-        const c = data.commercial_score || 0;
-        return data.commercial_score || 0;
+        // [WIN95 UPDATE]: Calculate weighted score from breakdown
+        if (!data.tribunal_breakdown) return data.commercial_score || 0;
+
+        const w = settings.agentWeights || { logic: 1, soul: 1, market: 1, lit: 1, jester: 1 };
+        const b = data.tribunal_breakdown;
+
+        // Extract scores (default to 0)
+        const sMarket = b.market?.commercial_score || 0;
+        const sLogic = b.logic?.score || 0;
+        const sSoul = b.soul?.score || 0;
+        const sLit = b.lit?.score || 0;
+        const sJester = b.jester?.score_modifier || 0;
+
+        // Calculate weighted sum
+        // Note: We are respecting the user's logic "if Soul scores +50, but it's weight is 0.5, it will only contribute 25 points"
+        // This means it is strictly additive.
+        let total = 0;
+        total += sMarket * (w.market ?? 1);
+        total += sLogic * (w.logic ?? 1);
+        total += sSoul * (w.soul ?? 1);
+        total += sLit * (w.lit ?? 1);
+        total += sJester * (w.jester ?? 1);
+
+        return total;
     });
 
     // Ideal Arc Logic
@@ -462,7 +484,7 @@
                     <div class="win95-progress-container {isCritical(m.val) ? 'critical-bar' : ''}" style="flex: 1;">
                         <div class="win95-progress-fill"
                              style="
-                                width: {m.val > 100 ? 100 : m.val}%;
+                                width: {Math.min(100, (m.val / 50) * 100)}%;
                                 background: {isMasterpieceEffect(m.val) ? '#000' : getBarColor(m.val)};
                                 position: relative;
                              ">

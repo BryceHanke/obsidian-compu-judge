@@ -61,6 +61,8 @@ export interface NigsSettings {
         logic: number;
         soul: number;
         market: number;
+        lit: number;
+        jester: number;
     };
     arbitrationEnabled: boolean;
     disableRainbows: boolean;
@@ -124,7 +126,9 @@ export const DEFAULT_SETTINGS: NigsSettings = {
     agentWeights: {
         logic: 1.0,
         soul: 1.0,
-        market: 1.0
+        market: 1.0,
+        lit: 1.0,
+        jester: 1.0
     },
     arbitrationEnabled: true,
     disableRainbows: false,
