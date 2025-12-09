@@ -720,24 +720,64 @@ Only score positive if it is innovative.
     }
     
     private parseJson<T>(text: string): T {
-        try { 
-            const start = text.indexOf('{');
-            const end = text.lastIndexOf('}');
-            if (start === -1 || end === -1) throw new Error("No JSON found in response");
-            const clean = text.substring(start, end + 1);
-            // Robust cleaning of markdown fences and stray text
+        // Helper to clean and parse a substring
+        const tryParse = (startIdx: number, endIdx: number): any => {
+            if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) return undefined;
+            const clean = text.substring(startIdx, endIdx + 1);
             const refined = clean
-                .replace(/^```json\s*/, "")  // Leading code fence
-                .replace(/```$/, "")        // Trailing code fence
-                .replace(/```json/g, "")    // Any other occurence
-                .replace(/```/g, "")        // Any other fence
-                .replace(/[\u0000-\u001F]+/g, c => ["\r", "\n", "\t"].includes(c) ? c : ""); // Sanitize control chars but keep whitespace
+                .replace(/^```json\s*/, "")
+                .replace(/```$/, "")
+                .replace(/```json/g, "")
+                .replace(/```/g, "")
+                .replace(/[\u0000-\u001F]+/g, c => ["\r", "\n", "\t"].includes(c) ? c : "");
+            try {
+                return JSON.parse(refined);
+            } catch {
+                return undefined;
+            }
+        };
 
-            return JSON.parse(refined); 
-        } catch (e) { 
-            console.error("JSON PARSE FAILURE", text);
-            throw new Error("AI returned invalid JSON. Check console.");
+        const openBrace = text.indexOf('{');
+        const openBracket = text.indexOf('[');
+        const closeBrace = text.lastIndexOf('}');
+        const closeBracket = text.lastIndexOf(']');
+
+        let parsed: any;
+
+        // Strategy: Try the earliest valid marker first. If it fails, try the other.
+        // This handles cases like "[System Note] ... { Actual JSON }" where '[' is first but invalid as JSON start.
+
+        if (openBrace !== -1 && (openBracket === -1 || openBrace < openBracket)) {
+            // Object appears first
+            parsed = tryParse(openBrace, closeBrace);
+            if (parsed === undefined && openBracket !== -1) {
+                // Fallback to array if object failed
+                parsed = tryParse(openBracket, closeBracket);
+            }
+        } else if (openBracket !== -1) {
+            // Array appears first
+            parsed = tryParse(openBracket, closeBracket);
+            if (parsed === undefined && openBrace !== -1) {
+                 // Fallback to object
+                 parsed = tryParse(openBrace, closeBrace);
+            }
         }
+
+        if (parsed === undefined) {
+             console.error("JSON PARSE FAILURE", text);
+             throw new Error("AI returned invalid JSON. Check console.");
+        }
+
+        // Heuristic: If we got an array but likely wanted an object (single result), return the first item.
+        // Most interfaces in this app are objects (NigsResponse, NigsVibeCheck, etc).
+        if (Array.isArray(parsed) && parsed.length > 0 && !Array.isArray(parsed[0])) {
+             // Check if it's an array of objects which is a common failure mode when requesting a single object
+             if (typeof parsed[0] === 'object') {
+                 return parsed[0] as T;
+             }
+        }
+
+        return parsed as T;
     }
 
     // --- PASSTHROUGHS ---

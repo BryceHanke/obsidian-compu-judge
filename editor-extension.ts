@@ -34,8 +34,8 @@ export const compuJudgeHud = ViewPlugin.fromClass(class {
     }
 
     scan(view: EditorView): DecorationSet {
-        const builder = new RangeSetBuilder<Decoration>();
         const docText = view.state.doc.toString();
+        const matches: any[] = [];
         
         // 1. ADVERB SCAN (Red Underline)
         const adverbRegex = /\b(\w+ly)\b/gi;
@@ -45,7 +45,7 @@ export const compuJudgeHud = ViewPlugin.fromClass(class {
         // Reset regex state
         while ((match = adverbRegex.exec(docText)) !== null) {
             if (!whitelist.includes(match[0].toLowerCase())) {
-                builder.add(match.index, match.index + match[0].length, adverbMark);
+                matches.push(adverbMark.range(match.index, match.index + match[0].length));
             }
         }
 
@@ -54,7 +54,7 @@ export const compuJudgeHud = ViewPlugin.fromClass(class {
         filters.forEach(word => {
             const regex = new RegExp(`\\b${word}\\b`, 'gi');
             while ((match = regex.exec(docText)) !== null) {
-                builder.add(match.index, match.index + match[0].length, filterMark);
+                matches.push(filterMark.range(match.index, match.index + match[0].length));
             }
         });
 
@@ -63,11 +63,11 @@ export const compuJudgeHud = ViewPlugin.fromClass(class {
         weak.forEach(word => {
             const regex = new RegExp(`\\b${word}\\b`, 'gi');
             while ((match = regex.exec(docText)) !== null) {
-                builder.add(match.index, match.index + match[0].length, weakMark);
+                 matches.push(weakMark.range(match.index, match.index + match[0].length));
             }
         });
 
-        return builder.finish();
+        return Decoration.set(matches, true);
     }
 }, {
     decorations: v => v.decorations
