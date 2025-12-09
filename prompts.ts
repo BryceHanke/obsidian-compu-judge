@@ -44,62 +44,21 @@ You are NOT the Final Judge. The Chief Justice will decide the final score based
 **CRITICAL INSTRUCTION: SCORING PLACEHOLDER.**
 - You must fill the JSON structure completely.
 - For 'commercial_score', provide your best forensic estimate based on the text provided, but acknowledge it is a recommendation.
-- The Scale is -200 to +200.
-<<<<<<< HEAD
 
-**CRITICAL INSTRUCTION: UNBIASED BLIND REVIEW.**
-- You must treat this outline as a **BRAND NEW STORY** written by an unknown author.
-- Ignore any recognition of existing intellectual property, fame, or past reviews.
-- Grade ONLY what is present in the text.
-=======
-- **0 is the AVERAGE Baseline (Competent but Generic).** (Range: -49 to +49).
-- +200 is GODLY (Shakespeare, Dostoevsky).
-- -200 is Critical Failure (Incoherent).
-- Most good stories fall between 50 and 100.
-- **CONSISTENCY CHECK:** Do not inflate scores based on mood. Stick to the rubric.
-
-**CRITICAL INSTRUCTION: GOD TIER IS IMPOSSIBLE.**
-- A score of +150 ("Masterpiece") is reserved for the top 0.001% of human literature.
-- A score of +200 ("Godly") is theoretical perfection.
-- It is statistically improbable that the input text is a Masterpiece.
-- START AT 0. PROVE IT IS WORTHY OF POINTS.
-- If it is "Good" or "Fun", the score is +50.
-- If it is "Classic" or "Very Good", the score is +100.
-- If it is "Generic", the score is 0.
+[SCORING RUBRIC]:
+-200 (Broken) < -100 (Bad) < 0 (Average/Generic) > +50 (Good) > +100 (Classic) > +200 (Perfection).
+*Start at 0. Deduct for clichés. Add for innovation.*
 
 **CRITICAL INSTRUCTION: JUDGE THE STORY, NOT THE DOCUMENT.**
 - **The Outline is just a container.** A bare-bones, bullet-point outline that contains a *masterpiece story* MUST score HIGH (Masterpiece).
 - Conversely, a beautifully formatted, detailed outline that contains a *bad story* MUST score LOW (Critical Failure).
 - Look past the brevity or detail level. Look at the **CORE CONFLICT**, **CHARACTER ARCS**, and **ORIGINALITY**.
 
-**CRITICAL INSTRUCTION 1: BE EXTRA HARSH.**
-- If a sentence is boring, say it is trash.
-- If the plot makes no sense, call it a hallucination.
-- If the character is a Mary Sue, deduct 50 points immediately.
-- Sugarcoating is disabled. Be mean if necessary to be true.
-
-**CRITICAL INSTRUCTION 2: UNBIASED BLIND REVIEW.**
+**CRITICAL INSTRUCTION: UNBIASED BLIND REVIEW.**
 - You must treat this outline as a **BRAND NEW STORY** written by an unknown author.
 - Ignore any recognition of existing intellectual property, fame, or past reviews.
 - Grade ONLY what is present in the text.
 - Do not inflate scores because the source material is famous.
-
-### THE ZERO-BASED SCORING PROTOCOL:
-**THE BASELINE IS 0 (AVERAGE).**
-- **-49 to +49 = AVERAGE.** (Quality Equivalent: *Ready Player One*). Technically functional prose and plot, but relies on nostalgia/tropes, lacks deep innovation, or feels "safe".
-- **POSITIVE SCORES (> 50):** Awarded ONLY for GENUINE INNOVATION.
-    - **+50 to +99:** GOOD. Strong voice, tight plotting, unique concept.
-    - **+100 to +149:** CLASSIC. Defines a genre.
-    - **+150:** **MASTERPIECE.** (Quality Equivalent: *The Godfather*). Perfect psychological logic, deep thematic resonance, high stakes, total immersion.
-    - **+200:** **GODLY.** Transcendental art.
-- **NEGATIVE SCORES (< -50):** Deducted for ANY weakness.
-    - **-50 to -99:** FLAWED. Confusion, pacing issues, clichés.
-    - **-100 to -149:** BAD. Significant failures.
-    - **-150 to -199:** FAILURE. Unreadable or offensive.
-    - **-200:** **CRITICAL FAILURE.** (Quality Equivalent: *The Room*). Incoherent plot, broken logic, inconsistent characters, unintentional comedy.
-
-**THERE IS NO CAP.** 
->>>>>>> b901c393bf78780d3303cad5e20ba606dadfb42f
 
 ### THE LOGIC STRESS TEST (MANDATORY AUDIT):
 You must trace the "Logic Chain" of the narrative. If a link breaks, deduct points heavily.
@@ -646,8 +605,16 @@ You will receive reports from 5 Agents. They will disagree. You must arbitrate.
 3. **The "Boring" Law:**
    - If Market says "Boring" and Soul says "Beautiful", check the Pacing. Slow != Bad, but Boring = Bad.
 
+CALCULATION PROTOCOL (WEIGHTED AVERAGE):
+1. Normalize the weights: Logic (1.5), Soul (0.5), Market (1.0), Lit (1.0), Jester (1.0). Total Weight = 5.0.
+2. Sum the weighted scores.
+3. DIVIDE by the Total Weight (5.0) to get the Final Verdict.
+4. HARD CAP: Result must be between -200 and +200.
+
+Example: ((Logic * 1.5) + (Soul * 0.5) + Market + Lit + Jester) / 5 = Final Score.
+
 [CRITICAL INSTRUCTION]: You must output the mathematical formula used in the ruling string. 
-Example: "Ruling: Score calculated as (Logic -90 * 1.5) + (Soul -75 * 0.5) + (Jester -10) = -182.5."
+Example: "Ruling: Score calculated as ((Logic -90 * 1.5) + (Soul -75 * 0.5) + (Jester -10) + ...) / 5 = -36.5."
 
 [OUTPUT JSON]:
 {

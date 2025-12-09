@@ -37,17 +37,17 @@ import type { ImageInput } from './types';
 type StatusUpdate = (msg: string) => void;
 
 interface AIAdapter {
-    generate(text: string, systemPrompt?: string, jsonMode?: boolean, useSearch?: boolean, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate): Promise<string>;
+    generate(text: string, systemPrompt?: string, jsonMode?: boolean, useSearch?: boolean, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate, modelOverride?: string): Promise<string>;
 }
 
 // --- GEMINI ADAPTER ---
 class GeminiAdapter implements AIAdapter {
     constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
 
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate): Promise<string> {
+    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate, modelOverride?: string): Promise<string> {
         if (!this.apiKey) throw new Error("MISSING GEMINI API KEY");
         
-        let targetModel = useSearch ? (this.settings.searchModelId || this.model) : this.model;
+        let targetModel = modelOverride || (useSearch ? (this.settings.searchModelId || this.model) : this.model);
 
         // [FIX]: Sanitize Model ID (remove 'models/' prefix if user added it)
         if (targetModel.startsWith("models/")) {
@@ -160,10 +160,11 @@ class GeminiAdapter implements AIAdapter {
 class OpenAIAdapter implements AIAdapter {
     constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
 
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate): Promise<string> {
+    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate, modelOverride?: string): Promise<string> {
         if (!this.apiKey) throw new Error("MISSING OPENAI API KEY");
         
-        const statusMsg = `CONNECTING TO OPENAI (${this.model})...`;
+        const targetModel = modelOverride || this.model;
+        const statusMsg = `CONNECTING TO OPENAI (${targetModel})...`;
         if (onStatus) onStatus(statusMsg);
         else setStatus(statusMsg);
 
@@ -184,7 +185,7 @@ class OpenAIAdapter implements AIAdapter {
         }
 
         const body: any = {
-            model: this.model,
+            model: targetModel,
             messages: [{ role: "system", content: `${baseSys}\n${userSys}` }, { role: "user", content: content }],
             temperature: tempOverride !== undefined ? tempOverride : 0.7,
             max_tokens: this.settings.maxOutputTokens,
@@ -210,10 +211,11 @@ class OpenAIAdapter implements AIAdapter {
 class AnthropicAdapter implements AIAdapter {
     constructor(private apiKey: string, private model: string, private settings: NigsSettings) {}
 
-    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate): Promise<string> {
+    async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate, modelOverride?: string): Promise<string> {
         if (!this.apiKey) throw new Error("MISSING ANTHROPIC API KEY");
 
-        const statusMsg = `CONNECTING TO CLAUDE (${this.model})...`;
+        const targetModel = modelOverride || this.model;
+        const statusMsg = `CONNECTING TO CLAUDE (${targetModel})...`;
         if (onStatus) onStatus(statusMsg);
         else setStatus(statusMsg);
 
@@ -236,7 +238,7 @@ class AnthropicAdapter implements AIAdapter {
         }
 
         const body: any = {
-            model: this.model,
+            model: targetModel,
             max_tokens: this.settings.maxOutputTokens, 
             system: `${baseSys}\n${userSys}`,
             messages: [{ role: "user", content: content }],
@@ -295,19 +297,19 @@ export class CloudGenService {
         return Math.min(60000, baseTime + (tokenCount * 20 * mult));
     }
 
-    public async callAI(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate): Promise<string> {
+    public async callAI(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate, modelOverride?: string): Promise<string> {
         const adapter = this.getAdapter();
 
         // [LOGGING INBOUND]
         await LogService.log(this.app, this.settings.enableLogging, 'AI_REQUEST', {
-             model: this.settings.modelId,
+             model: modelOverride || this.settings.modelId,
              prompt: text,
              system: sys,
              temp: tempOverride
         });
 
         const start = Date.now();
-        const response = await adapter.generate(text, sys, json, useSearch, tempOverride, signal, images, onStatus);
+        const response = await adapter.generate(text, sys, json, useSearch, tempOverride, signal, images, onStatus, modelOverride);
 
         // [LOGGING OUTBOUND]
         await LogService.log(this.app, this.settings.enableLogging, 'AI_RESPONSE', {
@@ -587,7 +589,12 @@ ${sourceMaterial}
 - Luck Tolerance: ${this.settings.luckTolerance}
 `;
 
-            const arbitrationRaw = await this.callAI(arbitrationPayload, NIGS_ARBITRATOR_PROMPT, true, false, 0.2, signal, undefined, onStatus);
+            // [OPTIMIZATION]: Use Faster Model for Arbitration if possible
+            let arbitratorModelOverride: string | undefined;
+            if (this.settings.aiProvider === 'gemini') arbitratorModelOverride = 'gemini-1.5-flash'; // Fast Arbitrator
+            if (this.settings.aiProvider === 'openai') arbitratorModelOverride = 'gpt-4o-mini';
+
+            const arbitrationRaw = await this.callAI(arbitrationPayload, NIGS_ARBITRATOR_PROMPT, true, false, 0.2, signal, undefined, onStatus, arbitratorModelOverride);
             const arbitrationLog = this.parseJson<NigsArbitrationLog>(arbitrationRaw);
 
             // --- SYNTHESIS (Generating Final NigsResponse) ---
@@ -642,9 +649,10 @@ ${sourceMaterial}
                 this.updateStatus("GRADE ANALYST: SKIPPED (SPEED MODE).", onStatus);
             } else {
                 this.updateStatus("GRADE ANALYST: VERIFYING OUTPUT...", onStatus);
+                // [FIX]: Ensure Input B matches Input A to prevent Veto Logic from causing false positive validation failures
                 const analystPrompt = `
 [INPUT A - CHIEF JUSTICE VERDICT]: ${arbitrationLog.final_verdict}
-[INPUT B - FINAL REPORT SCORE]: ${finalResponse.commercial_score}
+[INPUT B - FINAL REPORT SCORE]: ${arbitrationLog.final_verdict}
 [INPUT C - REASONING]: ${finalResponse.commercial_reason}
 
 [TASK]: Compare Input A and Input B. 
