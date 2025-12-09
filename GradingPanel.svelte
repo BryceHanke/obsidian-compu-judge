@@ -694,18 +694,26 @@
     async function runDeepRename() {
         if (!activeFile) return new Notice("Please open a file to rename.");
 
-        if (!confirm("RENAME CAST WARNING:\nThis will analyze the ACTIVE DOCUMENT and rename characters, places, and items based on Deep Nomenclature logic. It will REPLACE text in your file. Undo is not supported via this tool (use Ctrl+Z).\n\nProceed?")) return;
+        // [FIX]: Capture active file immediately to prevent race conditions if user switches files during await
+        const targetFile = activeFile;
+
+        if (!confirm(`RENAME CAST WARNING:\nThis will analyze ${targetFile.basename} and rename characters, places, and items based on Deep Nomenclature logic. It will REPLACE text in your file. Undo is not supported via this tool (use Ctrl+Z).\n\nProceed?`)) return;
         
-        const contextKey = "WIZARD_GLOBAL";
+        // [FIX]: Use FORGE_GLOBAL context key so the progress bar appears in the Forge tab
+        const contextKey = "FORGE_GLOBAL";
         const { pid, controller } = startLoading(contextKey, 8000, "ETYMOLOGIST: RENAMING...");
         
         try {
-            const content = await app.vault.read(activeFile);
-            const context = (wizardData?.inspirationContext) || "";
+            const content = await app.vault.read(targetFile);
+
+            // [FIX]: Enhance context with both Wizard and Forge data
+            const wizardContext = wizardData?.inspirationContext || "";
+            const forgeContext = forgeData?.archivistContext || "";
+            const combinedContext = `Global Context:\n${wizardContext}\n\nArchivist Context:\n${forgeContext}`.trim();
 
             const nameMap = await cloud.generateDeepNames(
                 content,
-                context,
+                combinedContext,
                 controller.signal,
                 (msg) => updateProcessStatus(pid, msg)
             );
@@ -735,8 +743,9 @@
             });
             
             if (updateCount > 0) {
-                await app.vault.modify(activeFile, newContent);
-                new Notice(`Renaming Complete. ${updateCount} entities updated in file.`);
+                // [FIX]: Use targetFile instead of activeFile
+                await app.vault.modify(targetFile, newContent);
+                new Notice(`Renaming Complete. ${updateCount} entities updated in ${targetFile.basename}.`);
 
                 // Also update Wizard Data if matches found
                 if (wizardData && wizardData.characters) {
@@ -749,7 +758,7 @@
 
                 // Log to Archivist
                 if (forgeData) {
-                     const renameLog = `\n[SYSTEM NOTE - RENAMED ENTITIES]:\n` +
+                     const renameLog = `\n[SYSTEM NOTE - RENAMED ENTITIES IN ${targetFile.basename}]:\n` +
                         updates.map(([oldN, newN]) => `- ${oldN} is now ${newN}`).join('\n');
                      forgeData.archivistContext = (forgeData.archivistContext || "") + renameLog;
                      await saveAll(false);

@@ -374,11 +374,21 @@
     background: transparent !important;
     border: 2px dotted #ff0000 !important; /* Red dotted outline */
     box-shadow: none !important;
+    box-sizing: border-box !important; /* Prevent expansion */
 }
 
 .critical-bar .win95-progress-fill,
 .critical-bar .score-fill {
-    display: none !important; /* Hollow - no fill */
+    /* VISIBLE FAILURE STATE instead of display: none */
+    display: block !important;
+    background: repeating-linear-gradient(
+      45deg,
+      #ff0000,
+      #ff0000 5px,
+      #fff 5px,
+      #fff 10px
+    ) !important;
+    opacity: 0.6;
 }
 
 /* Ensure text is visible and red/black indicating failure */
