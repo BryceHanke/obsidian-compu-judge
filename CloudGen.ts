@@ -834,8 +834,20 @@ Only score positive if it is innovative.
 
         const openBrace = text.indexOf('{');
         const openBracket = text.indexOf('[');
-        const closeBrace = text.lastIndexOf('}');
-        const closeBracket = text.lastIndexOf(']');
+
+        // Improved logic: Backtrack closing braces to handle trailing garbage
+        const attemptParse = (start: number, searchChar: string): any => {
+            let currentEnd = text.lastIndexOf(searchChar);
+            while (currentEnd > start) {
+                const parsed = tryParse(start, currentEnd);
+                if (parsed !== undefined) {
+                    return parsed;
+                }
+                // Move back to the previous occurrence
+                currentEnd = text.lastIndexOf(searchChar, currentEnd - 1);
+            }
+            return undefined;
+        };
 
         let parsed: any;
 
@@ -844,17 +856,17 @@ Only score positive if it is innovative.
 
         if (openBrace !== -1 && (openBracket === -1 || openBrace < openBracket)) {
             // Object appears first
-            parsed = tryParse(openBrace, closeBrace);
+            parsed = attemptParse(openBrace, '}');
             if (parsed === undefined && openBracket !== -1) {
                 // Fallback to array if object failed
-                parsed = tryParse(openBracket, closeBracket);
+                parsed = attemptParse(openBracket, ']');
             }
         } else if (openBracket !== -1) {
             // Array appears first
-            parsed = tryParse(openBracket, closeBracket);
+            parsed = attemptParse(openBracket, ']');
             if (parsed === undefined && openBrace !== -1) {
                  // Fallback to object
-                 parsed = tryParse(openBrace, closeBrace);
+                 parsed = attemptParse(openBrace, '}');
             }
         }
 
