@@ -191,11 +191,38 @@
         if (!activeFile) return;
         try {
             await app.fileManager.processFrontMatter(activeFile, (frontmatter) => {
+                // BASIC SCORING
                 frontmatter['critic_score'] = grade.score || grade.commercial_score;
                 frontmatter['critic_grade'] = grade.letter_grade || (grade.commercial_score >= 90 ? 'S' : grade.commercial_score >= 80 ? 'A' : grade.commercial_score >= 60 ? 'B' : 'C');
-                if (grade.log_line) frontmatter['critic_logline'] = grade.log_line;
-                if (grade.summary_line) frontmatter['critic_summary'] = grade.summary_line;
                 frontmatter['critic_date'] = new Date().toISOString().split('T')[0];
+
+                // QUICK SCAN DATA
+                if (grade.summary_line) frontmatter['critic_summary'] = grade.summary_line;
+                if (grade.synopsis) frontmatter['critic_synopsis'] = grade.synopsis;
+                if (grade.key_improvement) frontmatter['critic_key_improvement'] = grade.key_improvement;
+                if (grade.outline_summary) frontmatter['critic_outline_summary'] = grade.outline_summary;
+
+                // DEEP SCAN / TRIBUNAL DATA
+                if (grade.commercial_score !== undefined) {
+                    if (grade.log_line) frontmatter['critic_logline'] = grade.log_line;
+                    if (grade.commercial_reason) frontmatter['critic_commercial_reason'] = grade.commercial_reason;
+                    if (grade.niche_score !== undefined) frontmatter['critic_niche_score'] = grade.niche_score;
+                    if (grade.niche_reason) frontmatter['critic_niche_reason'] = grade.niche_reason;
+                    if (grade.cohesion_score !== undefined) frontmatter['critic_cohesion_score'] = grade.cohesion_score;
+                    if (grade.cohesion_reason) frontmatter['critic_cohesion_reason'] = grade.cohesion_reason;
+                    if (grade.content_warning) frontmatter['critic_content_warning'] = grade.content_warning;
+                    if (grade.third_act_score !== undefined) frontmatter['critic_third_act_score'] = grade.third_act_score;
+                    if (grade.novelty_score !== undefined) frontmatter['critic_novelty_score'] = grade.novelty_score;
+
+                    // COMPLEX OBJECTS
+                    if (grade.sanderson_metrics) frontmatter['critic_sanderson_metrics'] = grade.sanderson_metrics;
+                    if (grade.detailed_metrics) frontmatter['critic_detailed_metrics'] = grade.detailed_metrics;
+                    if (grade.tribunal_breakdown) frontmatter['critic_tribunal_breakdown'] = grade.tribunal_breakdown;
+                    if (grade.arbitration_log) frontmatter['critic_arbitration_log'] = grade.arbitration_log;
+                    if (grade.structure_map) frontmatter['critic_structure_map'] = grade.structure_map;
+                    if (grade.tension_arc) frontmatter['critic_tension_arc'] = grade.tension_arc;
+                    if (grade.quality_arc) frontmatter['critic_quality_arc'] = grade.quality_arc;
+                }
             });
         } catch (e) {
             console.error("Failed to update frontmatter", e);
