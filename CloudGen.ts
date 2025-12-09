@@ -46,7 +46,13 @@ class GeminiAdapter implements AIAdapter {
     async generate(text: string, sys?: string, json = true, useSearch = false, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate): Promise<string> {
         if (!this.apiKey) throw new Error("MISSING GEMINI API KEY");
         
-        const targetModel = useSearch ? (this.settings.searchModelId || this.model) : this.model;
+        let targetModel = useSearch ? (this.settings.searchModelId || this.model) : this.model;
+
+        // [FIX]: Sanitize Model ID (remove 'models/' prefix if user added it)
+        if (targetModel.startsWith("models/")) {
+            targetModel = targetModel.replace("models/", "");
+        }
+
         const temp = tempOverride !== undefined ? tempOverride : 0.7; 
 
         const parts: any[] = [{ text }];
@@ -110,7 +116,15 @@ class GeminiAdapter implements AIAdapter {
             signal
         });
 
-        if (!res.ok) throw new Error(`GEMINI ERROR ${res.status}: ${res.statusText}`);
+        if (!res.ok) {
+            let errorBody = "";
+            try { errorBody = await res.text(); } catch (e) { /* ignore */ }
+
+            if (res.status === 404) {
+                 throw new Error(`GEMINI ERROR 404: Model '${targetModel}' not found. Check Settings > AI Identity > Model ID. Ensure you are using a valid model ID (e.g., 'gemini-2.0-flash').`);
+            }
+            throw new Error(`GEMINI ERROR ${res.status}: ${res.statusText} \nDetails: ${errorBody.substring(0, 200)}...`);
+        }
 
         const data = await res.json();
         const candidate = data.candidates?.[0];
