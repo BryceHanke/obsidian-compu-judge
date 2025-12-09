@@ -100,11 +100,15 @@ export class ReportGen {
         new Notice(`Report saved: ${filename}`);
     }
 
-    private static getVerdict(score: number): string {
-        if (score >= 90) return "MASTERPIECE";
-        if (score >= 80) return "EXCELLENT";
-        if (score >= 60) return "COMPETENT";
-        if (score >= 40) return "FLAWED";
-        return "BROKEN";
+    private static getVerdict(val: number): string {
+        if (val >= 200) return "GODLY";
+        if (val >= 150) return "MASTERPIECE";
+        if (val >= 100) return "CLASSIC";
+        if (val >= 50) return "GOOD";
+        if (val > -50) return "AVERAGE"; // -49 to 49
+        if (val > -100) return "FLAWED"; // -50 to -99
+        if (val > -150) return "BAD"; // -100 to -149
+        if (val > -200) return "FAILURE"; // -150 to -199
+        return "CRITICAL FAILURE"; // <= -200
     }
 }
