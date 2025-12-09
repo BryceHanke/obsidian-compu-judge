@@ -365,7 +365,7 @@
                 char,
                 context,
                 controller.signal,
-                (msg) => updateProcessStatus(pid, msg)
+                (msg, progress) => updateProcessStatus(pid, msg, progress)
             );
             new Notice(`Metrics Updated for ${char.name}`);
             return updated;
@@ -384,7 +384,7 @@
                 beat,
                 context,
                 controller.signal,
-                (msg) => updateProcessStatus(pid, msg)
+                (msg, progress) => updateProcessStatus(pid, msg, progress)
             );
             new Notice(`Tension Calculated for ${beat.title}`);
             return updated;
@@ -405,7 +405,7 @@
         const { pid, controller } = startLoading(contextKey, estTime, "CALCULATING METRICS...");
         try { 
             const nlpStats = NlpService.analyze(content);
-            updateProcessStatus(pid, "SYNTHESIZING DEEP SCAN...");
+            updateProcessStatus(pid, "SYNTHESIZING DEEP SCAN...", 10);
             const context = { inspiration: wizardData.inspirationContext, target: wizardData.targetScore };
 
             const result = await cloud.gradeContent(
@@ -414,7 +414,7 @@
                 nlpStats,
                 undefined, // wizardState
                 controller.signal,
-                (msg) => updateProcessStatus(pid, msg)
+                (msg, progress) => updateProcessStatus(pid, msg, progress)
             );
 
             if (activeFile?.path !== file.path) return;
@@ -442,7 +442,7 @@
             const aiGrade = await cloud.getLightGrade(
                 content,
                 controller.signal,
-                (msg) => updateProcessStatus(pid, msg)
+                (msg, progress) => updateProcessStatus(pid, msg, progress)
             );
             if (activeFile?.path !== file.path) return;
             const summary = `${aiGrade.summary_line}`;
@@ -466,7 +466,7 @@
             const meta = await cloud.getMetaAnalysis(
                 content,
                 controller.signal,
-                (msg) => updateProcessStatus(pid, msg)
+                (msg, progress) => updateProcessStatus(pid, msg, progress)
             );
             if (activeFile.path !== path) return;
             projectData.lastMetaResult = meta;
@@ -487,7 +487,7 @@
                 fieldPath,
                 wizardData,
                 controller.signal,
-                (msg) => updateProcessStatus(pid, msg)
+                (msg, progress) => updateProcessStatus(pid, msg, progress)
             );
 
             const parts = fieldPath.split('.');
@@ -515,7 +515,7 @@
             const synopsis = await cloud.wizardCompose(
                 wizardData,
                 controller.signal,
-                (msg) => updateProcessStatus(pid, msg)
+                (msg, progress) => updateProcessStatus(pid, msg, progress)
             );
             const outputName = (wizardData.concept ? wizardData.concept.substring(0, 20).replace(/[^a-z0-9]/gi, '_') : "Untitled") + "_FULL_OUTLINE.md";
             await safeCreateFile(outputName, synopsis);
@@ -543,7 +543,7 @@
                 concept,
                 context,
                 controller.signal,
-                (msg) => updateProcessStatus(pid, msg)
+                (msg, progress) => updateProcessStatus(pid, msg, progress)
             );
 
             wizardData = {
@@ -587,7 +587,7 @@
                 customTitle,
                 undefined, // targetQuality
                 controller.signal,
-                (msg) => updateProcessStatus(pid, msg)
+                (msg, progress) => updateProcessStatus(pid, msg, progress)
             );
             
             // [UPDATED] Filename Logic based on User Request
@@ -626,7 +626,7 @@
                 projectData.lastAiResult || undefined, 
                 projectData.lastLightResult || undefined,
                 controller.signal,
-                (msg) => updateProcessStatus(pid, msg)
+                (msg, progress) => updateProcessStatus(pid, msg, progress)
             );
             
             if (activeFile.path !== path) return;
@@ -680,7 +680,7 @@
                     useSearch,
                     controller.signal,
                     images,
-                    (msg) => updateProcessStatus(pid, msg)
+                    (msg, progress) => updateProcessStatus(pid, msg, progress)
                 );
 
                 await safeCreateFile(outputFilename, outlineText);
@@ -707,7 +707,7 @@
                 content,
                 forgeData.lastActionPlan,
                 controller.signal,
-                (msg) => updateProcessStatus(pid, msg)
+                (msg, progress) => updateProcessStatus(pid, msg, progress)
             );
             const outputName = activeFile.basename + "_REPAIRED.md";
             await safeCreateFile(outputName, repairedText);
@@ -743,7 +743,7 @@
                 content,
                 combinedContext,
                 controller.signal,
-                (msg) => updateProcessStatus(pid, msg)
+                (msg, progress) => updateProcessStatus(pid, msg, progress)
             );
             
             // Apply updates to File Content

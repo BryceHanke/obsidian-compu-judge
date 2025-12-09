@@ -17,24 +17,9 @@
     
     // Use the process status directly, or fallback to label
     let currentStatus = $derived(process?.status || "PROCESSING...");
-    let label = $derived(process?.label || "PROCESSING...");
+    // let label = $derived(process?.label || "PROCESSING..."); // Unused
     let estimatedDuration = $derived(process?.estimatedDuration || 5000);
-
-    // Fallback thoughts if status isn't updating (legacy behavior simulation if needed, but we prefer dynamic)
-    const thoughts = [
-        "PARSING NARRATIVE STRUCTURE...",
-        "QUERYING TROPE DATABASE...",
-        "ANALYZING CHARACTER VECTORS...",
-        "CALCULATING PACING ENTROPY...",
-        "DETECTING PLOT HOLES...",
-        "SYNTHESIZING FEEDBACK...",
-        "COMPILING FINAL REPORT...",
-        "CHECKING THEMATIC CONSISTENCY...",
-        "OPTIMIZING NARRATIVE ARC...",
-        "CROSS-REFERENCING CAST LIST...",
-        "CALCULATING INCITING INCIDENT...",
-        "EVALUATING MIDPOINT REVERSAL..."
-    ];
+    let realProgress = $derived(process?.progress);
 
     onMount(() => {
         if (!process) return;
@@ -43,32 +28,45 @@
         const intervalTime = 1000 / fps;
         // Re-calculate steps based on when it started
         const elapsed = Date.now() - process.startTime;
-        const remainingTime = Math.max(1000, estimatedDuration - elapsed);
 
         const totalSteps = estimatedDuration / intervalTime;
         let currentStep = elapsed / intervalTime;
-        let lastThoughtSwitch = 0;
 
-        const seconds = Math.ceil(remainingTime / 1000);
-        timeDisplay = `EST: ~${seconds}s`;
+        // Force initial update
+        if (realProgress !== undefined) {
+             progress = realProgress;
+        }
 
         interval = setInterval(() => {
             currentStep++;
-            const t = currentStep / totalSteps;
-            // Asymptotic approach to 95%
-            const targetProgress = 95 * (1 - Math.exp(-3 * t)); 
             
-            if (targetProgress > progress) {
-                 progress = targetProgress;
+            // If we have real progress from the backend, use it
+            if (realProgress !== undefined && realProgress > 0) {
+                 // Smoothly interpolate if needed, but for now just snap or move towards it
+                 // Let's just set it for accuracy as requested
+                 progress = realProgress;
+            } else {
+                // Fallback: Asymptotic approach to 95%
+                const t = currentStep / totalSteps;
+                const targetProgress = 95 * (1 - Math.exp(-3 * t));
+                if (targetProgress > progress) {
+                    progress = targetProgress;
+                }
             }
-            if (progress > 99) progress = 99;
 
+            if (progress > 100) progress = 100;
+
+            // Time display
+            // If we have real progress, maybe we can estimate remaining time?
+            // For now, keep the fake countdown or switch to percentage
             const remaining = Math.max(0, Math.ceil((estimatedDuration - (currentStep * intervalTime)) / 1000));
-            timeDisplay = remaining > 0 ? `EST: ~${remaining}s` : `FINALIZING...`;
 
-            // Note: We rely on the parent to update the status text now via the store
-            // But if status equals label (no update yet), we can cycle thoughts
-            // However, the user asked for "exactly what step", so we trust the store updates.
+            if (progress >= 100) {
+                 timeDisplay = "DONE";
+            } else {
+                 // The user requested "percentage completeness"
+                 timeDisplay = `${Math.round(progress)}%`;
+            }
 
         }, intervalTime);
 
@@ -90,6 +88,7 @@
 <div class="win95-loader-row">
     <div class="win95-loader">
         <div class="loader-header">
+            <!-- Small text above describing the step (currentStatus) -->
             <div class="loader-label">> {currentStatus}</div>
             <div class="loader-time">{timeDisplay}</div>
         </div>
@@ -150,14 +149,9 @@
         overflow: hidden; 
         text-overflow: ellipsis;
         flex: 1;
-        animation: blink-text 2s infinite;
+        /* Removed blinking animation to make it easier to read as "small text" */
     }
     
-    @keyframes blink-text {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-
     .loader-time {
         font-family: 'Courier New', monospace;
         font-size: 11px;
@@ -191,6 +185,6 @@
             var(--cj-light) 12px,
             var(--cj-light) 14px
         );
-        transition: width 0.1s linear;
+        transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1); /* Smooth transition */
     }
 </style>

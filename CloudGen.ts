@@ -34,7 +34,7 @@ const FORENSIC_CALIBRATION = `
 import type { ImageInput } from './types';
 
 // Callback for status updates
-type StatusUpdate = (msg: string) => void;
+type StatusUpdate = (msg: string, progress?: number) => void;
 
 interface AIAdapter {
     generate(text: string, systemPrompt?: string, jsonMode?: boolean, useSearch?: boolean, tempOverride?: number, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate, modelOverride?: string): Promise<string>;
@@ -320,8 +320,8 @@ export class CloudGenService {
         return response;
     }
 
-    private updateStatus(msg: string, onStatus?: StatusUpdate) {
-        if (onStatus) onStatus(msg);
+    private updateStatus(msg: string, onStatus?: StatusUpdate, progress?: number) {
+        if (onStatus) onStatus(msg, progress);
         else setStatus(msg);
     }
 
@@ -342,7 +342,7 @@ export class CloudGenService {
 
     // --- AUTO-FILL WIZARD (Architect Mode) ---
     autoFillWizard = async (concept: string, currentContext: string, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<Partial<NigsWizardState>> => {
-        this.updateStatus("ARCHITECTING STORY BIBLE...", onStatus);
+        this.updateStatus("ARCHITECTING STORY BIBLE...", onStatus, 10);
         
         const nameRules = this.getNameProtocol();
 
@@ -359,13 +359,17 @@ export class CloudGenService {
 
         const temp = this.getTemp(this.settings.tempWizard);
         const res = await this.callAI(prompt, NIGS_AUTOFILL_PROMPT, true, false, temp, signal, undefined, onStatus);
-        return this.parseJson<Partial<NigsWizardState>>(res);
+
+        this.updateStatus("PARSING RESULT...", onStatus, 90);
+        const result = this.parseJson<Partial<NigsWizardState>>(res);
+        this.updateStatus("DONE", onStatus, 100);
+        return result;
     }
 
     // --- DRIVE SYNTHESIS (Alchemy Mode) ---
     // [UPDATED] Uses full concatenated context & [NEW] Thinking Agent Loop
     synthesizeDrives = async (drives: DriveBlock[], customTitle?: string, targetQuality?: number, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<string> => {
-        this.updateStatus("FUSING NARRATIVE DRIVES...", onStatus);
+        this.updateStatus("FUSING NARRATIVE DRIVES...", onStatus, 5);
         
         // [SAFETY]: Explicitly concat full content without trimming
         let driveContext = "";
@@ -405,17 +409,24 @@ export class CloudGenService {
 
         do {
             attempts++;
-            if (attempts > 1) this.updateStatus(`SYNTH AGENT: REFINING FUSION (ATTEMPT ${attempts})...`, onStatus);
+            const progressBase = 10;
+            const progressStep = Math.floor(80 / maxAttempts);
+            const currentProgress = progressBase + ((attempts - 1) * progressStep);
+
+            if (attempts > 1) this.updateStatus(`SYNTH AGENT: REFINING FUSION (ATTEMPT ${attempts})...`, onStatus, currentProgress);
 
             const currentPrompt = previousCritique ? `${finalPrompt}\n\n[PREVIOUS CRITIQUE - FIX THIS]:\n${previousCritique}` : finalPrompt;
 
             draft = await this.callAI(currentPrompt, NIGS_DRIVE_SYNTHESIS_PROMPT, false, false, temp, signal, undefined, onStatus);
 
             // If Agent disabled, accept first draft
-            if (!this.settings.synthAgentEnabled) return draft;
+            if (!this.settings.synthAgentEnabled) {
+                this.updateStatus("DONE", onStatus, 100);
+                return draft;
+            }
 
             // [AGENT REVIEW]
-            this.updateStatus("STRUCTURAL ARCHITECT: REVIEWING FUSION...", onStatus);
+            this.updateStatus("STRUCTURAL ARCHITECT: REVIEWING FUSION...", onStatus, currentProgress + 10);
             const reviewPrompt = `
 [TASK]: Review this generated narrative fusion.
 [CRITERIA]:
@@ -434,17 +445,18 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 
             if (review.verdict === "PASS") {
                 isApproved = true;
-                this.updateStatus("STRUCTURAL ARCHITECT: APPROVED.", onStatus);
+                this.updateStatus("STRUCTURAL ARCHITECT: APPROVED.", onStatus, 95);
             } else {
                 console.warn(`SYNTH AGENT REJECTED: ${review.reason}`);
                 previousCritique = review.reason;
                 if (attempts >= maxAttempts) {
-                    this.updateStatus("MAX RETRIES REACHED. RETURNING BEST EFFORT.", onStatus);
+                    this.updateStatus("MAX RETRIES REACHED. RETURNING BEST EFFORT.", onStatus, 95);
                 }
             }
 
         } while (!isApproved && attempts < maxAttempts);
 
+        this.updateStatus("DONE", onStatus, 100);
         return draft;
     }
 
@@ -456,7 +468,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
             return this.gradeContentLegacy(text, context, nlpStats, signal, onStatus);
         }
 
-        this.updateStatus("CONVENING THE TRIBUNAL...", onStatus);
+        this.updateStatus("CONVENING THE TRIBUNAL...", onStatus, 5);
 
         const sourceMaterial = context?.inspiration ? `\n[SOURCE MATERIAL]: "${context.inspiration}"\n` : "";
         let statsBlock = "";
@@ -492,7 +504,11 @@ ${sourceMaterial}
         // [UPDATED] Tribunal Loop with Soul, Lit, Jester, Logic, Market
         do {
             attempts++;
-            this.updateStatus(attempts > 1 ? `RE-CONVENING TRIBUNAL (ATTEMPT ${attempts})...` : "STARTING TRIBUNAL PROCESS...", onStatus);
+            const progressBase = 10;
+            const progressChunk = 80 / maxAttempts; // e.g. 40% per attempt if 2 attempts
+            const currentBase = progressBase + ((attempts - 1) * progressChunk);
+
+            this.updateStatus(attempts > 1 ? `RE-CONVENING TRIBUNAL (ATTEMPT ${attempts})...` : "STARTING TRIBUNAL PROCESS...", onStatus, currentBase);
 
             if (signal?.aborted) throw new Error("Cancelled by user.");
 
@@ -500,7 +516,7 @@ ${sourceMaterial}
                 ? `${baseInputPayload}\n\n[PREVIOUS CONSENSUS / FEEDBACK]:\n${previousConsensus}`
                 : baseInputPayload;
 
-            this.updateStatus("CONVENING AGENTS: MARKET, LOGIC, SOUL, LIT, JESTER...", onStatus);
+            this.updateStatus("CONVENING AGENTS: MARKET, LOGIC, SOUL, LIT, JESTER...", onStatus, currentBase + 5);
 
             // Temps
             const soulTemp = this.getTemp(0.9); // High creativity
@@ -520,27 +536,27 @@ ${sourceMaterial}
 
             if (this.settings.tribunalConfiguration === 'Iterative') {
                 // SEQUENTIAL CHAIN
-                this.updateStatus("AGENT 1/5: LOGIC ENGINE...", onStatus);
+                this.updateStatus("AGENT 1/5: LOGIC ENGINE...", onStatus, currentBase + 10);
                 const logicRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.LOGIC, true, false, logicTemp, signal, undefined, onStatus);
                 logicReport = this.parseJson<NigsFactReport>(logicRaw);
 
-                this.updateStatus("AGENT 2/5: MARKET ANALYST...", onStatus);
+                this.updateStatus("AGENT 2/5: MARKET ANALYST...", onStatus, currentBase + 15);
                 const marketRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.MARKET, true, false, marketTemp, signal, undefined, onStatus);
                 marketReport = this.parseJson<any>(marketRaw);
 
-                this.updateStatus("AGENT 3/5: THE SOUL...", onStatus);
+                this.updateStatus("AGENT 3/5: THE SOUL...", onStatus, currentBase + 20);
                 const soulRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.SOUL, true, false, soulTemp, signal, undefined, onStatus);
                 soulReport = this.parseJson<NigsVibeCheck>(soulRaw);
 
-                this.updateStatus("AGENT 4/5: LITERARY CRITIC...", onStatus);
+                this.updateStatus("AGENT 4/5: LITERARY CRITIC...", onStatus, currentBase + 25);
                 const litRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.LIT, true, false, litTemp, signal, undefined, onStatus);
                 litReport = this.parseJson<any>(litRaw);
 
-                this.updateStatus("AGENT 5/5: THE JESTER...", onStatus);
+                this.updateStatus("AGENT 5/5: THE JESTER...", onStatus, currentBase + 30);
                 const jesterRaw = await this.callAI(currentInputPayload, NIGS_TRIBUNAL.JESTER, true, false, jesterTemp, signal, undefined, onStatus);
                 jesterReport = this.parseJson<any>(jesterRaw);
 
-                this.updateStatus("FORENSIC SYSTEM SCAN...", onStatus);
+                this.updateStatus("FORENSIC SYSTEM SCAN...", onStatus, currentBase + 35);
                 forensicRaw = await this.callAI(currentInputPayload, NIGS_SYSTEM_PROMPT, true, false, logicTemp, signal, undefined, onStatus);
 
             } else {
@@ -572,7 +588,7 @@ ${sourceMaterial}
             }
 
             // --- CHIEF JUSTICE ARBITRATION ---
-            this.updateStatus("CHIEF JUSTICE: DELIBERATING...", onStatus);
+            this.updateStatus("CHIEF JUSTICE: DELIBERATING...", onStatus, currentBase + 40);
 
             const arbitrationPayload = `
 [TRIBUNAL REPORTS]:
@@ -646,9 +662,9 @@ ${sourceMaterial}
             // [OPTIMIZATION]: Skip Analyst loop in Speed mode to save time/tokens
             if (isSpeedMode) {
                 isApproved = true;
-                this.updateStatus("GRADE ANALYST: SKIPPED (SPEED MODE).", onStatus);
+                this.updateStatus("GRADE ANALYST: SKIPPED (SPEED MODE).", onStatus, currentBase + 50);
             } else {
-                this.updateStatus("GRADE ANALYST: VERIFYING OUTPUT...", onStatus);
+                this.updateStatus("GRADE ANALYST: VERIFYING OUTPUT...", onStatus, currentBase + 50);
                 // [FIX]: Ensure Input B matches Input A to prevent Veto Logic from causing false positive validation failures
                 const analystPrompt = `
 [INPUT A - CHIEF JUSTICE VERDICT]: ${arbitrationLog.final_verdict}
@@ -666,7 +682,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 
                 if (analystRes.verdict === "PASS") {
                     isApproved = true;
-                    this.updateStatus("GRADE ANALYST: APPROVED.", onStatus);
+                    this.updateStatus("GRADE ANALYST: APPROVED.", onStatus, currentBase + 60);
                 } else {
                     console.warn(`GRADE ANALYST REJECTED (Attempt ${attempts}): ${analystRes.reason}`);
                     this.updateStatus(`ANALYST REJECTED: ${analystRes.reason}. RETRYING...`, onStatus);
@@ -678,6 +694,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 
         if (!finalResponse) throw new Error("Grading failed to produce response.");
 
+        this.updateStatus("FINALIZING...", onStatus, 100);
         return finalResponse;
     }
 
@@ -708,7 +725,7 @@ Only score positive if it is innovative.
 
         const wrapped = `\n=== NARRATIVE TO ANALYZE ===\n${text}\n=== END ===\n${statsBlock}${contextBlock}\n${instructionBlock}`;
         
-        this.updateStatus(`INITIALIZING ${passes} FORENSIC CORES...`, onStatus);
+        this.updateStatus(`INITIALIZING ${passes} FORENSIC CORES...`, onStatus, 5);
         
         // Enforce STRICT temperature for Grading
         const temp = this.getTemp(this.settings.tempCritic, true);
@@ -719,13 +736,18 @@ Only score positive if it is innovative.
                 .catch(e => { console.error(`Core ${i+1} Failed:`, e); return null; });
         });
 
+        // This is a rough progress tracker for parallel promises
+        // Since we can't update per promise easily here without wrapping, we just jump to 90
         const results = (await Promise.all(promises)).filter((r): r is NigsResponse => r !== null);
+
         if (results.length === 0) throw new Error("ALL CORES FAILED.");
         
-        this.updateStatus("SYNTHESIZING FORENSIC REPORT...", onStatus);
+        this.updateStatus("SYNTHESIZING FORENSIC REPORT...", onStatus, 90);
         
         const finalRes = this.averageResults(results);
         if (results[0].thought_process) finalRes.thought_process = results[0].thought_process;
+
+        this.updateStatus("DONE", onStatus, 100);
         return finalRes;
     }
 
@@ -855,7 +877,7 @@ Only score positive if it is innovative.
 
     // --- PASSTHROUGHS ---
     generateOutline = async (text: string, useSearch = false, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate) => {
-        this.updateStatus("INITIALIZING ARCHIVIST PROTOCOL...", onStatus);
+        this.updateStatus("INITIALIZING ARCHIVIST PROTOCOL...", onStatus, 5);
         const prompt = this.settings.customOutlinePrompt ? this.settings.customOutlinePrompt : NIGS_OUTLINE_PROMPT;
         const temp = this.getTemp(this.settings.tempArchitect);
 
@@ -873,7 +895,8 @@ Only score positive if it is innovative.
                 const end = start + batchSize;
                 const batchImages = images.slice(start, end);
 
-                this.updateStatus(`ARCHIVIST: PROCESSING IMAGE BATCH ${i + 1}/${batches}...`, onStatus);
+                const progress = 5 + Math.round((i / batches) * 90);
+                this.updateStatus(`ARCHIVIST: PROCESSING IMAGE BATCH ${i + 1}/${batches}...`, onStatus, progress);
 
                 // For the first batch, use the original text.
                 // For subsequent batches, we might want to remind the AI of the instructions but context is key.
@@ -882,15 +905,18 @@ Only score positive if it is innovative.
                 const result = await this.callAI(batchText, prompt, false, useSearch, temp, signal, batchImages, onStatus);
                 combinedResult += `\n\n=== BATCH ${i + 1} OUTPUT ===\n${result}`;
             }
+            this.updateStatus("DONE", onStatus, 100);
             return combinedResult;
         }
 
-        return await this.callAI(text, prompt, false, useSearch, temp, signal, images, onStatus);
+        const res = await this.callAI(text, prompt, false, useSearch, temp, signal, images, onStatus);
+        this.updateStatus("DONE", onStatus, 100);
+        return res;
     }
 
     // [UPDATED] Pass Scan Telemetry to Action Plan
     getActionPlan = async (text: string, focus?: string, deepScan?: NigsResponse, quickScan?: NigsLightGrade, signal?: AbortSignal, onStatus?: StatusUpdate) => {
-        this.updateStatus("ANALYZING WEAKNESSES...", onStatus);
+        this.updateStatus("ANALYZING WEAKNESSES...", onStatus, 10);
         
         let diagnosticBlock = "";
         let specificComplaints = "";
@@ -946,32 +972,41 @@ Only score positive if it is innovative.
         if (focus && focus.trim().length > 0) inputBlock = `USER DIRECTIVE: Focus on "${focus}".\n\n${inputBlock}`;
         
         const temp = this.getTemp(this.settings.tempArchitect);
-        return this.parseJson<NigsActionPlan>(await this.callAI(inputBlock, NIGS_FORGE_PROMPT, true, false, temp, signal, undefined, onStatus));
+        const res = await this.callAI(inputBlock, NIGS_FORGE_PROMPT, true, false, temp, signal, undefined, onStatus);
+
+        this.updateStatus("DONE", onStatus, 100);
+        return this.parseJson<NigsActionPlan>(res);
     }
 
     autoRepair = async (text: string, plan: NigsActionPlan, signal?: AbortSignal, onStatus?: StatusUpdate) => {
-        this.updateStatus("INITIATING REPAIR...", onStatus);
+        this.updateStatus("INITIATING REPAIR...", onStatus, 10);
         const prompt = this.settings.customRepairPrompt ? this.settings.customRepairPrompt : NIGS_AUTO_REPAIR_PROMPT;
         // Enforce STRICT temperature for Repair
         const temp = this.getTemp(this.settings.tempRepair, true);
-        return await this.callAI(JSON.stringify(plan) + "\n\n" + text, prompt, false, false, temp, signal, undefined, onStatus);
+        const res = await this.callAI(JSON.stringify(plan) + "\n\n" + text, prompt, false, false, temp, signal, undefined, onStatus);
+        this.updateStatus("DONE", onStatus, 100);
+        return res;
     }
     
     getMetaAnalysis = async (text: string, signal?: AbortSignal, onStatus?: StatusUpdate) => {
-        this.updateStatus("RUNNING DIAGNOSTICS...", onStatus);
+        this.updateStatus("RUNNING DIAGNOSTICS...", onStatus, 10);
         const temp = this.getTemp(this.settings.tempCritic, true);
-        return this.parseJson<NigsMetaResponse>(await this.callAI(text, NIGS_META_PROMPT, true, false, temp, signal, undefined, onStatus));
+        const res = await this.callAI(text, NIGS_META_PROMPT, true, false, temp, signal, undefined, onStatus);
+        this.updateStatus("DONE", onStatus, 100);
+        return this.parseJson<NigsMetaResponse>(res);
     }
     
     getLightGrade = async (text: string, signal?: AbortSignal, onStatus?: StatusUpdate) => {
-        this.updateStatus("PERFORMING QUICK SCAN...", onStatus);
+        this.updateStatus("PERFORMING QUICK SCAN...", onStatus, 10);
         const temp = this.getTemp(this.settings.tempCritic, true);
-        return this.parseJson<NigsLightGrade>(await this.callAI(text, NIGS_QUICK_SCAN_PROMPT, true, false, temp, signal, undefined, onStatus));
+        const res = await this.callAI(text, NIGS_QUICK_SCAN_PROMPT, true, false, temp, signal, undefined, onStatus);
+        this.updateStatus("DONE", onStatus, 100);
+        return this.parseJson<NigsLightGrade>(res);
     }
     
     // --- CHARACTER AUTO-GRADER ---
     gradeCharacter = async (char: CharacterBlock, context: string, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<CharacterBlock> => {
-        this.updateStatus(`ANALYZING ${char.name.toUpperCase()}...`, onStatus);
+        this.updateStatus(`ANALYZING ${char.name.toUpperCase()}...`, onStatus, 10);
         const prompt = `
         [TASK]: Calibrate Character Scales.
         [UPLOADED SOURCE]: ${context}...
@@ -987,6 +1022,7 @@ Only score positive if it is innovative.
         const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp, signal, undefined, onStatus);
         const data = this.parseJson<any>(res);
         
+        this.updateStatus("DONE", onStatus, 100);
         return {
             ...char,
             competence: data.competence ?? char.competence,
@@ -999,7 +1035,7 @@ Only score positive if it is innovative.
 
     // --- STRUCTURE AUTO-GRADER ---
     gradeStructureBeat = async (beat: StoryBlock, context: string, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<StoryBlock> => {
-        this.updateStatus(`ANALYZING STORY BEAT...`, onStatus);
+        this.updateStatus(`ANALYZING STORY BEAT...`, onStatus, 10);
         const prompt = `
         Analyze this story beat. 
         1. CLASSIFY: Determine structural role.
@@ -1015,6 +1051,7 @@ Only score positive if it is innovative.
         const res = await this.callAI(prompt, NIGS_WIZARD_ASSIST_PROMPT, true, false, temp, signal, undefined, onStatus);
         const data = this.parseJson<{ tension: number, type: any }>(res);
         
+        this.updateStatus("DONE", onStatus, 100);
         return {
             ...beat,
             tension: data.tension ?? beat.tension,
@@ -1024,7 +1061,7 @@ Only score positive if it is innovative.
 
     // --- ASSIST WIZARD (Logic Hardened + Name Protocol) & [NEW] Thinking Agent ---
     assistWizard = async (field: string, state: NigsWizardState, signal?: AbortSignal, onStatus?: StatusUpdate) => {
-        this.updateStatus("CONSULTING NARRATIVE DATABASE...", onStatus);
+        this.updateStatus("CONSULTING NARRATIVE DATABASE...", onStatus, 10);
         const sourceMaterial = state.inspirationContext || "No source file loaded.";
         
         // [REFACTOR] Targeted Context Injection
@@ -1138,7 +1175,11 @@ Only score positive if it is innovative.
 
         do {
             attempts++;
-            if (attempts > 1) this.updateStatus(`CREATIVE CONSULTANT: REFINING IDEA (ATTEMPT ${attempts})...`, onStatus);
+            const progressBase = 10;
+            const progressChunk = 80 / maxAttempts;
+            const currentProgress = progressBase + ((attempts - 1) * progressChunk);
+
+            if (attempts > 1) this.updateStatus(`CREATIVE CONSULTANT: REFINING IDEA (ATTEMPT ${attempts})...`, onStatus, currentProgress);
 
             const currentPrompt = previousCritique ? `${prompt}\n\n[PREVIOUS CRITIQUE]: The previous suggestion was rejected because: ${previousCritique}. TRY AGAIN.` : prompt;
 
@@ -1147,10 +1188,13 @@ Only score positive if it is innovative.
             suggestion = data.suggestion;
 
             // If Agent disabled, accept first draft
-            if (!this.settings.wizardAgentEnabled) return suggestion;
+            if (!this.settings.wizardAgentEnabled) {
+                this.updateStatus("DONE", onStatus, 100);
+                return suggestion;
+            }
 
             // [AGENT REVIEW]
-            this.updateStatus("CREATIVE CONSULTANT: REVIEWING...", onStatus);
+            this.updateStatus("CREATIVE CONSULTANT: REVIEWING...", onStatus, currentProgress + 10);
             const reviewPrompt = `
 [TASK]: Review this narrative suggestion.
 [CRITERIA]:
@@ -1167,21 +1211,22 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 
             if (review.verdict === "PASS") {
                 isApproved = true;
-                this.updateStatus("CREATIVE CONSULTANT: APPROVED.", onStatus);
+                this.updateStatus("CREATIVE CONSULTANT: APPROVED.", onStatus, 95);
             } else {
                 console.warn(`WIZARD AGENT REJECTED: ${review.reason}`);
                 previousCritique = review.reason;
                 if (attempts >= maxAttempts) {
-                    this.updateStatus("MAX RETRIES REACHED. RETURNING BEST EFFORT.", onStatus);
+                    this.updateStatus("MAX RETRIES REACHED. RETURNING BEST EFFORT.", onStatus, 95);
                 }
             }
         } while (!isApproved && attempts < maxAttempts);
 
+        this.updateStatus("DONE", onStatus, 100);
         return suggestion;
     }
     
     wizardCompose = async (state: NigsWizardState, signal?: AbortSignal, onStatus?: StatusUpdate) => {
-        this.updateStatus("ARCHITECTING OUTLINE...", onStatus);
+        this.updateStatus("ARCHITECTING OUTLINE...", onStatus, 10);
         const targetQ = state.targetScore || this.settings.defaultTargetQuality;
 
         const negativeConstraints = this.settings.wizardNegativeConstraints ?
@@ -1204,12 +1249,14 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
         Ensure every scene and character beat is generated to meet the Target Quality.
         `;
         const temp = this.getTemp(this.settings.tempArchitect);
-        return await this.callAI(promptContext, NIGS_WIZARD_COMPOSITION_PROMPT, false, false, temp, signal, undefined, onStatus);
+        const res = await this.callAI(promptContext, NIGS_WIZARD_COMPOSITION_PROMPT, false, false, temp, signal, undefined, onStatus);
+        this.updateStatus("DONE", onStatus, 100);
+        return res;
     }
 
     // --- DEEP RENAME (NEW) ---
     generateDeepNames = async (text: string, context: string, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<Record<string, string>> => {
-        this.updateStatus("ETYMOLOGIST ACTIVE: DEEP RENAMING...", onStatus);
+        this.updateStatus("ETYMOLOGIST ACTIVE: DEEP RENAMING...", onStatus, 10);
         
         const input = `
         [SOURCE MATERIAL CONTEXT]:
@@ -1222,6 +1269,8 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
         // Use Wizard Temp for creativity
         const temp = this.getTemp(this.settings.tempWizard);
         const res = await this.callAI(input, NIGS_RENAME_PROMPT, true, false, temp, signal, undefined, onStatus);
+
+        this.updateStatus("DONE", onStatus, 100);
         return this.parseJson<Record<string, string>>(res);
     }
 }
