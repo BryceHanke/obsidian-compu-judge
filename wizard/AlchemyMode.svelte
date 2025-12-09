@@ -266,7 +266,7 @@
 
             <div class="input-row">
                 <label for="synth-quality">TARGET QUALITY: {targetQuality}</label>
-                <input type="range" id="synth-quality" class="retro-range" min="-100" max="100" step="5" style="flex:1"
+                <input type="range" id="synth-quality" class="retro-range" min="-50" max="50" step="5" style="flex:1"
                     bind:value={targetQuality} />
             </div>
 
