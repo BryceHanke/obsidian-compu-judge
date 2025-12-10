@@ -110,6 +110,14 @@ export default class CompuJudgePlugin extends Plugin {
         // Ensure new Agent settings exist
         if (this.settings.wizardAgentEnabled === undefined) this.settings.wizardAgentEnabled = true;
         if (this.settings.synthAgentEnabled === undefined) this.settings.synthAgentEnabled = true;
+
+        // [MIGRATION]: Auto-populate Fast Model ID if empty
+        if (!this.settings.fastModelId || this.settings.fastModelId.trim() === '') {
+            if (this.settings.aiProvider === 'gemini') this.settings.fastModelId = 'gemini-1.5-flash';
+            if (this.settings.aiProvider === 'openai') this.settings.fastModelId = 'gpt-4o-mini';
+            if (this.settings.aiProvider === 'anthropic') this.settings.fastModelId = 'claude-3-haiku-20240307';
+            await this.saveSettings();
+        }
     }
 
     async saveSettings() {
@@ -169,6 +177,9 @@ class NigsSettingTab extends PluginSettingTab {
             this.addTextInput(containerEl, 'Search Model ID (Optional)', 'Leave empty to use Model ID', this.plugin.settings.searchModelId, async (val) => {
                  this.plugin.settings.searchModelId = val; await this.plugin.saveSettings();
             });
+            this.addTextInput(containerEl, 'Fast Model ID (Arbitration)', 'gemini-1.5-flash', this.plugin.settings.fastModelId, async (val) => {
+                 this.plugin.settings.fastModelId = val; await this.plugin.saveSettings();
+            });
         }
 
         if (this.plugin.settings.aiProvider === 'openai') {
@@ -178,6 +189,9 @@ class NigsSettingTab extends PluginSettingTab {
              this.addTextInput(containerEl, 'Model ID', 'gpt-4o', this.plugin.settings.openaiModel, async (val) => {
                  this.plugin.settings.openaiModel = val; await this.plugin.saveSettings();
             });
+             this.addTextInput(containerEl, 'Fast Model ID (Arbitration)', 'gpt-4o-mini', this.plugin.settings.fastModelId, async (val) => {
+                 this.plugin.settings.fastModelId = val; await this.plugin.saveSettings();
+            });
         }
 
         if (this.plugin.settings.aiProvider === 'anthropic') {
@@ -186,6 +200,9 @@ class NigsSettingTab extends PluginSettingTab {
             });
              this.addTextInput(containerEl, 'Model ID', 'claude-3-7-sonnet-20250219', this.plugin.settings.anthropicModel, async (val) => {
                  this.plugin.settings.anthropicModel = val; await this.plugin.saveSettings();
+            });
+             this.addTextInput(containerEl, 'Fast Model ID (Arbitration)', 'claude-3-haiku-20240307', this.plugin.settings.fastModelId, async (val) => {
+                 this.plugin.settings.fastModelId = val; await this.plugin.saveSettings();
             });
         }
 

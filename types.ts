@@ -35,6 +35,7 @@ export interface NigsSettings {
     apiKey: string;
     modelId: string;
     searchModelId: string; 
+    fastModelId: string; // [NEW] Fast model for arbitration/low-complexity
     aiProvider: AIProvider;
     openaiKey: string;
     openaiModel: string;
@@ -107,6 +108,7 @@ export const DEFAULT_SETTINGS: NigsSettings = {
     apiKey: '',
     modelId: 'gemini-2.0-flash',
     searchModelId: '',
+    fastModelId: '', // Default depends on provider logic
     aiProvider: 'gemini',
     openaiKey: '',
     openaiModel: 'gpt-4o',

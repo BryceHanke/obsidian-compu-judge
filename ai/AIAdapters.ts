@@ -83,6 +83,9 @@ export class GeminiAdapter implements AIAdapter {
             body.tools = [{ googleSearch: {} }];
         }
 
+        // [OPTIMIZATION]: Drop null fields to save bandwidth
+        if (!body.systemInstruction) delete body.systemInstruction;
+
         const statusMsg = `QUERYING ${targetModel}...`;
         if (onStatus) onStatus(statusMsg);
         else setStatus(statusMsg); // Fallback to global if no callback
