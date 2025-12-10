@@ -236,6 +236,37 @@
         return path;
     });
 
+    // [NEW] Calculate Story's Actual Tension Path
+    let storyPathD = $derived.by(() => {
+        if (!chartData || chartData.length === 0) return "";
+
+        let path = "";
+        let currentX = 0;
+
+        chartData.forEach((beat, i) => {
+            const centerX = currentX + (beat.widthPerc / 2);
+            const yPos = 50 - (beat.val / 2); // Map beat's value to Y
+
+            if (i === 0) path += `M ${centerX} ${yPos}`;
+            else path += ` L ${centerX} ${yPos}`;
+
+            currentX += beat.widthPerc;
+        });
+
+        return path;
+    });
+
+    // [NEW] Calculate Overall Tension Score and Color
+    let storyTensionColor = $derived.by(() => {
+        if (!chartData || chartData.length === 0) return getBarColor(0);
+
+        const totalTension = chartData.reduce((sum, beat) => sum + beat.val, 0);
+        const avgTension = totalTension / chartData.length;
+
+        // Use the existing gradient color utility
+        return getBarColor(avgTension);
+    });
+
     // Helper to get logic inconsistencies safely
     let logicIssues = $derived(breakdown.logic.inconsistencies || []);
 </script>
@@ -525,6 +556,7 @@
                 <!-- SVG OVERLAY FOR IDEAL PATH (Only for Tension) -->
                 <svg class="chart-overlay" preserveAspectRatio="none" viewBox="0 0 100 100">
                     <path d={idealPathD} fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6" />
+                    <path d={storyPathD} fill="none" stroke={storyTensionColor} stroke-width="0.7" />
                 </svg>
                 {/if}
 
@@ -590,9 +622,15 @@
             <div class="chart-axis">
                 <span>START</span>
                 {#if graphMode === 'tension'}
-                <div style="display:flex; align-items:center; gap:5px;">
-                    <span class="legend-box" style="border:1px dashed #000080;"></span>
-                    <span style="font-size:9px; color:#000080;">IDEAL ({IDEAL_ARCS[selectedArc].label})</span>
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <span class="legend-box" style="border:1px solid {storyTensionColor};"></span>
+                        <span style="font-size:9px; color:{storyTensionColor};">STORY TENSION</span>
+                    </div>
+                     <div style="display:flex; align-items:center; gap:5px;">
+                        <span class="legend-box" style="border:1px dashed #000080;"></span>
+                        <span style="font-size:9px; color:#000080;">IDEAL ({IDEAL_ARCS[selectedArc].label})</span>
+                    </div>
                 </div>
                 {/if}
                 <span>END</span>
@@ -786,6 +824,7 @@
     .chart-center-line { position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #000; z-index: 0; border-top: 1px dotted #808080; }
     .chart-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
     .chart-axis { display: flex; justify-content: space-between; font-size: 9px; color: #555; margin-top: 2px; align-items: center; }
+    .legend-box { display: inline-block; width: 10px; height: 10px; }
 
     /* TREE VIEW */
     .tree-view { list-style: none; padding-left: 5px; margin: 0; }
