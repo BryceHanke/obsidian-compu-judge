@@ -115,7 +115,7 @@ export const DEFAULT_SETTINGS: NigsSettings = {
     
     aiThinkingLevel: 3,
     defaultTargetQuality: 50, // Updated to match Masterpiece threshold
-    tempMultiplier: 1.0,
+    tempMultiplier: 0.8, // Reduced from 1.0 for better consistency
     tempCritic: 0.1,    
     tempWizard: 0.85,   
     tempArchitect: 0.5, 
