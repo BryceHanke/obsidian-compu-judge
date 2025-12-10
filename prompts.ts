@@ -63,7 +63,7 @@ NOT the Final Judge. Be descriptive, not judgmental.
   "tension_arc": [0, 10, -5, 20, 30, 50],
   "quality_arc": [0, 15, -10, 25, 40, 55],
   "structure_map": [
-      { "title": "Beat Title", "description": "Desc", "type": "beat", "characters": ["Name"], "tension": 10, "duration": 5 }
+      { "title": "Beat Title", "description": "Desc", "type": "beat", "characters": ["Name"], "tension": 10, "duration": 5, "quality": 10, "quality_reason": "Reason for quality score." }
   ],
   "sanderson_metrics": {
     "promise_payoff": 0,

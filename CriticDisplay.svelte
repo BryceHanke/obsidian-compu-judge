@@ -148,6 +148,7 @@
         let sourceArray: number[] = [];
         let labels: string[] = [];
         let descs: string[] = [];
+        let qualityReasons: string[] = [];
         let durations: number[] = [];
 
         // Prefer Quality Arc if mode is Quality and data exists
@@ -166,16 +167,18 @@
              sourceArray = (data.tension_arc || []).map(() => 0);
         }
 
-        // Generate Labels/Descs/Durations
+        // Generate Labels/Descs/Durations/Reasons
         if (isUniversalOutline) {
             const nodes = structure as UniversalOutlineNode[];
             labels = nodes.map(n => n.title);
             descs = nodes.map(n => n.description || "");
+            qualityReasons = nodes.map(n => n.quality_reason || "");
             durations = nodes.map(n => n.duration || 1); // Default duration 1
         } else {
              const len = sourceArray.length;
              labels = sourceArray.map((_, i) => `Beat ${i+1}`);
              descs = sourceArray.map(() => "Legacy Data");
+             qualityReasons = sourceArray.map(() => "");
              durations = sourceArray.map(() => 1);
         }
         
@@ -183,6 +186,7 @@
         if (graphMode === 'quality' && labels.length !== sourceArray.length) {
              labels = sourceArray.map((_, i) => `Beat ${i+1}`);
              descs = sourceArray.map(() => "");
+             qualityReasons = sourceArray.map(() => "");
              durations = sourceArray.map(() => 1);
         }
 
@@ -192,6 +196,7 @@
             val: val,
             title: labels[i] || `Beat ${i+1}`,
             desc: descs[i] || "",
+            reason: qualityReasons[i] || "",
             widthPerc: (durations[i] / totalDuration) * 100
         }));
     });
@@ -555,10 +560,27 @@
                             </div>
                         </div>
 
-                        <div class="tooltip chart-tooltip">
-                            <strong>{i+1}. {beat.title}</strong><br/>
-                            {graphMode === 'tension' ? 'Tension' : 'Quality'}: {formatScoreDisplay(beat.val)}<br/>
-                            <span style="font-size:0.8em; opacity:0.8">Duration: {Math.round(beat.widthPerc)}%</span>
+                        <div class="tooltip chart-tooltip" style="width: 250px; text-align: left;">
+                            <div style="text-align:center; font-weight:bold; border-bottom:1px dotted #555; margin-bottom:2px;">
+                                {i+1}. {beat.title}
+                            </div>
+                            <div style="font-size:0.9em; margin-bottom:3px;">{beat.desc}</div>
+
+                            {#if beat.reason && beat.reason.length > 2}
+                                <div style="font-size:0.9em; color:#000080; margin-bottom:3px;">
+                                    <strong>Score: {formatScoreDisplay(beat.val)}</strong>
+                                    <br/>
+                                    <em>{beat.reason}</em>
+                                </div>
+                            {:else}
+                                <div style="text-align:center;">
+                                    {graphMode === 'tension' ? 'Tension' : 'Quality'}: {formatScoreDisplay(beat.val)}
+                                </div>
+                            {/if}
+
+                            <div style="text-align:right; font-size:0.8em; opacity:0.8; margin-top:2px;">
+                                Duration: {Math.round(beat.widthPerc)}%
+                            </div>
                         </div>
                     </div>
                 {/each}
