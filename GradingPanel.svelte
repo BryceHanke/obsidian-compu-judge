@@ -97,6 +97,20 @@
             if (leaves.length > 0) return; // Keep last state if markdown files exist
         }
 
+        // [SYSTEM TUNING] FLUSH CONTEXT
+        // Automatically flush the "Ghost Data" (Inspiration Context) when switching files
+        // UNLESS the user has actively synced something they want to keep.
+        // But the safest default is to flush to prevent contamination.
+        if (wizardData && wizardData.inspirationContext && wizardData.inspirationContext.length > 0) {
+            // Logic: If the context is literally the content of the OLD file, we definitely want to flush it.
+            // If it's something custom (uploaded), maybe we keep it?
+            // The instruction says "Ensure variables are nulled out when a new artifact is loaded."
+            // So we will be aggressive.
+            if (!wizardData.lockContext) { // Add a hidden lock flag or just do it? Let's just do it for now or check if it matches old file.
+                 wizardData.inspirationContext = "";
+            }
+        }
+
         activeFile = file;
         projectData = null; 
         if (file) await loadProjectData(file);
@@ -402,11 +416,20 @@
         // Use file path as context key for critic operations
         const contextKey = file.path + "_CRITIC";
 
+        // [SYSTEM TUNING] JOB ID
+        const jobId = `JOB-${Date.now()}-${file.basename.replace(/[^a-zA-Z0-9]/g, '')}`;
+
         const { pid, controller } = startLoading(contextKey, estTime, "CALCULATING METRICS...");
         try { 
             const nlpStats = NlpService.analyze(content);
             updateProcessStatus(pid, "SYNTHESIZING DEEP SCAN...", 10);
-            const context = { inspiration: wizardData.inspirationContext, target: wizardData.targetScore };
+
+            // [SYSTEM TUNING] PASS JOB ID
+            const context = {
+                inspiration: wizardData.inspirationContext,
+                target: wizardData.targetScore,
+                jobId: jobId
+            };
 
             const result = await cloud.gradeContent(
                 content,
