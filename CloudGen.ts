@@ -274,7 +274,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 
     // --- GRADING (Unified System) ---
     // [UPDATED] Iterative/Parallel Tribunal with Veto Protocol & Analyst Loop
-    gradeContent = async (text: string, context?: { inspiration: string; target: number }, nlpStats?: NlpMetrics, wizardState?: NigsWizardState, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<NigsResponse> => {
+    gradeContent = async (text: string, context?: { inspiration: string; target: number; jobId?: string }, nlpStats?: NlpMetrics, wizardState?: NigsWizardState, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<NigsResponse> => {
         // 1. CHECK SETTINGS: Fallback to Legacy if Tribunal is disabled
         if (!this.settings.enableTribunal) {
             return this.gradeContentLegacy(text, context, nlpStats, signal, onStatus);
@@ -282,7 +282,11 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 
         this.updateStatus("CONVENING THE TRIBUNAL...", onStatus, 5);
 
-        const sourceMaterial = context?.inspiration ? `\n[SOURCE MATERIAL]: "${context.inspiration}"\n` : "";
+        // [SYSTEM TUNING] HEADER ISOLATION & ID MATCHING
+        // We explicitly label Primary Target vs Reference to prevent ghost data leak.
+        const jobId = context?.jobId || `JOB-${Date.now()}`;
+
+        const sourceMaterial = context?.inspiration ? `\n[REFERENCE DATA (IGNORE IF CONTRADICTORY)]:\n"${context.inspiration}"\n` : "";
         let statsBlock = "";
         
         if (nlpStats) {
@@ -295,10 +299,15 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 `;
         }
 
+        // [SYSTEM TUNING] HEADER ISOLATION
         const baseInputPayload = `
+[JOB ID]: ${jobId}
+
+[PRIMARY TARGET FOR ANALYSIS]:
 === NARRATIVE ARTIFACT ===
 ${text}
 === END ARTIFACT ===
+
 ${statsBlock}
 ${sourceMaterial}
 `;
@@ -410,6 +419,41 @@ ${sourceMaterial}
                 };
             }
 
+            // [SYSTEM TUNING] CONSISTENCY CHECK
+            // We verify that the Market Agent analyzed the correct story by comparing loglines.
+            if (!isSpeedMode) {
+                this.updateStatus("SYSTEM GUARD: VERIFYING CONTEXT INTEGRITY...", onStatus, currentBase + 38);
+                const marketLogline = marketReport.log_line || "";
+
+                // Fast check using Grade Analyst Prompt
+                const integrityPrompt = `
+[INPUT A - ARTIFACT SNIPPET]:
+${text.substring(0, 500)}...
+
+[INPUT B - AGENT ANALYSIS]:
+${marketLogline}
+
+[TASK]: Does Input B describe Input A?
+If Input A is about "Space" and Input B mentions "Elves", return FAIL.
+
+Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
+`;
+                // Use fast model (0.1 temp)
+                const integrityRaw = await this.callAI(integrityPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.1, signal, undefined, onStatus, this.settings.fastModelId);
+                const integrityCheck = parseJson<{ verdict: string, reason: string }>(integrityRaw);
+
+                if (integrityCheck.verdict === "FAIL") {
+                    console.error(`CONTEXT INTEGRITY FAILURE: ${integrityCheck.reason}`);
+                    previousConsensus += `\n[SYSTEM ERROR]: The previous analysis failed integrity check. The agent analyzed the wrong text. IGNORE previous context. FOCUS ON THE ARTIFACT.`;
+                    // Trigger retry immediately by skipping to end of loop condition (effectively 'continue' logic but inside do-while)
+                    // We can't 'continue' easily inside this structure, so we just let it fail the Analyst check or force a retry here.
+                    // For simplicity, we just mark as not approved and let the Grade Analyst catch it or just loop.
+                    // But we should really stop Chief Justice from ruling on bad data.
+                    this.updateStatus(`INTEGRITY FAIL: ${integrityCheck.reason}. RETRYING...`, onStatus);
+                    continue; // Skip directly to next attempt
+                }
+            }
+
             // --- CHIEF JUSTICE ARBITRATION ---
             this.updateStatus("CHIEF JUSTICE: DELIBERATING...", onStatus, currentBase + 40);
 
@@ -515,7 +559,15 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
                 } else {
                     console.warn(`GRADE ANALYST REJECTED (Attempt ${attempts}): ${analystRes.reason}`);
                     this.updateStatus(`ANALYST REJECTED: ${analystRes.reason}. RETRYING...`, onStatus);
-                    previousConsensus += `\n[ANALYST REJECTION]: The previous draft was rejected because: ${analystRes.reason}. FIX THIS.`;
+
+                    // [SYSTEM TUNING] TOKEN OPTIMIZATION
+                    // Do not pass full reports. Only pass the rejection reason and a brief summary of the failure.
+                    previousConsensus = `[PREVIOUS FAILURE SUMMARY]:
+- Score: ${arbitrationLog.final_verdict}
+- Reason: ${finalResponse.commercial_reason}
+- REJECTION CAUSE: ${analystRes.reason}
+- INSTRUCTION: FIX the issues identified in the Rejection Cause.
+`;
                 }
             }
 

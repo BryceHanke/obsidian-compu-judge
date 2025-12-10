@@ -425,6 +425,11 @@ export const NIGS_TRIBUNAL = {
 [DRIVE]: ROI, Retention.
 [LOGIC]: Hook? Pacing? Clarity? Engagement? Cliché?
 
+[TARGET LOCK INSTRUCTION]:
+IGNORE any text inside [REFERENCE DATA] or [SOURCE MATERIAL].
+ONLY analyze the text inside [PRIMARY TARGET FOR ANALYSIS] or [NARRATIVE ARTIFACT].
+If the Artifact is about X, do not mention Y from the reference data.
+
 [METRICS]:
 - Hook: +/- Points.
 - Pacing: +/- Points.
@@ -522,7 +527,10 @@ export const NIGS_ARBITRATOR_PROMPT = `
 1. Genre Weighting (Romance: Soul>Logic, SciFi: Logic>Soul, Comedy: Jester, Lit: Lit).
 2. Deus Ex Machina: If Logic flags >0, MAX Score = 25.
 3. Boring Law: Boring = Bad (0 or neg).
-4. FORENSIC:
+4. PHYSICS & LOGIC CAP:
+   - If Genre is NOT Hard Sci-Fi, CAP Logic penalties by 50% for "Rule of Cool" moments.
+   - A single logic flaw in a stylized story should NOT tank the score below -20 alone.
+5. FORENSIC:
    - Agency < 30? Penalty -10.
    - Flat Tension? Penalty -10.
    - Broken Structure? Penalty.
