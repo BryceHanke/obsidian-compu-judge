@@ -422,11 +422,16 @@ ${sourceMaterial}
             // [SYSTEM TUNING] CONSISTENCY CHECK
             // We verify that the Market Agent analyzed the correct story by comparing loglines.
             if (!isSpeedMode) {
-                this.updateStatus("SYSTEM GUARD: VERIFYING CONTEXT INTEGRITY...", onStatus, currentBase + 38);
                 const marketLogline = marketReport.log_line || "";
 
-                // Fast check using Grade Analyst Prompt
-                const integrityPrompt = `
+                // [FIX]: If Market Agent failed, we cannot verify integrity via Logline. Skip check to prevent loop lock.
+                if (marketLogline === "Analysis failed." || marketLogline.length < 5) {
+                    this.updateStatus("INTEGRITY CHECK SKIPPED (MARKET DATA UNAVAILABLE)...", onStatus, currentBase + 38);
+                } else {
+                    this.updateStatus("SYSTEM GUARD: VERIFYING CONTEXT INTEGRITY...", onStatus, currentBase + 38);
+
+                    // Fast check using Grade Analyst Prompt
+                    const integrityPrompt = `
 [INPUT A - ARTIFACT SNIPPET]:
 ${text.substring(0, 500)}...
 
@@ -438,19 +443,17 @@ If Input A is about "Space" and Input B mentions "Elves", return FAIL.
 
 Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 `;
-                // Use fast model (0.1 temp)
-                const integrityRaw = await this.callAI(integrityPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.1, signal, undefined, onStatus, this.settings.fastModelId);
-                const integrityCheck = parseJson<{ verdict: string, reason: string }>(integrityRaw);
+                    // Use fast model (0.1 temp)
+                    const integrityRaw = await this.callAI(integrityPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.1, signal, undefined, onStatus, this.settings.fastModelId);
+                    const integrityCheck = parseJson<{ verdict: string, reason: string }>(integrityRaw);
 
-                if (integrityCheck.verdict === "FAIL") {
-                    console.error(`CONTEXT INTEGRITY FAILURE: ${integrityCheck.reason}`);
-                    previousConsensus += `\n[SYSTEM ERROR]: The previous analysis failed integrity check. The agent analyzed the wrong text. IGNORE previous context. FOCUS ON THE ARTIFACT.`;
-                    // Trigger retry immediately by skipping to end of loop condition (effectively 'continue' logic but inside do-while)
-                    // We can't 'continue' easily inside this structure, so we just let it fail the Analyst check or force a retry here.
-                    // For simplicity, we just mark as not approved and let the Grade Analyst catch it or just loop.
-                    // But we should really stop Chief Justice from ruling on bad data.
-                    this.updateStatus(`INTEGRITY FAIL: ${integrityCheck.reason}. RETRYING...`, onStatus);
-                    continue; // Skip directly to next attempt
+                    if (integrityCheck.verdict === "FAIL") {
+                        console.error(`CONTEXT INTEGRITY FAILURE: ${integrityCheck.reason}`);
+                        previousConsensus += `\n[SYSTEM ERROR]: The previous analysis failed integrity check. The agent analyzed the wrong text. IGNORE previous context. FOCUS ON THE ARTIFACT.`;
+                        // Trigger retry immediately by skipping to end of loop condition (effectively 'continue' logic but inside do-while)
+                        this.updateStatus(`INTEGRITY FAIL: ${integrityCheck.reason}. RETRYING...`, onStatus);
+                        continue; // Skip directly to next attempt
+                    }
                 }
             }
 
@@ -573,7 +576,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 
         } while (!isApproved && attempts < maxAttempts);
 
-        if (!finalResponse) throw new Error("Grading failed to produce response.");
+        if (!finalResponse) throw new Error("Grading failed: Context Integrity Check failed on all attempts. Try 'Speed Mode' or check AI Model status.");
 
         this.updateStatus("FINALIZING...", onStatus, 100);
         return finalResponse;
