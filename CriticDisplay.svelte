@@ -555,9 +555,9 @@
                 {#if graphMode === 'tension'}
                 <!-- SVG OVERLAY FOR IDEAL PATH (Only for Tension) -->
                 <svg class="chart-overlay" preserveAspectRatio="none" viewBox="0 0 100 100">
-                    <path d={storyPathD} fill="none" stroke="#000" stroke-width="1.2" />
-                    <path d={storyPathD} fill="none" stroke={storyTensionColor} stroke-width="0.7" />
                     <path d={idealPathD} fill="none" stroke="#000080" stroke-width="0.5" stroke-dasharray="2,1" opacity="0.6" />
+                    <path d={storyPathD} fill="none" stroke="#000" stroke-width="2.0" />
+                    <path d={storyPathD} fill="none" stroke={storyTensionColor} stroke-width="0.7" />
                 </svg>
                 {/if}
 
