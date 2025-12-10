@@ -412,7 +412,7 @@
 .critical-bar .win95-progress-container,
 .critical-bar .score-track {
     background: transparent !important;
-    border: 2px dotted #ff0000 !important; /* Red dotted outline */
+    border: none !important; /* Explicitly removing the red dotted border outline */
     box-shadow: none !important;
     box-sizing: border-box !important; /* Prevent expansion */
 }
