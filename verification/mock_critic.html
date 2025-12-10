@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { background: #555; display: flex; justify-content: center; padding: 20px; font-family: sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="critic-display-target"></div>
+    <script type="module">
+        import CriticDisplay from '../CriticDisplay.svelte';
+
+        const mockData = {
+            "commercial_score": 35,
+            "commercial_reason": "The story has a strong hook and a satisfying payoff, but the pacing in the middle section is uneven.",
+            "content_warning": "None",
+            "tension_arc": [10, 20, 15, 40, 30, 50, 45],
+            "quality_arc": [30, 35, 25, 45, 40, 55, 50],
+            "structure_map": [
+                { "title": "Opening", "description": "Protagonist introduced.", "tension": 10, "duration": 1, "quality": 30, "quality_reason": "Clear setup." },
+                { "title": "Inciting Incident", "description": "The call to adventure.", "tension": 20, "duration": 1, "quality": 35, "quality_reason": "Strong hook." },
+                { "title": "Rising Action", "description": "Stakes are raised.", "tension": 15, "duration": 3, "quality": 25, "quality_reason": "Pacing drags here." },
+                { "title": "Climax", "description": "The final confrontation.", "tension": 40, "duration": 1, "quality": 45, "quality_reason": "Exciting, but predictable." },
+                { "title": "Falling Action", "description": "Resolving subplots.", "tension": 30, "duration": 2, "quality": 40, "quality_reason": "Good character moments." },
+                { "title": "Resolution", "description": "The new normal.", "tension": 50, "duration": 1, "quality": 55, "quality_reason": "Very satisfying conclusion." }
+            ],
+            "tribunal_breakdown": {
+                "market": { "commercial_score": 40, "commercial_reason": "Strong genre appeal." },
+                "logic": { "score": 30, "inconsistencies": [] },
+                "soul": { "score": 35, "critique": "Lacks some emotional depth." },
+                "lit": { "score": 40, "niche_reason": "Solid prose." },
+                "jester": { "score_modifier": -5, "roast": "A bit cliche." }
+            },
+            "sanderson_metrics": { "promise_payoff": 80, "laws_of_magic": 90, "character_agency": 70 },
+            "detailed_metrics": {},
+            "arbitration_log": { "final_verdict": 35 }
+        };
+
+        const mockSettings = {
+            "agentWeights": { "logic": 1, "soul": 1, "market": 1, "lit": 1, "jester": 1 },
+            "gradientMap": { "start": "#ff0000", "mid": "#ffff00", "end": "#00ff00" },
+            "disableRainbows": false
+        };
+
+        new CriticDisplay({
+            target: document.getElementById('critic-display-target'),
+            props: {
+                data: mockData,
+                meta: null,
+                isProcessing: false,
+                settings: mockSettings,
+                onRunMeta: () => console.log('Run Meta'),
+                onAddRepairInstruction: (i) => console.log('Add Repair:', i)
+            }
+        });
+    </script>
+</body>
+</html>
