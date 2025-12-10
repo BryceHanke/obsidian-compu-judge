@@ -560,7 +560,9 @@
                             </div>
                         </div>
 
-                        <div class="tooltip chart-tooltip" style="width: 250px; text-align: left;">
+                        <div class="tooltip chart-tooltip"
+                             style="width: 250px; text-align: left; white-space: normal; line-height: 1.3;
+                                    {i < 2 ? 'left: 0; transform: none;' : (i >= chartData.length - 2 ? 'right: 0; left: auto; transform: none;' : '')}">
                             <div style="text-align:center; font-weight:bold; border-bottom:1px dotted #555; margin-bottom:2px;">
                                 {i+1}. {beat.title}
                             </div>
