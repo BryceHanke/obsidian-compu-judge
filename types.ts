@@ -306,6 +306,8 @@ export interface UniversalOutlineNode {
     characters: string[];   
     tension: number;        
     duration?: number; // [NEW] Relative duration/weight (1-10)
+    quality?: number; // [NEW] Beat Quality Score
+    quality_reason?: string; // [NEW] Explanation for the score
 }
 
 export interface CharacterBlock {
