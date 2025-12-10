@@ -128,8 +128,8 @@ export class CloudGenService {
     private preprocessDrives(drives: DriveBlock[]): DriveBlock[] {
         return drives.map(d => {
             let clean = d.content || "";
-            // Remove Works Cited / References / Bibliography and everything after
-            // [SAFETY]: Use strict newline + whitespace check to avoid matching random words in sentences
+            // Remove Works Cited / References / Bibliography and everything after (Standard End-of-Doc markers)
+            // [SAFETY]: Removed "Table of Contents" and "Notes" to prevent accidental truncation of body content
             clean = clean.split(/\n\s*(?:Works Cited|References|Bibliography)\s*(?:\n|$)/i)[0];
             return { ...d, content: clean.trim() };
         });
@@ -422,10 +422,10 @@ ${sourceMaterial}
 - Luck Tolerance: ${this.settings.luckTolerance}
 `;
 
-            // [OPTIMIZATION]: Use Faster Model for Arbitration if possible
-            let arbitratorModelOverride: string | undefined;
-            if (this.settings.aiProvider === 'gemini') arbitratorModelOverride = 'gemini-2.5-pro'// Fast Arbitrator;
-            if (this.settings.aiProvider === 'openai') arbitratorModelOverride = 'gpt-4o-mini';
+            // [OPTIMIZATION]: Use Configured Fast Model for Arbitration
+            const arbitratorModelOverride = this.settings.fastModelId && this.settings.fastModelId.trim().length > 0
+                ? this.settings.fastModelId
+                : undefined;
 
             const arbitrationRaw = await this.callAI(arbitrationPayload, NIGS_ARBITRATOR_PROMPT, true, false, 0.2, signal, undefined, onStatus, arbitratorModelOverride);
             const arbitrationLog = parseJson<NigsArbitrationLog>(arbitrationRaw);
