@@ -1,0 +1,43 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Critical Failure Visual Verification</title>
+    <link rel="stylesheet" href="../../styles.css">
+    <style>
+        body {
+            background-color: #c0c0c0;
+            padding: 20px;
+            font-family: 'Pixelated MS Sans Serif', 'Tahoma', 'Segoe UI', sans-serif;
+        }
+        .container {
+            width: 300px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 20px;
+            border: 2px solid #000;
+        }
+    </style>
+</head>
+<body class="compu-container">
+
+    <div class="container">
+        <h3>Critical Failure Bar</h3>
+
+        <!-- Mocking the structure from CriticDisplay.svelte -->
+        <div class="win95-progress-container critical-bar" style="width: 100%; height: 20px;">
+            <div class="win95-progress-fill" style="width: 100%;"></div>
+        </div>
+
+        <p>The bar above should have:</p>
+        <ul>
+            <li>No border (or invisible border)</li>
+            <li>Red/White striped fill</li>
+            <li>No dotted red outline</li>
+        </ul>
+    </div>
+
+</body>
+</html>
