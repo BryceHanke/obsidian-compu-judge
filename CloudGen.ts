@@ -318,12 +318,12 @@ ${sourceMaterial}
 
             this.updateStatus("CONVENING AGENTS: MARKET, LOGIC, SOUL, LIT, JESTER...", onStatus, currentBase + 5);
 
-            // Temps
-            const soulTemp = this.getTemp(0.9); // High creativity
+            // Temps (Reduced for Consistency)
+            const soulTemp = this.getTemp(0.7); // High creativity (Reduced from 0.9)
             const logicTemp = this.getTemp(0.1, true); // Strict
-            const marketTemp = this.getTemp(0.5);
-            const jesterTemp = this.getTemp(1.1); // Chaos
-            const litTemp = this.getTemp(0.3); // Critical
+            const marketTemp = this.getTemp(0.4); // Reduced from 0.5
+            const jesterTemp = this.getTemp(0.8); // Reduced from 1.1 to tame chaos
+            const litTemp = this.getTemp(0.2); // Critical (Reduced from 0.3)
 
             let marketReport, logicReport, soulReport, litReport, jesterReport, forensicRaw;
 
