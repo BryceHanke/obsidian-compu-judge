@@ -245,7 +245,8 @@
 
         chartData.forEach((beat, i) => {
             const centerX = currentX + (beat.widthPerc / 2);
-            const yPos = 50 - (beat.val / 2); // Map beat's value to Y
+            // [FIX] Align point mapping with bar mapping. Bar height is (val/60)*50. This aligns points with the top of the bar.
+            const yPos = 50 - (beat.val / 60) * 50;
 
             if (i === 0) path += `M ${centerX} ${yPos}`;
             else path += ` L ${centerX} ${yPos}`;
