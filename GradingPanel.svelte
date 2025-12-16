@@ -68,60 +68,55 @@
         onUpdateSettings(updates);
     }
 
-    // [NEW] Handle Reference Upload
-    function handleReferenceUpload(event: Event) {
+    // [NEW] Handle Reference Upload (Multi-File Knowledge Base)
+    async function handleReferenceUpload(event: Event) {
         const target = event.target as HTMLInputElement;
         const files = target.files;
         if (!files || files.length === 0 || !projectData) return;
 
-        const file = files[0];
+        new Notice(`Processing ${files.length} knowledge files...`);
+        let combinedText = "";
 
-        if (file.type === "application/pdf") {
-             const reader = new FileReader();
-             reader.onload = async (e) => {
-                 try {
-                     const buffer = new Uint8Array(e.target?.result as ArrayBuffer);
+        // [FIX]: Set worker once if needed
+        if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+            try {
+                 // @ts-ignore - Defined in esbuild
+                 const workerBlob = new Blob([process.env.PDF_WORKER_CODE], { type: 'text/javascript' });
+                 pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob);
+            } catch (e) { console.error("PDF Worker Init Failed", e); }
+        }
 
-                     // [FIX]: Set worker from injected define
-                     if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-                         // @ts-ignore - Defined in esbuild
-                         const workerBlob = new Blob([process.env.PDF_WORKER_CODE], { type: 'text/javascript' });
-                         pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob);
-                     }
+        // Process files sequentially
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            try {
+                if (file.type === "application/pdf") {
+                    const buffer = await file.arrayBuffer();
+                    const loadingTask = pdfjs.getDocument({ data: buffer });
+                    const pdf = await loadingTask.promise;
 
-                     const loadingTask = pdfjs.getDocument({ data: buffer });
-                     const pdf = await loadingTask.promise;
-                     let fullText = "";
+                    let pdfText = `\n=== SOURCE: ${file.name} ===\n`;
+                    for (let p = 1; p <= pdf.numPages; p++) {
+                        const page = await pdf.getPage(p);
+                        const tokenizedText = await page.getTextContent();
+                        const pageText = tokenizedText.items.map((item: any) => item.str).join(' ');
+                        pdfText += pageText + "\n";
+                    }
+                    combinedText += pdfText + "\n";
+                } else {
+                    const text = await file.text();
+                    combinedText += `\n=== SOURCE: ${file.name} ===\n${text}\n`;
+                }
+            } catch (err) {
+                console.error(`Failed to parse ${file.name}:`, err);
+                new Notice(`Skipped ${file.name} (Parse Error)`);
+            }
+        }
 
-                     for (let i = 1; i <= pdf.numPages; i++) {
-                         const page = await pdf.getPage(i);
-                         const tokenizedText = await page.getTextContent();
-                         const pageText = tokenizedText.items.map((item: any) => item.str).join(' ');
-                         fullText += pageText + "\n\n";
-                     }
-
-                     if (projectData) {
-                         projectData.referenceText = fullText;
-                         await saveAll(false);
-                         new Notice(`PDF Reference Loaded (${pdf.numPages} pages).`);
-                     }
-                 } catch (err) {
-                     console.error("PDF Parsing Error:", err);
-                     new Notice("Failed to parse PDF.");
-                 }
-             };
-             reader.readAsArrayBuffer(file);
-        } else {
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                 const text = e.target?.result as string;
-                 if (projectData) {
-                     projectData.referenceText = text;
-                     await saveAll(false);
-                     new Notice("Reference Text Loaded for Benchmarking.");
-                 }
-            };
-            reader.readAsText(file);
+        if (projectData && combinedText.length > 0) {
+            projectData.referenceText = combinedText;
+            await saveAll(false);
+            new Notice(`Knowledge Base Loaded (${files.length} files).`);
         }
     }
 
@@ -1253,8 +1248,8 @@
                         </select>
 
                         <label class="action-btn tertiary" style="margin: 0; text-align: center; cursor: pointer; flex: 1; font-size: 10px;">
-                            {projectData.referenceText ? 'REF LOADED' : 'LOAD COMP'}
-                            <input type="file" accept=".txt,.md,.pdf" onchange={handleReferenceUpload} style="display: none;">
+                            {projectData.referenceText ? 'KNOWLEDGE LOADED' : 'LOAD KNOWLEDGE'}
+                            <input type="file" accept=".txt,.md,.pdf" multiple onchange={handleReferenceUpload} style="display: none;">
                         </label>
 
                         {#if projectData.referenceText}
