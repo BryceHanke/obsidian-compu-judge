@@ -116,7 +116,7 @@ ${NIGS_FEW_SHOT_EXAMPLES}
   "tension_arc": [0, 10, -5, 20, 30, 50],
   "quality_arc": [0, 15, -10, 25, 40, 55],
   "structure_map": [
-      { "title": "Beat Title", "description": "Desc", "type": "beat", "characters": ["Name"], "tension": 10, "duration": 5, "quality": 10, "quality_reason": "Reason for quality score." }
+      { "title": "Beat Title", "description": "Desc", "type": "beat", "characters": ["Name"], "tension": 10, "duration": 5, "quality": 10, "quality_reason": "Reason for quality score.", "start_charge": "Initial state (+/-, etc)", "end_charge": "Final state" }
   ],
   "sanderson_metrics": {
     "promise_payoff": 0,
@@ -415,6 +415,26 @@ export const NIGS_RENAME_PROMPT = `
 [OUTPUT JSON]: { "OldName": "NewName" }
 `;
 
+export const NIGS_SHOW_DONT_TELL_PROMPT = `
+[ROLE]: Prose Stylist.
+[TASK]: Detect "Telling" (Abstraction) vs "Showing" (Experience).
+
+[INSTRUCTION]:
+Identify paragraphs where the author summarizes emotion/thought instead of depicting it through action/senses.
+Focus on "Filter Words" (felt, saw, wondered) that distance the reader.
+
+[OUTPUT JSON]:
+{
+  "instances": [
+    {
+      "original": "Sentence/Paragraph snippet...",
+      "critique": "Why this is 'telling'.",
+      "rewrite": "Example of how to 'show' it."
+    }
+  ]
+}
+`;
+
 // ============================================================================
 // 5. TRIBUNAL AGENTS (MULTI-AGENT CONSENSUS)
 // ============================================================================
@@ -525,6 +545,7 @@ export const NIGS_ARBITRATOR_PROMPT = `
 
 [RULES]:
 1. Genre Weighting (Romance: Soul>Logic, SciFi: Logic>Soul, Comedy: Jester, Lit: Lit).
+   - [ACTIVE GENRE]: Use the user-defined genre (provided in Context) to adjust weighting logic.
 2. Deus Ex Machina: If Logic flags >0, MAX Score = 25.
 3. Boring Law: Boring = Bad (0 or neg).
 4. PHYSICS & LOGIC CAP:

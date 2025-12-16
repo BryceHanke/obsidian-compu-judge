@@ -16,7 +16,8 @@ import {
     NIGS_RENAME_PROMPT,
     NIGS_GRADE_ANALYST_PROMPT,
     NIGS_ARBITRATOR_PROMPT,
-    NIGS_BATCH_ANALYSIS_PROMPT
+    NIGS_BATCH_ANALYSIS_PROMPT,
+    NIGS_SHOW_DONT_TELL_PROMPT
 } from './prompts'; 
 import { setStatus } from './store';
 import type { ImageInput } from './types';
@@ -274,7 +275,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 
     // --- GRADING (Unified System) ---
     // [UPDATED] Iterative/Parallel Tribunal with Veto Protocol & Analyst Loop
-    gradeContent = async (text: string, context?: { inspiration: string; target: number; jobId?: string }, nlpStats?: NlpMetrics, wizardState?: NigsWizardState, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<NigsResponse> => {
+    gradeContent = async (text: string, context?: { inspiration: string; target: number; jobId?: string; genre?: string; referenceText?: string }, nlpStats?: NlpMetrics, wizardState?: NigsWizardState, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<NigsResponse> => {
         // 1. CHECK SETTINGS: Fallback to Legacy if Tribunal is disabled
         if (!this.settings.enableTribunal) {
             return this.gradeContentLegacy(text, context, nlpStats, signal, onStatus);
@@ -287,6 +288,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
         const jobId = context?.jobId || `JOB-${Date.now()}`;
 
         const sourceMaterial = context?.inspiration ? `\n[REFERENCE DATA (IGNORE IF CONTRADICTORY)]:\n"${context.inspiration}"\n` : "";
+        const benchmarkText = context?.referenceText ? `\n[COMPARATIVE BENCHMARK (STYLE REFERENCE)]:\n"${context.referenceText.substring(0, 2000)}..."\n[INSTRUCTION]: Compare the user's style to this Benchmark. Report deviation.` : "";
         let statsBlock = "";
         
         if (nlpStats) {
@@ -302,6 +304,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
         // [SYSTEM TUNING] HEADER ISOLATION
         const baseInputPayload = `
 [JOB ID]: ${jobId}
+[GENRE]: ${context?.genre || "General"}
 
 [PRIMARY TARGET FOR ANALYSIS]:
 === NARRATIVE ARTIFACT ===
@@ -310,6 +313,7 @@ ${text}
 
 ${statsBlock}
 ${sourceMaterial}
+${benchmarkText}
 `;
 
         // --- GRADE ANALYST LOOP ---
@@ -474,7 +478,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 - Quality Arc: ${JSON.stringify(forensicReport.quality_arc)}
 - Structure Map: ${JSON.stringify(forensicReport.structure_map)}
 
-[GENRE CONTEXT]: ${context?.inspiration || "Unknown"}
+[GENRE CONTEXT]: ${context?.genre || "General"} (Context: ${context?.inspiration ? "Yes" : "No"})
 [SETTINGS]:
 - Logic Weight: ${this.settings.agentWeights.logic}
 - Soul Weight: ${this.settings.agentWeights.soul}
@@ -877,7 +881,36 @@ ${text}
             this.updateStatus("REPAIR AGENT: GENERATING OPTIONS (TREE OF THOUGHTS)...", onStatus, currentProgress + 5);
             currentResult = await this.callAI(currentInput, prompt, false, false, temp, signal, undefined, onStatus);
 
-            // 2. Verify Repair (The "Perceived Flaws" Check)
+            // [NEW] 1.5 "DEVIL'S ADVOCATE" LOOP (Creative Audit)
+            // Explicitly check for AI Slop/Cliches before doing the logic check.
+            this.updateStatus("DEVIL'S ADVOCATE: CHECKING FOR CLICHÉS...", onStatus, currentProgress + 8);
+
+            const clicheCheckPrompt = `
+[TASK]: AUDIT THIS TEXT FOR "AI SLOP" & CLICHÉS.
+[CRITERIA]:
+1. Is it generic? (e.g. "shivers down spine", "let out a breath he didn't know he was holding")
+2. Is it overly flowery or purple prose?
+3. Does it feel robotic?
+
+[TEXT]:
+${currentResult.substring(0, 5000)}...
+
+If it is BAD/GENERIC, return FAIL and explain why.
+If it is UNIQUE/GOOD, return PASS.
+
+Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
+`;
+            const clicheRaw = await this.callAI(clicheCheckPrompt, NIGS_GRADE_ANALYST_PROMPT, true, false, 0.2, signal, undefined, onStatus);
+            const clicheReview = parseJson<{ verdict: string, reason: string }>(clicheRaw);
+
+            if (clicheReview.verdict === "FAIL") {
+                 console.warn(`REPAIR REJECTED BY DEVIL'S ADVOCATE: ${clicheReview.reason}`);
+                 previousCritique = `[CREATIVE FAILURE]: The text was rejected for being clichéd or generic. CRITIQUE: ${clicheReview.reason}. \n\n[INSTRUCTION]: REWRITE IT TO BE BOLDER, MORE UNIQUE, AND AVOID THESE CLICHÉS.`;
+                 // Short circuit to next attempt
+                 continue;
+            }
+
+            // 2. Verify Repair (The "Perceived Flaws" Check - Logic/Integrity)
             this.updateStatus("QUALITY CONTROL: VERIFYING INTEGRITY...", onStatus, currentProgress + 10);
 
             const verifyPrompt = `
@@ -1201,5 +1234,15 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 
         this.updateStatus("DONE", onStatus, 100);
         return parseJson<Record<string, string>>(res);
+    }
+
+    analyzeShowDontTell = async (text: string, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<any> => {
+        this.updateStatus("PROSE STYLIST: DETECTING ABSTRACTIONS...", onStatus, 10);
+
+        const temp = this.getTemp(this.settings.tempCritic, true);
+        const res = await this.callAI(text, NIGS_SHOW_DONT_TELL_PROMPT, true, false, temp, signal, undefined, onStatus);
+
+        this.updateStatus("DONE", onStatus, 100);
+        return parseJson<any>(res);
     }
 }
