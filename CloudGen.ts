@@ -288,7 +288,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
         const jobId = context?.jobId || `JOB-${Date.now()}`;
 
         const sourceMaterial = context?.inspiration ? `\n[REFERENCE DATA (IGNORE IF CONTRADICTORY)]:\n"${context.inspiration}"\n` : "";
-        const benchmarkText = context?.referenceText ? `\n[COMPARATIVE BENCHMARK (STYLE REFERENCE)]:\n"${context.referenceText.substring(0, 2000)}..."\n[INSTRUCTION]: Compare the user's style to this Benchmark. Report deviation.` : "";
+        const benchmarkText = context?.referenceText ? `\n[EXTERNAL WRITING KNOWLEDGE / REFERENCE]:\n"${context.referenceText.substring(0, 50000)}..."\n[INSTRUCTION]: Use the provided knowledge to enhance your analysis. If the user asks for specific advice found in this knowledge, apply it.` : "";
         let statsBlock = "";
         
         if (nlpStats) {
