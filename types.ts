@@ -30,6 +30,9 @@ export interface DriveBlock {
     expanded: boolean;
 }
 
+// [NEW] Genre Definitions
+export type NigsGenre = 'General' | 'Thriller' | 'Romance' | 'Sci-Fi' | 'Fantasy' | 'Mystery' | 'Horror' | 'Comedy' | 'Literary' | 'Hard Sci-Fi';
+
 export interface NigsSettings {
     // --- CORE ---
     apiKey: string;
@@ -308,6 +311,8 @@ export interface UniversalOutlineNode {
     duration?: number; // [NEW] Relative duration/weight (1-10)
     quality?: number; // [NEW] Beat Quality Score
     quality_reason?: string; // [NEW] Explanation for the score
+    start_charge?: string; // [NEW] Value Shift Start (+, -, etc)
+    end_charge?: string; // [NEW] Value Shift End
 }
 
 export interface CharacterBlock {
@@ -408,6 +413,8 @@ export const DEFAULT_WIZARD_STATE: NigsWizardState = {
 export interface ProjectData {
     filePath: string;
     wizardState: NigsWizardState;
+    genre?: NigsGenre; // [NEW] Genre Selection
+    referenceText?: string; // [NEW] Reference Benchmark
     lastAiResult: NigsResponse | null;
     lastLightResult: NigsLightGrade | null;
     lastActionPlan: NigsActionPlan | null;

@@ -192,13 +192,25 @@
 
         const totalDuration = durations.reduce((a, b) => a + b, 0);
 
-        return sourceArray.map((val, i) => ({
-            val: val,
-            title: labels[i] || `Beat ${i+1}`,
-            desc: descs[i] || "",
-            reason: qualityReasons[i] || "",
-            widthPerc: (durations[i] / totalDuration) * 100
-        }));
+        return sourceArray.map((val, i) => {
+            // [NEW] Charge Logic
+            let charge = null;
+            if (isUniversalOutline) {
+                const node = structure[i] as UniversalOutlineNode;
+                if (node.start_charge && node.end_charge) {
+                    charge = { start: node.start_charge, end: node.end_charge };
+                }
+            }
+
+            return {
+                val: val,
+                title: labels[i] || `Beat ${i+1}`,
+                desc: descs[i] || "",
+                reason: qualityReasons[i] || "",
+                widthPerc: (durations[i] / totalDuration) * 100,
+                charge: charge
+            };
+        });
     });
 
     // Interpolate Ideal Path (Only for Tension Mode)
@@ -614,6 +626,12 @@
                                 </div>
                             {/if}
 
+                            {#if beat.charge}
+                                <div style="margin-top: 3px; font-weight: bold; text-align: center; border-top: 1px dotted #ccc; padding-top: 2px;">
+                                    SHIFT: <span style="color:red">{beat.charge.start}</span> ➤ <span style="color:green">{beat.charge.end}</span>
+                                </div>
+                            {/if}
+
                             <div style="text-align:right; font-size:0.8em; opacity:0.8; margin-top:2px;">
                                 Duration: {Math.round(beat.widthPerc)}%
                             </div>
@@ -703,6 +721,11 @@
                                 <div class="tree-content">
                                     <span class="node-icon">{expandedBeats.includes(i) ? '📂' : (node.type === 'beat' ? '📄' : '⭐')}</span>
                                     <span class="node-title">{node.title}</span>
+                                    {#if node.start_charge && node.end_charge}
+                                        <span class="node-meta" style="color: #000; font-weight:bold; margin-left: 5px; background: #ffffcc; padding: 0 2px; border: 1px solid #999;">
+                                            [{node.start_charge} → {node.end_charge}]
+                                        </span>
+                                    {/if}
                                     <span class="node-meta {isMasterpieceEffect(node.tension) ? 'masterpiece-text' : ''}"
                                           style="color: {isMasterpieceEffect(node.tension) ? '#000' : '#000080'};">
                                         (Tens: {formatScoreDisplay(node.tension)})

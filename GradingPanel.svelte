@@ -28,6 +28,9 @@
     let projectData: ProjectData | null = $state(null);
     let wizardData: NigsWizardState | null = $state(null);
     let forgeData: GlobalForgeData | null = $state(null);
+
+    // [NEW] Local state for genre if projectData is not loaded yet, though we usually wait for it.
+    // We bind directly to projectData.genre
     let currentTab = $state('critic');
     let isSaving = $state(false);
     let estimatedDuration = $state(4000);
@@ -62,6 +65,32 @@
     function handleSettingsUpdate(updates: Partial<NigsSettings>) {
         Object.assign(settings, updates);
         onUpdateSettings(updates);
+    }
+
+    // [NEW] Handle Reference Upload
+    function handleReferenceUpload(event: Event) {
+        const target = event.target as HTMLInputElement;
+        const files = target.files;
+        if (!files || files.length === 0 || !projectData) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+             const text = e.target?.result as string;
+             if (projectData) {
+                 projectData.referenceText = text;
+                 await saveAll(false);
+                 new Notice("Reference Text Loaded for Benchmarking.");
+             }
+        };
+        reader.readAsText(files[0]);
+    }
+
+    function clearReference() {
+        if (projectData) {
+            projectData.referenceText = "";
+            saveAll(false);
+            new Notice("Reference Cleared.");
+        }
     }
     
     // [NEW] Handle Drive Updates Locally
@@ -428,7 +457,9 @@
             const context = {
                 inspiration: wizardData.inspirationContext,
                 target: wizardData.targetScore,
-                jobId: jobId
+                jobId: jobId,
+                genre: projectData.genre || 'General',
+                referenceText: projectData.referenceText
             };
 
             const result = await cloud.gradeContent(
@@ -892,6 +923,42 @@
         } catch (e: any) { handleError("Filter Highlight", e); }
     }
 
+    async function runShowDontTell() {
+        if (!activeFile) return;
+        const contextKey = activeFile.path + "_CRITIC";
+        const { pid, controller } = startLoading(contextKey, 6000, "CHECKING ABSTRACTIONS...");
+        try {
+            const content = await getActiveFileContent();
+            const report = await cloud.analyzeShowDontTell(
+                content,
+                controller.signal,
+                (msg, progress) => updateProcessStatus(pid, msg, progress)
+            );
+
+            // Apply comments to content
+            let newContent = content;
+            if (report.instances && Array.isArray(report.instances)) {
+                let count = 0;
+                report.instances.forEach((item: any) => {
+                    if (item.original && newContent.includes(item.original)) {
+                        // Using Markdown comments for minimal intrusion, or maybe ==highlight==
+                        // "Identify paragraphs where the author summarizes emotion instead of depicting it. Rewrite one instance as an example."
+                        const replacement = `==${item.original}== %% [SHOW, DON'T TELL]: ${item.critique} | REWRITE: ${item.rewrite} %%`;
+                        newContent = newContent.replace(item.original, replacement);
+                        count++;
+                    }
+                });
+                if (count > 0) {
+                    await updateActiveFileContent(newContent);
+                    new Notice(`Marked ${count} abstraction issues.`);
+                } else {
+                    new Notice("No abstraction issues matched in text (AI may have paraphrased).");
+                }
+            }
+        } catch (e: any) { handleError("Show Don't Tell", e, pid); }
+        finally { stopLoading(contextKey); }
+    }
+
     async function runGenerateReport() {
         if (!activeFile || !projectData) return;
         try {
@@ -1005,6 +1072,7 @@
                                 <button class="action-btn secondary" onclick={runFixDialogue} disabled={!activeFile}>FIX DIALOGUE PUNCTUATION</button>
                                 <button class="action-btn secondary" onclick={() => runAdverbKiller('highlight')} disabled={!activeFile}>HIGHLIGHT ADVERBS (RED)</button>
                                 <button class="action-btn secondary" onclick={runFilterHighlight} disabled={!activeFile}>HIGHLIGHT FILTER WORDS (YELLOW)</button>
+                                <button class="action-btn secondary" onclick={runShowDontTell} disabled={!activeFile}>AI ABSTRACTION DETECTOR (BLUE)</button>
                             </div>
                         </div>
                     </div>
@@ -1128,6 +1196,32 @@
                  <Win95ProgressBar processId="MOUNTING" /> <!-- Placeholder -->
             {:else if projectData}
                 <div class="panel-critic">
+
+                    <!-- [NEW] GENRE & REFERENCE CONTROLS -->
+                    <div class="control-row" style="margin-bottom: 10px; display: flex; gap: 5px; align-items: center;">
+                        <select class="retro-select" bind:value={projectData.genre} onchange={debouncedSave}>
+                            <option value="General">Genre: General</option>
+                            <option value="Thriller">Thriller</option>
+                            <option value="Romance">Romance</option>
+                            <option value="Sci-Fi">Sci-Fi</option>
+                            <option value="Fantasy">Fantasy</option>
+                            <option value="Mystery">Mystery</option>
+                            <option value="Horror">Horror</option>
+                            <option value="Comedy">Comedy</option>
+                            <option value="Literary">Literary</option>
+                            <option value="Hard Sci-Fi">Hard Sci-Fi</option>
+                        </select>
+
+                        <label class="action-btn tertiary" style="margin: 0; text-align: center; cursor: pointer; flex: 1; font-size: 10px;">
+                            {projectData.referenceText ? 'REF LOADED' : 'LOAD COMP'}
+                            <input type="file" accept=".txt,.md" onchange={handleReferenceUpload} style="display: none;">
+                        </label>
+
+                        {#if projectData.referenceText}
+                            <button class="scrub-btn" onclick={clearReference} title="Clear Reference">X</button>
+                        {/if}
+                    </div>
+
                     <div class="button-row">
                         <button class="action-btn primary" onclick={() => runAnalysis()}>
                             DEEP SCAN ({settings.enableTribunal ? 'TRIBUNAL' : `${settings.criticCores} CORES`})
@@ -1287,5 +1381,16 @@
     .dd-item:hover {
         background: #000080;
         color: #fff;
+    }
+
+    .retro-select {
+        background: var(--cj-bg);
+        color: var(--cj-text);
+        border: 2px inset #fff;
+        font-family: 'Pixelated MS Sans Serif', sans-serif;
+        font-size: 11px;
+        padding: 2px;
+        font-weight: bold;
+        flex: 2;
     }
 </style>
