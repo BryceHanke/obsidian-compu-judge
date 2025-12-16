@@ -12,6 +12,7 @@ export interface GlobalForgeData {
     archivistPrompt: string;
     repairFocus: string;
     lastActionPlan: NigsActionPlan | null;
+    referenceText?: string; // [NEW] Global Knowledge Base
 }
 
 export class NigsDB {
@@ -308,7 +309,8 @@ export class NigsDB {
             archivistContext: "",
             archivistPrompt: "",
             repairFocus: "",
-            lastActionPlan: null
+            lastActionPlan: null,
+            referenceText: "" // Default empty
         };
 
         if (await adapter.exists(path)) {
