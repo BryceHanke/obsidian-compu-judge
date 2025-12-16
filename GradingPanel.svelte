@@ -577,7 +577,8 @@
                 fieldPath,
                 wizardData,
                 controller.signal,
-                (msg, progress) => updateProcessStatus(pid, msg, progress)
+                (msg, progress) => updateProcessStatus(pid, msg, progress),
+                forgeData?.referenceText // [UPDATED] Pass Global Reference
             );
 
             const parts = fieldPath.split('.');
@@ -605,7 +606,8 @@
             const synopsis = await cloud.wizardCompose(
                 wizardData,
                 controller.signal,
-                (msg, progress) => updateProcessStatus(pid, msg, progress)
+                (msg, progress) => updateProcessStatus(pid, msg, progress),
+                forgeData?.referenceText // [UPDATED] Pass Global Reference
             );
             const outputName = (wizardData.concept ? wizardData.concept.substring(0, 20).replace(/[^a-z0-9]/gi, '_') : "Untitled") + "_FULL_OUTLINE.md";
             await safeCreateFile(outputName, synopsis);
@@ -633,7 +635,8 @@
                 concept,
                 context,
                 controller.signal,
-                (msg, progress) => updateProcessStatus(pid, msg, progress)
+                (msg, progress) => updateProcessStatus(pid, msg, progress),
+                forgeData?.referenceText // [UPDATED] Pass Global Reference
             );
 
             wizardData = {
@@ -716,7 +719,8 @@
                 projectData.lastAiResult || undefined, 
                 projectData.lastLightResult || undefined,
                 controller.signal,
-                (msg, progress) => updateProcessStatus(pid, msg, progress)
+                (msg, progress) => updateProcessStatus(pid, msg, progress),
+                forgeData?.referenceText // [UPDATED] Pass Global Reference
             );
             
             if (activeFile.path !== path) return;
@@ -770,7 +774,8 @@
                     useSearch,
                     controller.signal,
                     images,
-                    (msg, progress) => updateProcessStatus(pid, msg, progress)
+                    (msg, progress) => updateProcessStatus(pid, msg, progress),
+                    forgeData?.referenceText // [UPDATED] Pass Global Reference
                 );
 
                 await safeCreateFile(outputFilename, outlineText);
@@ -797,7 +802,8 @@
                 content,
                 forgeData.lastActionPlan,
                 controller.signal,
-                (msg, progress) => updateProcessStatus(pid, msg, progress)
+                (msg, progress) => updateProcessStatus(pid, msg, progress),
+                forgeData?.referenceText // [UPDATED] Pass Global Reference
             );
             const outputName = activeFile.basename + "_REPAIRED.md";
             await safeCreateFile(outputName, repairedText);
@@ -1033,7 +1039,13 @@
 
         <!-- TUNE TAB -->
         {#if currentTab === 'tune'}
-            <TuneView {app} {cloud} />
+            <TuneView
+                {app}
+                {cloud}
+                {forgeData}
+                onUploadReference={handleReferenceUpload}
+                onClearReference={clearReference}
+            />
         {/if}
 
         <!-- WIZARD TAB (GLOBAL) -->
@@ -1233,7 +1245,7 @@
             {:else if projectData}
                 <div class="panel-critic">
 
-                    <!-- [NEW] GENRE & REFERENCE CONTROLS -->
+                    <!-- [NEW] GENRE SELECTION -->
                     <div class="control-row" style="margin-bottom: 10px; display: flex; gap: 5px; align-items: center;">
                         <select class="retro-select" bind:value={projectData.genre} onchange={debouncedSave}>
                             <option value="General">Genre: General</option>
@@ -1247,15 +1259,6 @@
                             <option value="Literary">Literary</option>
                             <option value="Hard Sci-Fi">Hard Sci-Fi</option>
                         </select>
-
-                        <label class="action-btn tertiary" style="margin: 0; text-align: center; cursor: pointer; flex: 1; font-size: 10px;">
-                            {forgeData?.referenceText ? 'KNOWLEDGE LOADED (GLOBAL)' : 'LOAD KNOWLEDGE (GLOBAL)'}
-                            <input type="file" accept=".txt,.md,.pdf" multiple onchange={handleReferenceUpload} style="display: none;">
-                        </label>
-
-                        {#if forgeData?.referenceText}
-                            <button class="scrub-btn" onclick={clearReference} title="Clear Global Reference">X</button>
-                        {/if}
                     </div>
 
                     <div class="button-row">

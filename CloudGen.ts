@@ -98,10 +98,12 @@ export class CloudGenService {
     }
 
     // --- AUTO-FILL WIZARD (Architect Mode) ---
-    autoFillWizard = async (concept: string, currentContext: string, signal?: AbortSignal, onStatus?: StatusUpdate): Promise<Partial<NigsWizardState>> => {
+    autoFillWizard = async (concept: string, currentContext: string, signal?: AbortSignal, onStatus?: StatusUpdate, referenceText?: string): Promise<Partial<NigsWizardState>> => {
         this.updateStatus("ARCHITECTING STORY BIBLE...", onStatus, 10);
         
         const nameRules = this.getNameProtocol();
+
+        const globalKnowledge = referenceText ? `\n[GLOBAL WRITING KNOWLEDGE]:\n${referenceText.substring(0, 10000)}...\n` : "";
 
         const prompt = `
         [INPUT CONCEPT]: "${concept}"
@@ -109,6 +111,8 @@ export class CloudGenService {
         [UPLOADED SOURCE MATERIAL]:
         ${currentContext}
         
+        ${globalKnowledge}
+
         Using the concept above and the source material, generate the full JSON Story Bible.
         Ensure you generate the "philosopher" section (Theme/Moral Argument) based on the conflict.
         ${nameRules}
@@ -703,10 +707,13 @@ Only score positive if it is innovative.
     }
 
     // --- PASSTHROUGHS ---
-    generateOutline = async (text: string, useSearch = false, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate) => {
+    generateOutline = async (text: string, useSearch = false, signal?: AbortSignal, images?: ImageInput[], onStatus?: StatusUpdate, referenceText?: string) => {
         this.updateStatus("INITIALIZING ARCHIVIST PROTOCOL...", onStatus, 5);
         const prompt = this.settings.customOutlinePrompt ? this.settings.customOutlinePrompt : NIGS_OUTLINE_PROMPT;
         const temp = this.getTemp(this.settings.tempArchitect);
+
+        const globalKnowledge = referenceText ? `\n[GLOBAL WRITING KNOWLEDGE]:\n${referenceText.substring(0, 10000)}...\n` : "";
+        const enrichedText = `${text}\n${globalKnowledge}`;
 
         // [BATCH] Use user-defined batch size (Default 10)
         const batchSize = this.settings.forgeImageBatchLength || 10;
@@ -746,7 +753,7 @@ Only score positive if it is innovative.
 [TASK]: Synthesize the following sequential comic book batch summaries into a SINGLE cohesive Narrative Report.
 
 [USER INSTRUCTION]:
-${text}
+${enrichedText}
 
 [BATCH SUMMARIES]:
 ${fullContext}
@@ -757,13 +764,13 @@ ${fullContext}
             return finalRes;
         }
 
-        const res = await this.callAI(text, prompt, false, useSearch, temp, signal, images, onStatus);
+        const res = await this.callAI(enrichedText, prompt, false, useSearch, temp, signal, images, onStatus);
         this.updateStatus("DONE", onStatus, 100);
         return res;
     }
 
     // [UPDATED] Pass Scan Telemetry to Action Plan
-    getActionPlan = async (text: string, focus?: string, deepScan?: NigsResponse, quickScan?: NigsLightGrade, signal?: AbortSignal, onStatus?: StatusUpdate) => {
+    getActionPlan = async (text: string, focus?: string, deepScan?: NigsResponse, quickScan?: NigsLightGrade, signal?: AbortSignal, onStatus?: StatusUpdate, referenceText?: string) => {
         this.updateStatus("ANALYZING WEAKNESSES...", onStatus, 10);
         
         let diagnosticBlock = "";
@@ -819,6 +826,10 @@ ${fullContext}
 
         if (focus && focus.trim().length > 0) inputBlock = `USER DIRECTIVE: Focus on "${focus}".\n\n${inputBlock}`;
         
+        if (referenceText) {
+             inputBlock = `[GLOBAL WRITING KNOWLEDGE]:\n${referenceText.substring(0, 10000)}...\n\n${inputBlock}`;
+        }
+
         const temp = this.getTemp(this.settings.tempArchitect);
         const res = await this.callAI(inputBlock, NIGS_FORGE_PROMPT, true, false, temp, signal, undefined, onStatus);
 
@@ -826,7 +837,7 @@ ${fullContext}
         return parseJson<NigsActionPlan>(res);
     }
 
-    autoRepair = async (text: string, plan: NigsActionPlan, signal?: AbortSignal, onStatus?: StatusUpdate) => {
+    autoRepair = async (text: string, plan: NigsActionPlan, signal?: AbortSignal, onStatus?: StatusUpdate, referenceText?: string) => {
         this.updateStatus("INITIATING SMART REPAIR SEQUENCE...", onStatus, 5);
         const prompt = this.settings.customRepairPrompt ? this.settings.customRepairPrompt : NIGS_AUTO_REPAIR_PROMPT;
 
@@ -837,11 +848,14 @@ ${fullContext}
             deepScanContext += `\n[DIAGNOSED WEAKNESS]: ${plan.weakest_link}\n`;
         }
 
+        const knowledge = referenceText ? `\n[GLOBAL WRITING KNOWLEDGE]:\n${referenceText.substring(0, 10000)}...\n` : "";
+
         const baseInput = `
 [REPAIR PLAN]:
 ${JSON.stringify(plan)}
 
 ${deepScanContext}
+${knowledge}
 
 [TEXT TO REPAIR]:
 ${text}
@@ -1022,10 +1036,11 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
     }
 
     // --- ASSIST WIZARD (Logic Hardened + Name Protocol) & [NEW] Thinking Agent ---
-    assistWizard = async (field: string, state: NigsWizardState, signal?: AbortSignal, onStatus?: StatusUpdate) => {
+    assistWizard = async (field: string, state: NigsWizardState, signal?: AbortSignal, onStatus?: StatusUpdate, referenceText?: string) => {
         this.updateStatus("CONSULTING NARRATIVE DATABASE...", onStatus, 10);
         const sourceMaterial = state.inspirationContext || "No source file loaded.";
-        
+        const globalKnowledge = referenceText ? `\n[GLOBAL WRITING KNOWLEDGE]:\n${referenceText.substring(0, 10000)}...\n` : "";
+
         // [REFACTOR] Targeted Context Injection
         let targetContext = "";
         let specificInstruction = "";
@@ -1120,6 +1135,8 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
         [UPLOADED SOURCE MATERIAL]:
         ${sourceMaterial}
 
+        ${globalKnowledge}
+
         [STORY DNA (Overview)]:
         ${JSON.stringify(coreDna, null, 2)}
         
@@ -1187,7 +1204,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
         return suggestion;
     }
     
-    wizardCompose = async (state: NigsWizardState, signal?: AbortSignal, onStatus?: StatusUpdate) => {
+    wizardCompose = async (state: NigsWizardState, signal?: AbortSignal, onStatus?: StatusUpdate, referenceText?: string) => {
         this.updateStatus("ARCHITECTING OUTLINE...", onStatus, 10);
         const targetQ = state.targetScore || this.settings.defaultTargetQuality;
 
@@ -1196,6 +1213,7 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 
         // [UPDATED] Inject Name Protocol
         const nameRules = this.getNameProtocol();
+        const globalKnowledge = referenceText ? `\n[GLOBAL WRITING KNOWLEDGE]:\n${referenceText.substring(0, 10000)}...\n[INSTRUCTION]: Apply this knowledge to the outline generation.` : "";
 
         const promptContext = `
         [SOURCE DATA]:
@@ -1205,6 +1223,8 @@ Return JSON: { "verdict": "PASS" | "FAIL", "reason": "Short reason." }
 
         ${negativeConstraints}
         ${nameRules}
+
+        ${globalKnowledge}
 
         [INSTRUCTION]: 
         Using the source data above, write a formatted Markdown document. Do not output JSON.
