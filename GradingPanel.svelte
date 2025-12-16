@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { TFile, App, Notice } from 'obsidian';
+    import * as pdfjs from 'pdfjs-dist';
     import type { CloudGenService } from './CloudGen';
     import type { NigsSettings, ProjectData, CharacterBlock, StoryBlock, DriveBlock, NigsWizardState, NigsActionPlan } from './types';
     import { DEFAULT_WIZARD_STATE } from './types'; 
@@ -73,16 +74,55 @@
         const files = target.files;
         if (!files || files.length === 0 || !projectData) return;
 
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-             const text = e.target?.result as string;
-             if (projectData) {
-                 projectData.referenceText = text;
-                 await saveAll(false);
-                 new Notice("Reference Text Loaded for Benchmarking.");
-             }
-        };
-        reader.readAsText(files[0]);
+        const file = files[0];
+
+        if (file.type === "application/pdf") {
+             const reader = new FileReader();
+             reader.onload = async (e) => {
+                 try {
+                     const buffer = new Uint8Array(e.target?.result as ArrayBuffer);
+
+                     // [FIX]: Set worker from injected define
+                     if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+                         // @ts-ignore - Defined in esbuild
+                         const workerBlob = new Blob([process.env.PDF_WORKER_CODE], { type: 'text/javascript' });
+                         pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob);
+                     }
+
+                     const loadingTask = pdfjs.getDocument({ data: buffer });
+                     const pdf = await loadingTask.promise;
+                     let fullText = "";
+
+                     for (let i = 1; i <= pdf.numPages; i++) {
+                         const page = await pdf.getPage(i);
+                         const tokenizedText = await page.getTextContent();
+                         const pageText = tokenizedText.items.map((item: any) => item.str).join(' ');
+                         fullText += pageText + "\n\n";
+                     }
+
+                     if (projectData) {
+                         projectData.referenceText = fullText;
+                         await saveAll(false);
+                         new Notice(`PDF Reference Loaded (${pdf.numPages} pages).`);
+                     }
+                 } catch (err) {
+                     console.error("PDF Parsing Error:", err);
+                     new Notice("Failed to parse PDF.");
+                 }
+             };
+             reader.readAsArrayBuffer(file);
+        } else {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                 const text = e.target?.result as string;
+                 if (projectData) {
+                     projectData.referenceText = text;
+                     await saveAll(false);
+                     new Notice("Reference Text Loaded for Benchmarking.");
+                 }
+            };
+            reader.readAsText(file);
+        }
     }
 
     function clearReference() {
@@ -860,19 +900,19 @@
             stopLoading(contextKey);
         }
 
-        if (window.confirm("FORCE FORMAT DISC? Resets all data.")) { 
-            if (projectData && activeFile) {
-                // Clear Critic Data Only
-                projectData.lastAiResult = null;
-                projectData.lastLightResult = null;
-                projectData.lastMetaResult = null;
-                projectData.lastAnalysisMtime = null;
-                await db.saveProjectData(projectData, 0); // Reset
-            }
+        if (window.confirm("FACTORY RESET: This will wipe ALL plugin data (Wizard, Forge, Critic). Continue?")) {
+            await db.deleteDatabase();
 
-            // Should we clear Wizard/Forge? They are persistent now.
-            // Maybe just clear the Critic part for the current file?
-            new Notice("Critic Disc Formatted.");
+            // Reset Local State
+            projectData = null;
+            wizardData = null;
+            forgeData = null;
+
+            // Re-load (will be empty/defaults)
+            await loadGlobalData();
+            if (activeFile) await loadProjectData(activeFile);
+
+            new Notice("All Data Formatted (Factory Reset).");
         } 
     }
 
@@ -1214,7 +1254,7 @@
 
                         <label class="action-btn tertiary" style="margin: 0; text-align: center; cursor: pointer; flex: 1; font-size: 10px;">
                             {projectData.referenceText ? 'REF LOADED' : 'LOAD COMP'}
-                            <input type="file" accept=".txt,.md" onchange={handleReferenceUpload} style="display: none;">
+                            <input type="file" accept=".txt,.md,.pdf" onchange={handleReferenceUpload} style="display: none;">
                         </label>
 
                         {#if projectData.referenceText}
