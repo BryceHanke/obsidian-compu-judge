@@ -72,7 +72,7 @@
     async function handleReferenceUpload(event: Event) {
         const target = event.target as HTMLInputElement;
         const files = target.files;
-        if (!files || files.length === 0 || !projectData) return;
+        if (!files || files.length === 0 || !forgeData) return;
 
         new Notice(`Processing ${files.length} knowledge files...`);
         let combinedText = "";
@@ -113,16 +113,17 @@
             }
         }
 
-        if (projectData && combinedText.length > 0) {
-            projectData.referenceText = combinedText;
+        if (forgeData && combinedText.length > 0) {
+            // [UPDATED]: Save to GLOBAL Forge Data (Persistent)
+            forgeData.referenceText = combinedText;
             await saveAll(false);
-            new Notice(`Knowledge Base Loaded (${files.length} files).`);
+            new Notice(`Global Knowledge Base Loaded (${files.length} files).`);
         }
     }
 
     function clearReference() {
-        if (projectData) {
-            projectData.referenceText = "";
+        if (forgeData) {
+            forgeData.referenceText = "";
             saveAll(false);
             new Notice("Reference Cleared.");
         }
@@ -473,7 +474,7 @@
 
     async function runAnalysis() { 
         const file = activeFile;
-        if (!file || !projectData || !wizardData) return;
+        if (!file || !projectData || !wizardData || !forgeData) return;
         const content = await app.vault.read(file);
         const estTime = cloud.estimateDuration(content, 'scan');
 
@@ -494,7 +495,7 @@
                 target: wizardData.targetScore,
                 jobId: jobId,
                 genre: projectData.genre || 'General',
-                referenceText: projectData.referenceText
+                referenceText: forgeData.referenceText // [UPDATED] Use Global Reference
             };
 
             const result = await cloud.gradeContent(
@@ -1248,12 +1249,12 @@
                         </select>
 
                         <label class="action-btn tertiary" style="margin: 0; text-align: center; cursor: pointer; flex: 1; font-size: 10px;">
-                            {projectData.referenceText ? 'KNOWLEDGE LOADED' : 'LOAD KNOWLEDGE'}
+                            {forgeData?.referenceText ? 'KNOWLEDGE LOADED (GLOBAL)' : 'LOAD KNOWLEDGE (GLOBAL)'}
                             <input type="file" accept=".txt,.md,.pdf" multiple onchange={handleReferenceUpload} style="display: none;">
                         </label>
 
-                        {#if projectData.referenceText}
-                            <button class="scrub-btn" onclick={clearReference} title="Clear Reference">X</button>
+                        {#if forgeData?.referenceText}
+                            <button class="scrub-btn" onclick={clearReference} title="Clear Global Reference">X</button>
                         {/if}
                     </div>
 
