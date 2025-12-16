@@ -3,13 +3,17 @@
     import { LogService } from './LogService';
     import { App, Notice } from 'obsidian';
     import type { CloudGenService } from './CloudGen';
+    import type { GlobalForgeData } from './db';
 
     interface Props {
         app: App;
         cloud: CloudGenService;
+        forgeData: GlobalForgeData | null;
+        onUploadReference: (e: Event) => void;
+        onClearReference: () => void;
     }
 
-    let { app, cloud }: Props = $props();
+    let { app, cloud, forgeData, onUploadReference, onClearReference }: Props = $props();
 
     let logs: any[] = $state([]);
     let analysisResult: string = $state("");
@@ -57,6 +61,11 @@
         analysisResult = "";
 
         try {
+            // [UPDATED] Inject Global Knowledge into Tuning Analysis
+            const knowledgeBlock = forgeData?.referenceText
+                ? `\n[GLOBAL KNOWLEDGE BASE]:\n"${forgeData.referenceText.substring(0, 20000)}..."\n[INSTRUCTION]: Use this knowledge base to inform your tuning recommendations if relevant.`
+                : "";
+
             const prompt = `
             [TASK]: SYSTEM TUNING ANALYSIS.
             [ROLE]: Senior DevOps Engineer & Narrative Systems Architect.
@@ -64,6 +73,7 @@
             [INPUT LOGS]:
             ${JSON.stringify(logs.slice(-20))}
             (Truncated to last 20 entries for token limits)
+            ${knowledgeBlock}
 
             [OBJECTIVE]:
             Analyze the AI Request/Response patterns.
@@ -81,7 +91,7 @@
             const res = await cloud.callAI(prompt, "You are a System Analyst.", false, false, 0.2);
             analysisResult = res;
 
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
             analysisResult = "Analysis Failed: " + e.message;
         } finally {
@@ -92,8 +102,41 @@
 
 <div class="tune-container">
     <div class="tune-header">
-        <h3>System Tuning & Diagnostics</h3>
-        <p>Analyze collected telemetry to optimize the Neural Engine.</p>
+        <h3>System Tuning & Knowledge Base</h3>
+        <p>Analyze telemetry and manage global knowledge injection.</p>
+    </div>
+
+    <!-- [NEW] GLOBAL KNOWLEDGE SECTION -->
+    <div class="bevel-groove" style="margin-bottom: 20px;">
+        <div class="status-row">
+            <span>GLOBAL KNOWLEDGE BASE</span>
+            {#if forgeData?.referenceText}
+                <span style="color: green; font-weight: bold;">[LOADED]</span>
+            {:else}
+                <span style="color: #808080;">[EMPTY]</span>
+            {/if}
+        </div>
+
+        <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+            <label class="win95-btn" style="flex: 1; text-align: center; cursor: pointer;">
+                {forgeData?.referenceText ? 'UPDATE KNOWLEDGE (ADD/REPLACE)' : '📂 LOAD KNOWLEDGE (.txt, .md, .pdf)'}
+                <input type="file" accept=".txt,.md,.pdf" multiple onchange={onUploadReference} style="display: none;">
+            </label>
+            {#if forgeData?.referenceText}
+                <button class="win95-btn" onclick={onClearReference} title="Clear Knowledge">🗑️</button>
+            {/if}
+        </div>
+
+        {#if forgeData?.referenceText}
+            <div class="knowledge-preview">
+                {forgeData.referenceText.substring(0, 200)}...
+                <br/>
+                <i style="color: #666;">({forgeData.referenceText.length} characters loaded)</i>
+            </div>
+        {/if}
+        <p style="font-size: 10px; margin: 5px 0 0 0; color: #555;">
+            * This knowledge is applied globally to Critic, Wizard, Forge, and Tuning operations.
+        </p>
     </div>
 
     <div class="tune-controls bevel-groove">
@@ -179,4 +222,13 @@
     .log-ts { color: #000080; margin-right: 5px; }
     .log-type { font-weight: bold; color: #800000; }
     .log-data { margin: 2px 0 0 10px; color: #333; font-size: 9px; white-space: pre-wrap; word-wrap: break-word; }
+
+    .knowledge-preview {
+        font-size: 10px;
+        font-family: 'Courier New', monospace;
+        background: rgba(255,255,255,0.3);
+        padding: 5px;
+        border: 1px dotted #808080;
+        margin-top: 5px;
+    }
 </style>
