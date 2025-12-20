@@ -57,4 +57,32 @@
         margin-top: 10px;
         font-size: 10px;
     }
+
+    @media (max-width: 768px) {
+        .wizard-sidebar {
+            width: 100%;
+            height: auto;
+            min-height: 60px;
+            border-right: none;
+            border-bottom: 1px solid #808080;
+            flex-direction: row;
+        }
+
+        .sidebar-image-placeholder {
+            flex-direction: row;
+            padding: 10px;
+            gap: 15px;
+            justify-content: flex-start;
+        }
+
+        .sidebar-computer-icon {
+            font-size: 32px;
+        }
+
+        .step-indicator {
+            margin-top: 0;
+            margin-left: auto;
+            font-size: 12px;
+        }
+    }
 </style>
