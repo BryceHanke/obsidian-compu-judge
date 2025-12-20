@@ -203,6 +203,17 @@
         overflow-y: auto;
     }
 
+    @media (max-width: 768px) {
+        .unified-wizard-container {
+            height: 100%;
+            max-height: 100%;
+        }
+
+        .wizard-body {
+            flex-direction: column;
+        }
+    }
+
     /* FOOTER */
     .wizard-footer {
         padding: 10px;
